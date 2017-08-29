@@ -82,7 +82,7 @@ struct VulkanSystem {
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
 
-  
+  int graphics_queue;
   uint32_t n_swap;
   uint32_t frame_idx;
   uint32_t current_frame;
@@ -165,7 +165,7 @@ struct VulkanSystem {
       throw "";
     }
 
-    int graphics_queue(-1);
+    graphics_queue = -1;
     for (int i(0); i < queue_family.size(); ++i) {
       if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 	graphics_queue = i;
@@ -201,6 +201,217 @@ struct VulkanSystem {
     check( vkCreateDevice( chosen_dev, &dci, nullptr, &device ), "vkCreateDevice");
 
     vkGetDeviceQueue( device, graphics_queue, 0, &queue );
+  }
+
+  void init_swapchain() {
+    auto window = Global::window();
+    
+    SDL_SysWMinfo wm_info;
+    SDL_VERSION( &wm_info.version );
+    SDL_GetWindowWMInfo( window.window, &wm_info );
+    VkResult nResult;
+    #ifdef VK_USE_PLATFORM_WIN32_KHR
+    VkWin32SurfaceCreateInfoKHR win32SurfaceCreateInfo = {};
+    win32SurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    win32SurfaceCreateInfo.pNext = NULL;
+    win32SurfaceCreateInfo.flags = 0;
+    win32SurfaceCreateInfo.hinstance = GetModuleHandle( NULL );
+    win32SurfaceCreateInfo.hwnd = ( HWND ) wm_info.info.win.window;
+    check( vkCreateWin32SurfaceKHR( instance, &win32SurfaceCreateInfo, nullptr, &surface ), "vkCreateWin32SurfaceKHR");
+    #else
+    VkXlibSurfaceCreateInfoKHR xlibSurfaceCreateInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
+    xlibSurfaceCreateInfo.flags = 0;
+    xlibSurfaceCreateInfo.dpy = wm_info.info.x11.display;
+    xlibSurfaceCreateInfo.window = wm_info.info.x11.window;
+    check( vkCreateXlibSurfaceKHR( instance, &xlibSurfaceCreateInfo, nullptr, &surface ), "vkCreateXlibSurfaceKHR" );
+    #endif
+
+    VkBool32 supports_present = VK_FALSE;
+    check( vkGetPhysicalDeviceSurfaceSupportKHR( phys_dev, graphics_queue, surface, &supports_present), "vkGetPhysicalDeviceSurfaceSupportKHR");
+    if (supports_present == VK_FALSE) {
+      cerr << "support not present, vkGetPhysicalDeviceSurfaceSupportKHR" << endl;
+      throw "";
+    }
+
+    //query supported formats
+    VkFormat swap_format;
+    uint32_t format_index(0);
+    uint32_t n_swap_format(0);
+    VkColorSpaceKHR color_space;
+    
+    check( vkGetPhysicalDeviceSurfaceFormatsKHR( phys_dev, surface, &n_swap_format, NULL), "vkGetPhysicalDeviceSurfaceFormatsKHR");
+    vector<VkSurfaceFormatKHR> swap_formats(n_swap_format);
+    check( vkGetPhysicalDeviceSurfaceFormatsKHR( phys_dev, surface, &n_swap_format, &swap_formats[0]), "vkGetPhysicalDeviceSurfaceFormatsKHR");
+
+    for (int i(0); i < n_swap_format; ++i) {
+      if (swap_formats[i].format == VK_FORMAT_B8G8R8A8_SRGB || swap_formats[i].format == VK_FORMAT_R8G8B8A8_SRGB) {
+	format_index = i;
+	break;
+      }
+    }
+    swap_formats = swap_formats[format_index].format;
+    color_space = swap_formats[format_index].colorSpace;
+
+
+    //check capabilities
+    VkSurfaceCapabilitiesKHR surface_caps = {};
+    check( vkGetPhysicalDeviceSurfaceCapabilitiesKHR( phys_dev, surface, &surface_caps ), "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+    
+    int n_present_modes(0);
+    check( vkGetPhysicalDeviceSurfacePresentModesKHR( phys_dev, surface, &n_present_modes, NULL ), "vkGetPhysicalDeviceSurfacePresentModesKHR");
+    vector<VkPresentModeKHR> present_modes(n_present_modes);
+    check( vkGetPhysicalDeviceSurfacePresentModesKHR( phys_dev, surface, &n_present_modes, &present_modes[0] ), "vkGetPhysicalDeviceSurfacePresentModesKHR");
+
+    //create extent
+    VkExtent2D swapchain_extent;
+    if ( surface_caps.currentExtent.width == -1 )
+      {
+	// If the surface size is undefined, the size is set to the size of the images requested.
+	swapchain_extent.width = window.width;
+	swapchain_extent.height = window.height;
+      }
+    else
+      {
+	// If the surface size is defined, the swap chain size must match
+	swapchain_extent = surface_caps.currentExtent;
+      }
+
+
+    //find best present mode
+    VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    for (auto mode : present_modes) {
+      if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+	present_mode = mode;
+	break;
+      }
+      if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+	present_mode = mode;
+      if (mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR && mode != VK_PRESENT_MODE_MAILBOX_KHR)
+	present_mode = mode;	
+    }
+    
+    n_swap = surface_caps.minImageCount;
+    if (n_swap < 2) n_swap = 2;
+    if (surface_caps.maxImageCount > 0 && n_swap > surface_caps.maxImageCount)
+      n_swap = surface_caps.maxImageCount;
+
+    VkSurfaceTransformFlagsKHR pre_transform;
+    if (surface_caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+      pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    else
+      pre_transform = surface_caps.currentTransform;
+
+    VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if ( surface_caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT )
+      image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    else
+      cerr << "Vulkan swapchain does not support VK_IMAGE_USAGE_TRANSFER_DST_BIT. Some operations may not be supported.\n" << endl;
+
+    
+    VkSwapchainCreateInfoKHR scci = {};
+    scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    scci.pNext = NULL;
+    scci.surface = surface;
+    scci.minImageCount = n_swap;
+    scci.imageFormat = swap_format;
+    scci.imageColorSpace = color_space;
+    scci.imageExtent = swapchain_extent;
+    scci.imageUsage = image_usage;
+    scci.preTransform = ( VkSurfaceTransformFlagBitsKHR ) pre_transform;
+    scci.imageArrayLayers = 1;
+    scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    scci.queueFamilyIndexCount = 0;
+    scci.pQueueFamilyIndices = NULL;
+    scci.presentMode = present_mode;
+    scci.clipped = VK_TRUE;
+    if (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+      scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    else if (surfaceCaps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+      scci.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    else
+      cerr << "Unexpected value for VkSurfaceCapabilitiesKHR.compositeAlpha:" << surfaceCaps.supportedCompositeAlpha << endl;
+
+    check( vkCreateSwapchainKHR( device, &scci, NULL, &swapchain), "vkCreateSwapchainKHR");
+
+    check( vkGetSwapchainImagesKHR(device, swapchain, &n_swap, NULL) );
+    swapchain_img.resize(n_swap);
+    check( vkGetSwapchainImagesKHR(device, swapchain, &n_swap, &swapchain_img[0]) );
+
+
+    // Create a renderpass
+    uint32_t n_att = 1;
+    VkAttachmentDescription att_desc;
+    VkAttachmentReference att_ref;
+    att_ref.attachment = 0;
+    att_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    att_desc.format = swap_format;
+    att_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+    att_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    att_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    att_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    att_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att_desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    att_desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    att_desc.flags = 0;
+
+    VkSubpassDescription subpassci = { };
+    subpassci.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassci.flags = 0;
+    subpassci.inputAttachmentCount = 0;
+    subpassci.pInputAttachments = NULL;
+    subpassci.colorAttachmentCount = 1;
+    subpassci.pColorAttachments = &att_ref;
+    subpassci.pResolveAttachments = NULL;
+    subpassci.pDepthStencilAttachment = NULL;
+    subpassci.preserveAttachmentCount = 0;
+    subpassci.pPreserveAttachments = NULL;
+
+    VkRenderPassCreateInfo renderpassci = { };
+    renderpassci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderpassci.flags = 0;
+    renderpassci.attachmentCount = 1;
+    renderpassci.pAttachments = &att_desc;
+    renderpassci.subpassCount = 1;
+    renderpassci.pSubpasses = &subpassci;
+    renderpassci.dependencyCount = 0;
+    renderpassci.pDependencies = NULL;
+
+    check( vkCreateRenderPass( device, &renderpassci, NULL, &renderpass), "vkCreateRenderPass");
+
+    for (int i(0); i < swapchain_img.size(); ++i) {
+      VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+      viewci.flags = 0;
+      viewci.image = swapchain_img[ i ];
+      viewci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      viewci.format = swap_format;
+      viewci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+      viewci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewci.subresourceRange.baseMipLevel = 0;
+      viewci.subresourceRange.levelCount = 1;
+      viewci.subresourceRange.baseArrayLayer = 0;
+      viewci.subresourceRange.layerCount = 1;
+      VkImageView image_view = VK_NULL_HANDLE;
+      vkCreateImageView( device, &viewci, nullptr, &image_view );
+      m_pSwapchainImageViews.push_back( image_view );
+      
+      VkImageView attachments[ 1 ] = { image_view };
+      VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+      fbci.renderPass = render_pass;
+      fbci.attachmentCount = 1;
+      fbci.pAttachments = &attachments[ 0 ];
+      fbci.width = window.width;
+      fbci.height = window.height;
+      fbci.layers = 1;
+      VkFramebuffer framebuffer;
+      check( vkCreateFramebuffer( device, &fbci, NULL, &framebuffer ), "vkCreateFramebuffer");
+      swapchain_framebuffers.push_back( framebuffer );
+      
+      VkSemaphoreCreateInfo semci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+      VkSemaphore semaphore = VK_NULL_HANDLE;
+      vkCreateSemaphore( device, &semci, nullptr, &semaphore );
+      swapchain_semaphores.push_back( semaphore );
+    }
   }
   
 };
