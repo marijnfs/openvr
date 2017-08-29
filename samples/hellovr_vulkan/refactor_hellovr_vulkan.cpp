@@ -104,6 +104,12 @@ struct VulkanSystem {
   VkDebugReportCallbackEXT debug_callback;
 
   VulkanSystem() {
+    init_instance();
+    init_dev();
+   
+  }
+
+  void init_instance() {
     VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
     app_info.pApplicationName = "hellovr_vulkan";
     app_info.applicationVersion = 1;
@@ -128,10 +134,77 @@ struct VulkanSystem {
     ici.ppEnabledLayerNames = 0; //might need validation layers later
 
     check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
+  }
+
+  void init_dev() {
+    uint32_t n_dev(0);
+    check( vkEnumeratePhysicalDevices( instance, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
+    vector<VkPhysicalDevice> devices(n_dev);
+    check( vkEnumeratePhysicalDevices( instance, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
     
+    VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
+
+    vkGetPhysicalDeviceProperties( chosen_dev, &prop);
+    vkGetPhysicalDeviceMemoryProperties( chosen_dev, &mem_prop );
+    vkGetPhysicalDeviceFeatures( chosen_dev, &features );
+
+    std::vector< std::string > requiredDeviceExtensions;
+    GetVulkanDeviceExtensionsRequired( chosen_dev, requiredDeviceExtensions );
+
+    auto dev_ext = get_dev_ext_required();
+    // Add additional required extensions
+    dev_ext.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+    
+
+    int n_queue(0);
+    vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, 0);
+    vector<VkQueueFamilyProperties> queue_family(n_queue);
+    vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
+    if (n_queue == 0) {
+      cerr << "Failed to get queue properties.\n" << endl;
+      throw "";
+    }
+
+    int graphics_queue(-1);
+    for (int i(0); i < queue_family.size(); ++i) {
+      if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+	graphics_queue = i;
+	break;
+      }
+    }
+
+    if (graphics_queue < 0) {
+      cerr << "no graphics queue" << endl;
+      throw "";
+    }
+
+    auto dev_ext = get_dev_ext_required_verified();
+    vector<char *> pp_dev_ext(dev_ext.size());
+    for (int i(0); i < dev_ext.size(); ++i)
+      pp_dev_ext[i] = dev_ext[i].c_str();
+    
+    //create device
+    // Create the device
+    VkDeviceQueueCreateInfo dqci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+    dqci.queueFamilyIndex = m_nQueueFamilyIndex;
+    dqci.queueCount = 1;
+    float fQueuePriority = 1.0f;
+    dqci.pQueuePriorities = &fQueuePriority;
+
+    VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos = &dqci;
+    dci.enabledExtensionCount = dev_ext.size();
+    dci.ppEnabledExtensionNames = &pp_dev_ext[0];
+    dci.pEnabledFeatures = &features;
+
+    check( vkCreateDevice( chosen_dev, &dci, nullptr, &device ), "vkCreateDevice");
+
+    vkGetDeviceQueue( device, graphics_queue, 0, &queue );
   }
   
 };
+
 
 struct VertexBuffer {
 };
@@ -241,16 +314,14 @@ struct VRSystem {
     uint32_t n_instance_ext(0);
     check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, NULL ), "vkEnumerateInstanceExtensionProperties");
 
-    char** enable_inst_ext = new char*[ instance_ext_req.size() ];
-    
     vector<VkExtensionProperties> ext_prop(n_instance_ext);
 
     check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, &ext_prop[0]), "vkEnumerateInstanceExtensionProperties" );
 
     for (auto req_inst : instance_ext_req) {
       bool found(false);
-      for (auto inst : ext_prop)
-	if (req_inst == string(ext_prop.extensionName))
+      for (auto prop : ext_prop)
+	if (req_inst == string(prop.extensionName))
 	  found = true;
       if (!found) {
 	cerr << "couldn't find extension" << endl;
@@ -260,7 +331,39 @@ struct VRSystem {
     
     return instance_ext_req;
   }
-  
+
+  vector<string> get_dev_ext_required_verified() {
+    auto dev_ext_req = get_dev_ext_required();
+    dev_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
+
+#if defined ( _WIN32 )
+    dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
+#else
+    dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+#endif
+
+
+    uint32_t n_dev_ext(0);
+    check( vkEnumerateDeviceExtensionProperties( NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
+
+    vector<VkExtensionProperties> ext_prop(n_dev_ext);
+
+    check( vkEnumerateDeviceExtensionProperties( NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
+
+    for (auto req_dev : dev_ext_req) {
+      bool found(false);
+      for (auto prop : ext_prop)
+	if (req_dev == string(prop.extensionName))
+	  found = true;
+      if (!found) {
+	cerr << "couldn't find extension" << endl;
+	throw "";
+      }
+    }
+    
+    return dev_ext_req;
+  }
+
   ~VRSystem() {
     vr::VR_Shutdown();
   }
