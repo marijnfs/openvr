@@ -103,7 +103,34 @@ struct VulkanSystem {
 
   VkDebugReportCallbackEXT debug_callback;
 
+  VulkanSystem() {
+    VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+    app_info.pApplicationName = "hellovr_vulkan";
+    app_info.applicationVersion = 1;
+    app_info.pEngineName = nullptr;
+    app_info.engineVersion = 1;
+    app_info.apiVersion = VK_MAKE_VERSION( 1, 0, 0 );
 
+
+    int layer_count(0);
+    auto inst_req = Global::vr().get_inst_ext_required_verified();
+    char *inst_req_charp[inst_req.size()];
+    for (int i(0); i < inst_req.size(); ++i)
+      inst_req_charp[i] = inst_req[i].c_str();
+    
+    VkInstanceCreateInfo ici = {};
+    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pNext = NULL;
+    ici.pApplicationInfo = &appInfo;
+    ici.enabledExtensionCount = inst_req.size();
+    ici.ppEnabledExtensionNames = inst_req_charp;
+    ici.enabledLayerCount = layer_count;
+    ici.ppEnabledLayerNames = 0; //might need validation layers later
+
+    check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
+    
+  }
+  
 };
 
 struct VertexBuffer {
@@ -144,7 +171,7 @@ struct VRSystem {
       return buf;      
   }
 
-  vector<string> get_ext_required() {
+  vector<string> get_inst_ext_required() {
     uint32_t buf_size = vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( nullptr, 0 );
     if (!buf_size)
       return;
@@ -170,6 +197,68 @@ struct VRSystem {
     }
 
     return ext_list;
+  }
+
+  vector<string> get_dev_ext_required() {
+    uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( nullptr, 0 );
+    if (!buf_size)
+      return;
+
+    std::string buf(' ', buf_size);
+    vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( buf.c_str(), buf_size );
+
+    // Break up the space separated list into entries on the CUtlStringList
+    vector<string> ext_list;
+    std::string cur_ext;
+    uint32_t idx = 0;
+    while ( idx < buf_size ) {
+      if ( buf[ idx ] == ' ' ) {
+	ext_list.push_back( cur_ext );
+	cur_ext.clear();
+      } else {
+	cur_ext += buf[ idx ];
+      }
+      ++idx;
+    }
+    if ( cur_ext.size() > 0 ) {
+      ext_list.push_back( cur_ext );
+    }
+
+    return ext_list;
+  }
+
+  vector<string> get_inst_ext_required_verified() {
+    auto instance_ext_req = get_inst_ext_required();
+    instance_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
+
+#if defined ( _WIN32 )
+    instance_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
+#else
+    instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+#endif
+
+
+    uint32_t n_instance_ext(0);
+    check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, NULL ), "vkEnumerateInstanceExtensionProperties");
+
+    char** enable_inst_ext = new char*[ instance_ext_req.size() ];
+    
+    vector<VkExtensionProperties> ext_prop(n_instance_ext);
+
+    check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, &ext_prop[0]), "vkEnumerateInstanceExtensionProperties" );
+
+    for (auto req_inst : instance_ext_req) {
+      bool found(false);
+      for (auto inst : ext_prop)
+	if (req_inst == string(ext_prop.extensionName))
+	  found = true;
+      if (!found) {
+	cerr << "couldn't find extension" << endl;
+	throw "";
+      }
+    }
+    
+    return instance_ext_req;
   }
   
   ~VRSystem() {
