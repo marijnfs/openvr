@@ -1,10 +1,10 @@
 //========= Copyright Valve Corporation ============//
 
 #if defined( _WIN32 )
-	#define VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
 #else
-	#define SDL_VIDEO_DRIVER_X11
-	#define VK_USE_PLATFORM_XLIB_KHR
+#define SDL_VIDEO_DRIVER_X11
+#define VK_USE_PLATFORM_XLIB_KHR
 #endif
 #include <vulkan/vulkan.h>
 #include <SDL.h>
@@ -33,9 +33,9 @@
 void ThreadSleep( unsigned long nMilliseconds )
 {
 #if defined(_WIN32)
-	::Sleep( nMilliseconds );
+  ::Sleep( nMilliseconds );
 #elif defined(POSIX)
-	usleep( nMilliseconds * 1000 );
+  usleep( nMilliseconds * 1000 );
 #endif
 }
 
@@ -66,8 +66,30 @@ struct FencedCommandBuffer
 {
   VkCommandBuffer cmd_buffer;
   VkFence fence;
+
+  void begin() {
+VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer, &commandBufferBeginInfo );
+
+  }
+
+  void end() {
+	vkEndCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer );
+  }
+
+  bool finished() {
+	return vkGetFenceStatus( m_pDevice, m_commandBuffers.back().m_pFence ) == VK_SUCCESS;	
+  }
+
+  void reset() {
+  	vkResetCommandBuffer( cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	vkResetFences( Global::vk().device, 1, &fence );
+  }
+
+
 };
-  
+
 
 struct VulkanSystem {
   VkInstance inst;
@@ -97,8 +119,8 @@ struct VulkanSystem {
   VkDescriptorSet desc_sets[ NUM_DESCRIPTOR_SETS ];
 
   std::deque< FencedCommandBuffer > cmd_buffers;;
-  
-  
+	
+	
   VkSampler sampler;
 
   VkDebugReportCallbackEXT debug_callback;
@@ -106,7 +128,31 @@ struct VulkanSystem {
   VulkanSystem() {
     init_instance();
     init_dev();
-   
+		
+  }
+
+  void submit(FencedCommandBuffer fcb) {
+  	VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submiti.commandBufferCount = 1;
+	submiti.pCommandBuffers = &fcb.cmd_buffer;
+	vkQueueSubmit( queue, 1, &submiti, fcb.fence );
+  }
+
+  void wait_queue() {
+  	vkQueueWaitIdle( queue );
+  }
+
+  FencedCommandBuffer get_cmd_buffer() {
+  	FencedCommandBuffer buf;
+    VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	cmd_buffer_alloc_info.commandBufferCount = 1;
+	cmd_buffer_alloc_info.commandPool = cmd_pool;
+	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	vkAllocateCommandBuffers( device, &cmd_buffer_alloc_info, &buf.cmd_buffer );
+
+	VkFenceCreateInfo fenceCci= { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	vkCreateFence( device, &fenceci, nullptr, &buf.fence );
+	return buf;
   }
 
   void init_instance() {
@@ -123,7 +169,7 @@ struct VulkanSystem {
     char *inst_req_charp[inst_req.size()];
     for (int i(0); i < inst_req.size(); ++i)
       inst_req_charp[i] = inst_req[i].c_str();
-    
+		
     VkInstanceCreateInfo ici = {};
     ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     ici.pNext = NULL;
@@ -136,12 +182,12 @@ struct VulkanSystem {
     check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
   }
 
-  void init_dev() {
+  void init_device() {
     uint32_t n_dev(0);
     check( vkEnumeratePhysicalDevices( instance, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
     vector<VkPhysicalDevice> devices(n_dev);
     check( vkEnumeratePhysicalDevices( instance, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
-    
+	
     VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
 
     vkGetPhysicalDeviceProperties( chosen_dev, &prop);
@@ -186,7 +232,7 @@ struct VulkanSystem {
     //create device
     // Create the device
     VkDeviceQueueCreateInfo dqci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-    dqci.queueFamilyIndex = m_nQueueFamilyIndex;
+    dqci.queueFamilyIndex = graphics_queue;
     dqci.queueCount = 1;
     float fQueuePriority = 1.0f;
     dqci.pQueuePriorities = &fQueuePriority;
@@ -205,12 +251,12 @@ struct VulkanSystem {
 
   void init_swapchain() {
     auto window = Global::window();
-    
+	
     SDL_SysWMinfo wm_info;
     SDL_VERSION( &wm_info.version );
     SDL_GetWindowWMInfo( window.window, &wm_info );
     VkResult nResult;
-    #ifdef VK_USE_PLATFORM_WIN32_KHR
+#ifdef VK_USE_PLATFORM_WIN32_KHR
     VkWin32SurfaceCreateInfoKHR win32SurfaceCreateInfo = {};
     win32SurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     win32SurfaceCreateInfo.pNext = NULL;
@@ -218,13 +264,13 @@ struct VulkanSystem {
     win32SurfaceCreateInfo.hinstance = GetModuleHandle( NULL );
     win32SurfaceCreateInfo.hwnd = ( HWND ) wm_info.info.win.window;
     check( vkCreateWin32SurfaceKHR( instance, &win32SurfaceCreateInfo, nullptr, &surface ), "vkCreateWin32SurfaceKHR");
-    #else
+#else
     VkXlibSurfaceCreateInfoKHR xlibSurfaceCreateInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
     xlibSurfaceCreateInfo.flags = 0;
     xlibSurfaceCreateInfo.dpy = wm_info.info.x11.display;
     xlibSurfaceCreateInfo.window = wm_info.info.x11.window;
     check( vkCreateXlibSurfaceKHR( instance, &xlibSurfaceCreateInfo, nullptr, &surface ), "vkCreateXlibSurfaceKHR" );
-    #endif
+#endif
 
     VkBool32 supports_present = VK_FALSE;
     check( vkGetPhysicalDeviceSurfaceSupportKHR( phys_dev, graphics_queue, surface, &supports_present), "vkGetPhysicalDeviceSurfaceSupportKHR");
@@ -238,7 +284,7 @@ struct VulkanSystem {
     uint32_t format_index(0);
     uint32_t n_swap_format(0);
     VkColorSpaceKHR color_space;
-    
+	
     check( vkGetPhysicalDeviceSurfaceFormatsKHR( phys_dev, surface, &n_swap_format, NULL), "vkGetPhysicalDeviceSurfaceFormatsKHR");
     vector<VkSurfaceFormatKHR> swap_formats(n_swap_format);
     check( vkGetPhysicalDeviceSurfaceFormatsKHR( phys_dev, surface, &n_swap_format, &swap_formats[0]), "vkGetPhysicalDeviceSurfaceFormatsKHR");
@@ -256,7 +302,7 @@ struct VulkanSystem {
     //check capabilities
     VkSurfaceCapabilitiesKHR surface_caps = {};
     check( vkGetPhysicalDeviceSurfaceCapabilitiesKHR( phys_dev, surface, &surface_caps ), "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
-    
+	
     int n_present_modes(0);
     check( vkGetPhysicalDeviceSurfacePresentModesKHR( phys_dev, surface, &n_present_modes, NULL ), "vkGetPhysicalDeviceSurfacePresentModesKHR");
     vector<VkPresentModeKHR> present_modes(n_present_modes);
@@ -264,12 +310,11 @@ struct VulkanSystem {
 
     //create extent
     VkExtent2D swapchain_extent;
-    if ( surface_caps.currentExtent.width == -1 )
-      {
-	// If the surface size is undefined, the size is set to the size of the images requested.
-	swapchain_extent.width = window.width;
-	swapchain_extent.height = window.height;
-      }
+    if ( surface_caps.currentExtent.width == -1 ) {
+		// If the surface size is undefined, the size is set to the size of the images requested.
+		swapchain_extent.width = window.width;
+		swapchain_extent.height = window.height;
+	   }
     else
       {
 	// If the surface size is defined, the swap chain size must match
@@ -289,7 +334,7 @@ struct VulkanSystem {
       if (mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR && mode != VK_PRESENT_MODE_MAILBOX_KHR)
 	present_mode = mode;	
     }
-    
+	
     n_swap = surface_caps.minImageCount;
     if (n_swap < 2) n_swap = 2;
     if (surface_caps.maxImageCount > 0 && n_swap > surface_caps.maxImageCount)
@@ -307,7 +352,7 @@ struct VulkanSystem {
     else
       cerr << "Vulkan swapchain does not support VK_IMAGE_USAGE_TRANSFER_DST_BIT. Some operations may not be supported.\n" << endl;
 
-    
+	
     VkSwapchainCreateInfoKHR scci = {};
     scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     scci.pNext = NULL;
@@ -394,7 +439,7 @@ struct VulkanSystem {
       VkImageView image_view = VK_NULL_HANDLE;
       vkCreateImageView( device, &viewci, nullptr, &image_view );
       m_pSwapchainImageViews.push_back( image_view );
-      
+		
       VkImageView attachments[ 1 ] = { image_view };
       VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
       fbci.renderPass = render_pass;
@@ -406,14 +451,29 @@ struct VulkanSystem {
       VkFramebuffer framebuffer;
       check( vkCreateFramebuffer( device, &fbci, NULL, &framebuffer ), "vkCreateFramebuffer");
       swapchain_framebuffers.push_back( framebuffer );
-      
+		
       VkSemaphoreCreateInfo semci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
       VkSemaphore semaphore = VK_NULL_HANDLE;
       vkCreateSemaphore( device, &semci, nullptr, &semaphore );
       swapchain_semaphores.push_back( semaphore );
     }
   }
-  
+
+  void init_vulkan() {
+  	init_instance();
+  	init_device();
+  	init_swapchain();
+
+  	// Create the command pool
+	{
+		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+		cmdpoolci.queueFamilyIndex = graphics_queue;
+		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		check( vkCreateCommandPool( device, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+	}
+
+
+  }
 };
 
 
@@ -442,17 +502,23 @@ struct VRSystem {
     display_str = query_str(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
 
     cout << "driver: " << driver_str << " display: " << display_str << endl;
+
+	if ( !vr::VRCompositor() ) {
+		cerr << "Couldn't create VRCompositor" << endl;
+		throw "";
+	}
   }
 
-  std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
-      vr::TrackedPropertyError *err = NULL;
-      uint32_t buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );
-      if( buflen == 0)
-	return "";
 
-      std::string buf(' ', buflen);
-      buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, buf.c_str(), buflen, err );
-      return buf;      
+  std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
+    vr::TrackedPropertyError *err = NULL;
+    uint32_t buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );
+    if( buflen == 0)
+      return "";
+
+    std::string buf(' ', buflen);
+    buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, buf.c_str(), buflen, err );
+    return buf;      
   }
 
   vector<string> get_inst_ext_required() {
@@ -539,7 +605,7 @@ struct VRSystem {
 	throw "";
       }
     }
-    
+			
     return instance_ext_req;
   }
 
@@ -571,12 +637,19 @@ struct VRSystem {
 	throw "";
       }
     }
-    
+				
     return dev_ext_req;
   }
 
   ~VRSystem() {
     vr::VR_Shutdown();
+  }
+
+  void setup_render_targets() {
+  	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
+
+	CreateFrameBuffer( render_width, render_height, left_eye_desc );
+	CreateFrameBuffer( render_width, render_height, right_eye_desc );
   }
 };
 
@@ -620,8 +693,8 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 
 
 struct Buffer {
-	VkBuffer buffer;
-	VkDeviceMemory memory;
+  VkBuffer buffer;
+  VkDeviceMemory memory;
 
   Buffer(size_T size, VkBufferUsageFlags usage) {
     auto vk = Global::vk();
@@ -630,7 +703,7 @@ struct Buffer {
     bci.size = size;
     bci.usage = usage;
     check( vkCreateBuffer( vk.dev, &bci, nullptr, &buffer ), "vkCreateBuffer");
-    
+				
     VkMemoryRequirements memreq = {};
     vkGetBufferMemoryRequirements( vk.deve, *buffer, &memreq );
 
@@ -639,86 +712,206 @@ struct Buffer {
     alloc_info.allocationSize = memreq.size;
 
     check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
-    
+				
     check( vkBindBufferMemory( vk.dev, &buffer, &memory, 0 ), "vkBindBufferMemory" );
 
     /*
-    if ( pBufferData != nullptr )
+      if ( pBufferData != nullptr )
       {
-		void *pData;
-		nResult = vkMapMemory( pDevice, *ppDeviceMemoryOut, 0, VK_WHOLE_SIZE, 0, &pData );
-		if ( nResult != VK_SUCCESS )
-		{
-			dprintf( "%s - vkMapMemory returned error %d\n", __FUNCTION__, nResult );
-			return false;
-		}
-		memcpy( pData, pBufferData, nSize );
-		vkUnmapMemory( pDevice, *ppDeviceMemoryOut );
+      void *pData;
+      nResult = vkMapMemory( pDevice, *ppDeviceMemoryOut, 0, VK_WHOLE_SIZE, 0, &pData );
+      if ( nResult != VK_SUCCESS )
+      {
+      dprintf( "%s - vkMapMemory returned error %d\n", __FUNCTION__, nResult );
+      return false;
+      }
+      memcpy( pData, pBufferData, nSize );
+      vkUnmapMemory( pDevice, *ppDeviceMemoryOut );
 
-		VkMappedMemoryRange memoryRange = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-		memoryRange.memory = *ppDeviceMemoryOut;
-		memoryRange.size = VK_WHOLE_SIZE;
-		vkFlushMappedMemoryRanges( pDevice, 1, &memoryRange );
+      VkMappedMemoryRange memoryRange = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+      memoryRange.memory = *ppDeviceMemoryOut;
+      memoryRange.size = VK_WHOLE_SIZE;
+      vkFlushMappedMemoryRanges( pDevice, 1, &memoryRange );
 
+      }
+      return true;
+      }*/
+  };
+
+  struct ViewedBuffer {
+    Buffer buffer;
+    VkBufferView buffer_view;
+  };
+
+  struct Image {
+    VkImage img;
+    VkDeviceMemory mem;
+    VkImageLayout layout;
+    VkImageView view;
+
+    Image() {}
+
+    Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+    	init(width, height, format, usage);
 	}
-	return true;
-	}*/
-};
 
-struct ViewedBuffer {
-	Buffer buffer;
-	VkBufferView buffer_view;
-};
+    void init(int width, int height, VkFormat format, VkImageUsageFlags usage, Vk) {
+	    auto vk = Global::vk();
 
-struct Image {
-  VkImage img;
-  VkDeviceMemory mem;
-  VkImageLayout layout;
-  VkImageView view;
+	    int msaa_sample_count(1);
+		VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+		imgci.imageType = VK_IMAGE_TYPE_2D;
+		imgci.extent.width = width;
+		imgci.extent.height = height;
+		imgci.extent.depth = 1;
+		imgci.mipLevels = 1;
+		imgci.arrayLayers = 1;
+		imgci.format = VK_FORMAT_R8G8B8A8_SRGB;
+		imgci.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imgci.samples = ( VkSampleCountFlagBits ) msaa_sample_count;
+		imgci.usage = ( VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
+		imgci.flags = 0;	
 
-  Image() {
-    auto vk = Global::vk();
-    
+		check( vkCreateImage( vk.device, &imgci, nullptr, &img ), "vkCreateImage");
+
+		VkMemoryRequirements mem_req = {};
+		vkGetImageMemoryRequirements( vk.device, img, &mem_req );
+
+		VkMemoryAllocateInfo mem_alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+		mem_alloc_info.allocationSize = mem_req.size;
+		mem_alloc_info.memoryTypeIndex = get_mem_type( mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		check( vkAllocateMemory( vk.device, &mem_alloc_info, nullptr, &mem), "vkAllocateMemory");
+		check( vkBindImageMemory( vk.device, img, mem, 0 ), "vkBindImageMemory");
+
+		//create view
+		VkImageViewCreateInfo img_view_ci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		img_view_ci.flags = 0;
+		img_view_ci.image = img;
+		img_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		img_view_ci.format = imgci.format;
+		img_view_ci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+		img_view_ci.subresourceRange.aspectMask = aspect;
+		img_view_ci.subresourceRange.baseMipLevel = 0;
+		img_view_ci.subresourceRange.levelCount = 1;
+		img_view_ci.subresourceRange.baseArrayLayer = 0;
+		img_view_ci.subresourceRange.layerCount = 1;
+		check( vkCreateImageView( m_pDevice, &img_view_ci, nullptr, &view ));
+  };
+
+  struct FrameBuffer {
+    Image image, depth_stencil;
+    VkRenderPass render_pass;
+    VkFramebuffer framebuffer;
+
+    void init(int width, int height) {
+    	auto vk = Global::vk();
+
+    	image.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+    	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    	int msaa_sample_count(1);
+		// Create a renderpass
+		uint32_t n_attach = 2;
+		VkAttachmentDescription att_desc[ 2 ];
+		VkAttachmentReference att_ref[ 2 ];
+		att_ref[ 0 ].attachment = 0;
+		att_ref[ 0 ].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		att_ref[ 1 ].attachment = 1;
+		att_ref[ 1 ].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		att_desc[ 0 ].format = VK_FORMAT_R8G8B8A8_SRGB;
+		att_desc[ 0 ].samples = msaa_sample_count;
+		att_desc[ 0 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		att_desc[ 0 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		att_desc[ 0 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		att_desc[ 0 ].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		att_desc[ 0 ].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		att_desc[ 0 ].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		att_desc[ 0 ].flags = 0;
+
+		att_desc[ 1 ].format = VK_FORMAT_D32_SFLOAT;
+		att_desc[ 1 ].samples = msaa_sample_count;
+		att_desc[ 1 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		att_desc[ 1 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		att_desc[ 1 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		att_desc[ 1 ].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		att_desc[ 1 ].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		att_desc[ 1 ].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		att_desc[ 1 ].flags = 0;
+
+		VkSubpassDescription subpassci = { };
+		subpassci.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassci.flags = 0;
+		subpassci.inputAttachmentCount = 0;
+		subpassci.pInputAttachments = NULL;
+		subpassci.colorAttachmentCount = 1;
+		subpassci.pColorAttachments = &att_ref[ 0 ];
+		subpassci.pResolveAttachments = NULL;
+		subpassci.pDepthStencilAttachment = &att_ref[ 1 ];
+		subpassci.preserveAttachmentCount = 0;
+		subpassci.pPreserveAttachments = NULL;
+
+		VkRenderPassCreateInfo renderpass_ci = { };
+		renderpass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderpass_ci.flags = 0;
+		renderpass_ci.attachmentCount = 2;
+		renderpass_ci.pAttachments = &att_desc[ 0 ];
+		renderpass_ci.subpassCount = 1;
+		renderpass_ci.pSubpasses = &subpassci;
+		renderpass_ci.dependencyCount = 0;
+		renderpass_ci.pDependencies = NULL;
+
+		check( vkCreateRenderPass( vk.device, &renderpass_ci, NULL, &render_pass ), "vkCreateRenderPass");
+
+		// Create the framebuffer
+		VkImageView attachments[ 2 ] = { image.view, depth_stencil.view };
+		VkFramebufferCreateInfo fb_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+		fb_ci.renderPass = render_pass;
+		fb_ci.attachmentCount = 2;
+		fb_ci.pAttachments = &attachments[ 0 ];
+		fb_ci.width = width;
+		fb_ci.height = height;
+		fb_ci.layers = 1;
+		check( vkCreateFramebuffer( vk.device, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
+
+		framebufferDesc.m_nImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		framebufferDesc.m_nDepthStencilImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    }
+  };
+
+  struct Global {
+    Global() {
+      vk_ptr = new VulkanSystem();
+      vr_ptr = new VRSystem();
+      ws_ptr = new WindowSystem();
+    }
+
+    static Global &inst() {
+      static Global *g = new Global();
+      return g;
+    }
+
+    static VulkanSystem &vk() {
+      return *(inst().vk_ptr);
+    }
+
+    static VRSystem &vr() {
+      return *(inst().vr_ptr);
+    }
+
+    static WindowSystem &ws() {
+      return *(inst().ws_ptr);
+    }
+
+    VulkanSystem *vk_ptr;
+    VRSystem *vr_ptr;
+    WindowSystem *ws_ptr;
+  };
+
+  int main() {
+    Global::inst();
+
+				
   }
-};
-
-struct FrameBuffer {
-  Image image, depth_stencil;
-  VkRenderPass render_pass;
-  VkFramebuffer framebuffer;
-};
-
-struct Global {
-	Global() {
-		vk_ptr = new VulkanSystem();
-		vr_ptr = new VRSystem();
-		ws_ptr = new WindowSystem();
-	}
-
-	static Global &inst() {
-		static Global *g = new Global();
-		return g;
-	}
-
-	static VulkanSystem &vk() {
-		return *(inst().vk_ptr);
-	}
-
-	static VRSystem &vr() {
-		return *(inst().vr_ptr);
-	}
-
-	static WindowSystem &ws() {
-		return *(inst().ws_ptr);
-	}
-
-	VulkanSystem *vk_ptr;
-	VRSystem *vr_ptr;
-	WindowSystem *ws_ptr;
-};
-
-int main() {
-	Global::inst();
-
-	
-}
