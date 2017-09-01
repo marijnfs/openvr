@@ -22,6 +22,9 @@
 #include "shared/Matrices.h"
 #include "shared/pathtools.h"
 
+#include "util.h"
+
+
 #if defined(POSIX)
 #include "unistd.h"
 #endif
@@ -68,14 +71,13 @@ struct FencedCommandBuffer
   VkFence fence;
 
   void begin() {
-	VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer, &commandBufferBeginInfo );
-
+	VkCommandBufferBeginInfo cmbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	cmbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer( cmd_buffer, &cmbbi );
   }
 
   void end() {
-	vkEndCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer );
+	vkEndCommandBuffer( cmd_buffer );
   }
 
   bool finished() {
@@ -93,14 +95,23 @@ struct FencedCommandBuffer
 
 struct Pos3Tex2
 {
-	Vector3 position;
-	Vector2 texCoord;
+	Vector3 pos;
+	Vector2 texpos;
 };
 
 struct Pos2Tex2
 {
-	Vector2 position;
-	Vector2 texCoord;
+	Vector2 pos;
+	Vector2 texpos;
+};
+
+enum PSO //shader files
+{
+	PSO_SCENE = 0,
+	PSO_AXES,
+	PSO_RENDERMODEL,
+	PSO_COMPANION,
+	PSO_COUNT
 };
 
 struct VulkanSystem {
@@ -126,13 +137,20 @@ struct VulkanSystem {
   std::vector< VkFramebuffer > swapchain_framebuffers;
   std::vector< VkSemaphore > swapchain_semaphores;
 
-  VkRenderPass m_pSwapchainRenderPass;
+  VkRenderPass swapchain_renderpass;
 
   VkCommandPool cmd_pool;
   VkDescriptorPool desc_pool;
   VkDescriptorSet desc_sets[ NUM_DESCRIPTOR_SETS ];
+  VkDescriptorSetLayout desc_layout;
 
-  std::deque< FencedCommandBuffer > cmd_buffers;;
+  //Shader stuff
+  VkShaderModule shader_modules_vs[PSO_COUNT], shader_modules_ps[PSO_COUNT];
+  VkPipelines pipelines[PSO_COUNT];
+  VkPipelineLayout pipeline_layout;
+  VkPipelineCache pipeline_cache;
+
+  std::deque< FencedCommandBuffer > cmd_buffers;
 	
 	
   VkSampler sampler;
@@ -434,7 +452,7 @@ struct VulkanSystem {
     renderpassci.dependencyCount = 0;
     renderpassci.pDependencies = NULL;
 
-    check( vkCreateRenderPass( device, &renderpassci, NULL, &renderpass), "vkCreateRenderPass");
+    check( vkCreateRenderPass( device, &renderpassci, NULL, &swapchain_renderpass), "vkCreateRenderPass");
 
     for (int i(0); i < swapchain_img.size(); ++i) {
       VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -454,7 +472,7 @@ struct VulkanSystem {
 		
       VkImageView attachments[ 1 ] = { image_view };
       VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-      fbci.renderPass = render_pass;
+      fbci.renderPass = swapchain_renderpass;
       fbci.attachmentCount = 1;
       fbci.pAttachments = &attachments[ 0 ];
       fbci.width = window.width;
@@ -469,6 +487,220 @@ struct VulkanSystem {
       vkCreateSemaphore( device, &semci, nullptr, &semaphore );
       swapchain_semaphores.push_back( semaphore );
     }
+  }
+
+  void init_shaders() {
+  	//Create Shaders, probably most involved part
+  	vector<string> shader_names = {
+  		"scene",
+  		"axes",
+  		"rendermodel",
+  		"companion"
+  	};
+  	vector<string> stages = {
+  		"vs",
+  		"ps"
+  	};
+
+  	int i(0);
+  	for (auto shader_name : shader_names) {
+  		for (auto stage : stages) {
+  			string path = "../shaders/" + shader_name + "_" + stage + ".spv";
+  			string code = read_all(path);
+
+  			VkShaderModuleCreateInfo shader_ci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+			shader_ci.codeSize = code.size();
+			shader_ci.pCode = ( const uint32_t *) &code[0];
+			nResult = vkCreateShaderModule( device, &shader_ci, nullptr, (stage == "vs") ? &shader_modules_vs[i] : &shader_modules_ps[i] );
+  		}
+  		++i;
+	}
+
+
+	//Create Descriptor Layout
+	VkDescriptorSetLayoutBinding layout_bind[3] = {};
+	layout_bind[0].binding = 0;
+	layout_bind[0].descriptorCount = 1;
+	layout_bind[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layout_bind[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	layout_bind[1].binding = 1;
+	layout_bind[1].descriptorCount = 1;
+	layout_bind[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	layout_bind[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	layout_bind[2].binding = 2;
+	layout_bind[2].descriptorCount = 1;
+	layout_bind[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	layout_bind[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutCreateInfo desc_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	desc_layout_ci.bindingCount = 3;
+	desc_layout_ci.pBindings = &layout_bind[ 0 ];
+	check( vkCreateDescriptorSetLayout( device(), &desc_layout_ci, nullptr, &desc_layout ), "vkCreateDescriptorSetLayout");
+
+
+	//Create pipelines, first layout
+	VkPipelineLayoutCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+	pipeline_ci.pNext = NULL;
+	pipeline_ci.setLayoutCount = 1;
+	pipeline_ci.pSetLayouts = &desc_layout_ci;
+	pipeline_ci.pushConstantRangeCount = 0;
+	pipeline_ci.pPushConstantRanges = NULL;
+	check( vkCreatePipelineLayout( device, &pipeline_ci, nullptr, &pipeline_layout ), "vkCreatePipelineLayout");
+
+	// Create pipeline cache
+	VkPipelineCacheCreateInfo pipeline_cache_ci = { VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
+	vkCreatePipelineCache( m_pDevice, &pipeline_cache_ci, NULL, &pipeline_cache );
+
+	VkRenderPass render_passes[ PSO_COUNT ] =
+	{
+		left_eye_fb.render_pass,
+		left_eye_fb.render_pass,
+		left_eye_fb.render_pass,
+		swapchain_renderpass
+	};
+
+	//define strides for data used in shaders
+	size_t strides[ PSO_COUNT ] =
+	{
+		sizeof( Pos3Tex2 ),			// PSO_SCENE
+		sizeof( float ) * 6,				// PSO_AXES
+		sizeof( vr::RenderModel_Vertex_t ),	// PSO_RENDERMODEL
+		sizeof( Pos2Tex2 )			// PSO_COMPANION
+	};
+
+	VkVertexInputAttributeDescription attr_desc[ PSO_COUNT * 3 ]
+	{
+		// PSO_SCENE
+		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT,	0 },
+		{ 1, 0, VK_FORMAT_R32G32_SFLOAT,	offsetof( Pos3Tex2, texpos ) },
+		{ 0, 0, VK_FORMAT_UNDEFINED,		0 },
+		// PSO_AXES
+		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT,	0 },
+		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT,	sizeof( float ) * 3 },
+		{ 0, 0, VK_FORMAT_UNDEFINED,		0 },
+		// PSO_RENDERMODEL
+		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT,	0 },
+		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT,	offsetof( vr::RenderModel_Vertex_t, vNormal ) },
+		{ 2, 0, VK_FORMAT_R32G32_SFLOAT,	offsetof( vr::RenderModel_Vertex_t, rfTextureCoord ) },
+		// PSO_COMPANION
+		{ 0, 0, VK_FORMAT_R32G32_SFLOAT,	0 },
+		{ 1, 0, VK_FORMAT_R32G32_SFLOAT,	sizeof( float ) * 2 },
+		{ 0, 0, VK_FORMAT_UNDEFINED,		0 },
+	};
+
+	// Create the PSOs
+	for ( uint32_t pso = 0; pso < PSO_COUNT; pso++ )
+	{
+		VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+		
+		// VkPipelineVertexInputStateCreateInfo
+		VkVertexInputBindingDescription binding_ci;
+		binding_ci.binding = 0;
+		binding_ci.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		binding_ci.stride = strides[ pso ];
+		
+		VkPipelineVertexInputStateCreateInfo vertexi_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+		for ( uint32_t attr = 0; attr < 3; attr++ )
+		{
+			if ( attr_desc[ pso * 3 + attr ].format != VK_FORMAT_UNDEFINED )
+			{
+				vertexi_ci.vertexAttributeDescriptionCount++;
+			}
+		}
+		vertexi_ci.pVertexAttributeDescriptions = &attr_desc[ pso * 3 ];
+		vertexi_ci.vertexBindingDescriptionCount = 1;
+		vertexi_ci.pVertexBindingDescriptions = &binding_ci;
+
+		// VkPipelineDepthStencilStateCreateInfo
+		VkPipelineDepthStencilStateCreateInfo depth_ci = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+		depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depth_ci.depthTestEnable = ( pso != PSO_COMPANION ) ? VK_TRUE : VK_FALSE;
+		depth_ci.depthWriteEnable = ( pso != PSO_COMPANION ) ? VK_TRUE : VK_FALSE;
+		depth_ci.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+		depth_ci.depthBoundsTestEnable = VK_FALSE;
+		depth_ci.stencilTestEnable = VK_FALSE;
+		depth_ci.minDepthBounds = 0.0f;
+		depth_ci.maxDepthBounds = 0.0f;
+
+		// VkPipelineColorBlendStateCreateInfo
+		VkPipelineColorBlendStateCreateInfo colorblend_ci = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+		colorblend_ci.logicOpEnable = VK_FALSE;
+		colorblend_ci.logicOp = VK_LOGIC_OP_COPY;
+		VkPipelineColorBlendAttachmentState color_attach_state = {};
+		color_attach_state.blendEnable = VK_FALSE;
+		color_attach_state.colorWriteMask = 0xf;
+		colorblend_ci.attachmentCount = 1;
+		colorblend_ci.pAttachments = &color_attach_state;
+
+		// VkPipelineColorBlendStateCreateInfo
+		VkPipelineRasterizationStateCreateInfo raster_ci = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+		raster_ci.polygonMode = VK_POLYGON_MODE_FILL;
+		raster_ci.cullMode = VK_CULL_MODE_BACK_BIT;
+		raster_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		raster_ci.lineWidth = 1.0f;
+
+		// VkPipelineInputAssemblyStateCreateInfo
+		VkPipelineInputAssemblyStateCreateInfo ia_state_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+		ia_state_ci.topology = ( pso == PSO_AXES ) ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		ia_state_ci.primitiveRestartEnable = VK_FALSE;
+
+		// VkPipelineMultisampleStateCreateInfo
+		VkPipelineMultisampleStateCreateInfo multisample_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+		multisample_ci.rasterizationSamples = ( pso == PSO_COMPANION ) ? VK_SAMPLE_COUNT_1_BIT : ( VkSampleCountFlagBits ) msaa_sample_count;
+		multisample_ci.minSampleShading = 0.0f;
+		uint32_t sample_mask = 0xFFFFFFFF;
+		multisample_ci.pSampleMask = &sample_mask;
+
+		// VkPipelineViewportStateCreateInfo
+		VkPipelineViewportStateCreateInfo viewport_ci = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+		viewport_ci.viewportCount = 1;
+		viewport_ci.scissorCount = 1;
+
+		VkPipelineShaderStageCreateInfo shader_stages[ 2 ] = { };
+		shader_stages[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_stages[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		shader_stages[ 0 ].module = shader_modules_vs[ pso ];
+		shader_stages[ 0 ].pName = "VSMain";
+		
+		shader_stages[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_stages[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		shader_stages[ 1 ].module = shader_modules_ps[ pso ];
+		shader_stages[ 1 ].pName = "PSMain";
+
+		pipeline_ci.layout = pipeline_layout;
+
+		// Set pipeline states
+		pipeline_ci.pVertexInputState = &vertexi_ci;
+		pipeline_ci.pInputAssemblyState = &ia_state_ci;
+		pipeline_ci.pViewportState = &viewport_ci;
+		pipeline_ci.pRasterizationState = &raster_ci;
+		pipeline_ci.pMultisampleState = &multisample_ci;
+		pipeline_ci.pDepthStencilState = &depth_ci;
+		pipeline_ci.pColorBlendState = &colorblend_ci;
+		pipeline_ci.stageCount = 2;
+		pipeline_ci.pStages = &shader_stages[ 0 ];
+		pipeline_ci.renderPass = pRenderPasses[ pso ];
+
+		static VkDynamicState dynamic_states[] =
+		{
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_SCISSOR,
+		};
+
+		static VkPipelineDynamicStateCreateInfo dynamic_state_ci = {};
+		dynamic_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamic_state_ci.pNext = NULL;
+		dynamic_state_ci.dynamicStateCount = _countof( dynamic_states );
+		dynamic_state_ci.pdynamic_states = &dynamic_states[ 0 ];
+		pipeline_ci.pDynamicState = &dynamic_state_ci;
+
+
+		// Create the pipeline
+		check( vkCreateGraphicsPipelines( device, pipeline_cache, 1, &pipeline_ci, NULL, &pipelines[ pso ] ), "vkCreateGraphicsPipelines");
+	}
+
   }
 
   void swapchain_to_present(int i) {
@@ -515,7 +747,7 @@ struct RenderModel {
 
 		vertex_buf.init(sizeof( vr::RenderModel_Vertex_t ) * vert_count);
 		index_buf.init(sizeof(uint16_t) * idx_count);
-		
+
 	}
 };
 
@@ -526,7 +758,7 @@ struct VRSystem {
   vr::TrackedDevicePose_t tracked_pose[ vr::k_unMaxTrackedDeviceCount ];
   Matrix4 device_pose[ vr::k_unMaxTrackedDeviceCount ];
 
-  FrameBuffer left_eye_fb, right_eye_fb;
+  FrameRenderBuffer left_eye_fb, right_eye_fb;
 
   int render_width, render_height;
 
@@ -723,6 +955,89 @@ struct VRSystem {
   }
 };
 
+struct GraphicsObject {
+	vector<float> v;
+
+
+	void draw() {
+		//TODO fix
+		vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+		
+		// Update the persistently mapped pointer to the CB data with the latest matrix
+		memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+
+		vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+
+		// Draw
+		VkDeviceSize nOffsets[ 1 ] = { 0 };
+		vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+		vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
+	}
+
+	void init_cube(Matrix4 pos) {
+		Vector4 A = pos * Vector4( 0, 0, 0, 1 );
+		Vector4 B = pos * Vector4( 1, 0, 0, 1 );
+		Vector4 C = pos * Vector4( 1, 1, 0, 1 );
+		Vector4 D = pos * Vector4( 0, 1, 0, 1 );
+		Vector4 E = pos * Vector4( 0, 0, 1, 1 );
+		Vector4 F = pos * Vector4( 1, 0, 1, 1 );
+		Vector4 G = pos * Vector4( 1, 1, 1, 1 );
+		Vector4 H = pos * Vector4( 0, 1, 1, 1 );
+
+		// triangles instead of quads
+		add_vertex( E.x, E.y, E.z, 0, 1, ); //Front
+		add_vertex( F.x, F.y, F.z, 1, 1, );
+		add_vertex( G.x, G.y, G.z, 1, 0, );
+		add_vertex( G.x, G.y, G.z, 1, 0, );
+		add_vertex( H.x, H.y, H.z, 0, 0, );
+		add_vertex( E.x, E.y, E.z, 0, 1, );
+						 
+		add_vertex( B.x, B.y, B.z, 0, 1, ); //Back
+		add_vertex( A.x, A.y, A.z, 1, 1, );
+		add_vertex( D.x, D.y, D.z, 1, 0, );
+		add_vertex( D.x, D.y, D.z, 1, 0, );
+		add_vertex( C.x, C.y, C.z, 0, 0, );
+		add_vertex( B.x, B.y, B.z, 0, 1, );
+						
+		add_vertex( H.x, H.y, H.z, 0, 1, ); //Top
+		add_vertex( G.x, G.y, G.z, 1, 1, );
+		add_vertex( C.x, C.y, C.z, 1, 0, );
+		add_vertex( C.x, C.y, C.z, 1, 0, );
+		add_vertex( D.x, D.y, D.z, 0, 0, );
+		add_vertex( H.x, H.y, H.z, 0, 1, );
+					
+		add_vertex( A.x, A.y, A.z, 0, 1, ); //Bottom
+		add_vertex( B.x, B.y, B.z, 1, 1, );
+		add_vertex( F.x, F.y, F.z, 1, 0, );
+		add_vertex( F.x, F.y, F.z, 1, 0, );
+		add_vertex( E.x, E.y, E.z, 0, 0, );
+		add_vertex( A.x, A.y, A.z, 0, 1, );
+						
+		add_vertex( A.x, A.y, A.z, 0, 1, ); //Left
+		add_vertex( E.x, E.y, E.z, 1, 1, );
+		add_vertex( H.x, H.y, H.z, 1, 0, );
+		add_vertex( H.x, H.y, H.z, 1, 0, );
+		add_vertex( D.x, D.y, D.z, 0, 0, );
+		add_vertex( A.x, A.y, A.z, 0, 1, );
+
+		add_vertex( F.x, F.y, F.z, 0, 1, ); //Right
+		add_vertex( B.x, B.y, B.z, 1, 1, );
+		add_vertex( C.x, C.y, C.z, 1, 0, );
+		add_vertex( C.x, C.y, C.z, 1, 0, );
+		add_vertex( G.x, G.y, G.z, 0, 0, );
+		add_vertex( F.x, F.y, F.z, 0, 1, );
+	}
+
+	void add_vertex(t fl0, float fl1, float fl2, float fl3, float fl4) {
+		v.push_back( fl0 );
+		v.push_back( fl1 );
+		v.push_back( fl2 );
+		v.push_back( fl3 );
+		v.push_back( fl4 );
+	}
+
+};
+
 struct WindowSystem {
   SDL_Window *window;
   uint32_t width, height;
@@ -805,6 +1120,24 @@ struct Buffer {
   	init(size, usage);
   }
 
+  template <typename T>
+  void init(size_T size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data) {
+  	init(size, usage, loc);
+
+  	auto vk = Global::vk();
+  	void *data(0);
+	check( vkMapMemory( vk.device, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+
+	memcpy( data, &init_data[0], sizeof(T) * init_data.size() );
+
+	vkUnmapMemory(vk.device , memory);
+
+	VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+	mem_range.memory = memory;
+	mem_range.size = VK_WHOLE_SIZE;
+	vkFlushMappedMemoryRanges( vk.device(), 1, &mem_range );
+  }
+
   void init(size_T size, VkBufferUsageFlags usage, Location loc) {
     auto vk = Global::vk();
     // Create the vertex buffer and fill with data
@@ -826,28 +1159,6 @@ struct Buffer {
     check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
 				
     check( vkBindBufferMemory( vk.dev, &buffer, &memory, 0 ), "vkBindBufferMemory" );
-
-    /*
-      if ( pBufferData != nullptr )
-      {
-      void *pData;
-      nResult = vkMapMemory( pDevice, *ppDeviceMemoryOut, 0, VK_WHOLE_SIZE, 0, &pData );
-      if ( nResult != VK_SUCCESS )
-      {
-      dprintf( "%s - vkMapMemory returned error %d\n", __FUNCTION__, nResult );
-      return false;
-      }
-      memcpy( pData, pBufferData, nSize );
-      vkUnmapMemory( pDevice, *ppDeviceMemoryOut );
-
-      VkMappedMemoryRange memoryRange = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-      memoryRange.memory = *ppDeviceMemoryOut;
-      memoryRange.size = VK_WHOLE_SIZE;
-      vkFlushMappedMemoryRanges( pDevice, 1, &memoryRange );
-
-      }
-      return true;
-      }*/
   };
 
   struct ViewedBuffer {
@@ -912,7 +1223,7 @@ struct Buffer {
 	}
   };
 
-  struct FrameBuffer {
+  struct FrameRenderBuffer {
     Image image, depth_stencil;
     VkRenderPass render_pass;
     VkFramebuffer framebuffer;
