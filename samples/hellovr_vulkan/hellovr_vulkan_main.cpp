@@ -15,6 +15,8 @@
 #include <inttypes.h>
 #include <openvr.h>
 #include <deque>
+#include <iostream>
+#include <fstream>
 
 #include "shared/lodepng.h"
 #include "shared/Matrices.h"
@@ -186,6 +188,9 @@ public:
 	void SetupRenderModelForTrackedDevice( vr::TrackedDeviceIndex_t unTrackedDeviceIndex );
 	VulkanRenderModel *FindOrLoadRenderModel( vr::TrackedDeviceIndex_t unTrackedDeviceIndex, const char *pchRenderModelName );
 
+
+	void test();
+
 private: 
 	bool m_bDebugVulkan;
 	bool m_bVerbose;
@@ -280,6 +285,10 @@ private:
 	VkBuffer m_pSceneStagingBuffer;
 	VkDeviceMemory m_pSceneStagingBufferMemory;
 	VkSampler m_pSceneSampler;
+
+	// Host Copy Buffer to read pixels
+	VkBuffer getPixelBuffer;
+	VkDeviceMemory getPixelBufferMemory;
 
 	// Storage for VS and PS for each PSO
 	VkShaderModule m_pShaderModules[ PSO_COUNT * 2 ];
@@ -1547,6 +1556,10 @@ void CMainApplication::Shutdown()
 		vkFreeMemory( m_pDevice, m_pSceneImageMemory, nullptr );
 		vkDestroyBuffer( m_pDevice, m_pSceneStagingBuffer, nullptr );
 		vkFreeMemory( m_pDevice, m_pSceneStagingBufferMemory, nullptr );
+
+		vkDestroyBuffer( m_pDevice, getPixelBuffer, nullptr );
+		vkFreeMemory( m_pDevice, getPixelBufferMemory, nullptr );
+
 		vkDestroySampler( m_pDevice, m_pSceneSampler, nullptr );
 		vkDestroyBuffer( m_pDevice, m_pSceneVertexBuffer, nullptr );
 		vkFreeMemory( m_pDevice, m_pSceneVertexBufferMemory, nullptr );
@@ -1696,6 +1709,24 @@ void CMainApplication::ProcessVREvent( const vr::VREvent_t & event )
 	}
 }
 
+inline uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+	    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+	        return i;
+	    }
+	}
+
+	throw std::runtime_error("failed to find suitable memory type!");
+}
+
+void CMainApplication::test() {
+	
+	
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -1750,9 +1781,10 @@ void CMainApplication::RenderFrame()
 		vulkanData.m_nFormat = VK_FORMAT_R8G8B8A8_SRGB;
 		vulkanData.m_nSampleCount = m_nMSAASampleCount;
 
+
 		vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
 		vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
-		
+
 		vulkanData.m_nImage = ( uint64_t ) m_rightEyeDesc.m_pImage;
 		vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
 	}
@@ -2231,6 +2263,13 @@ bool CMainApplication::SetupTexturemaps()
 	{
 		return false;
 	}
+
+	// Create a read pixel buffer
+	if ( !CreateVulkanBuffer( m_pDevice, m_physicalDeviceMemoryProperties, pBuffer, nBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &getPixelBuffer, &getPixelBufferMemory ) )
+	{
+		return false;
+	}
+
 
 	// Transition the image to TRANSFER_DST to receive image
 	VkImageMemoryBarrier imageMemoryBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };

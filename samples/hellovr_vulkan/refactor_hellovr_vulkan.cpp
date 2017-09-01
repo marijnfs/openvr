@@ -68,7 +68,7 @@ struct FencedCommandBuffer
   VkFence fence;
 
   void begin() {
-VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer, &commandBufferBeginInfo );
 
@@ -91,6 +91,18 @@ VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BU
 };
 
 
+struct Pos3Tex2
+{
+	Vector3 position;
+	Vector2 texCoord;
+};
+
+struct Pos2Tex2
+{
+	Vector2 position;
+	Vector2 texCoord;
+};
+
 struct VulkanSystem {
   VkInstance inst;
 
@@ -108,10 +120,12 @@ struct VulkanSystem {
   uint32_t n_swap;
   uint32_t frame_idx;
   uint32_t current_frame;
+
   std::vector< VkImage > swapchain_img;
   std::vector< VkImageView > swapchain_view;
   std::vector< VkFramebuffer > swapchain_framebuffers;
   std::vector< VkSemaphore > swapchain_semaphores;
+
   VkRenderPass m_pSwapchainRenderPass;
 
   VkCommandPool cmd_pool;
@@ -314,25 +328,23 @@ struct VulkanSystem {
 		// If the surface size is undefined, the size is set to the size of the images requested.
 		swapchain_extent.width = window.width;
 		swapchain_extent.height = window.height;
-	   }
-    else
-      {
-	// If the surface size is defined, the swap chain size must match
-	swapchain_extent = surface_caps.currentExtent;
-      }
+	} else {
+		// If the surface size is defined, the swap chain size must match
+		swapchain_extent = surface_caps.currentExtent;
+    }
 
 
     //find best present mode
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
     for (auto mode : present_modes) {
       if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-	present_mode = mode;
-	break;
+		present_mode = mode;
+		break;
       }
       if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-	present_mode = mode;
+		present_mode = mode;
       if (mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR && mode != VK_PRESENT_MODE_MAILBOX_KHR)
-	present_mode = mode;	
+		present_mode = mode;	
     }
 	
     n_swap = surface_caps.minImageCount;
@@ -459,6 +471,23 @@ struct VulkanSystem {
     }
   }
 
+  void swapchain_to_present(int i) {
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = 0;
+	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	barier.image = swapchain_img[i];
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = graphics_queue;
+	barier.dstQueueFamilyIndex = graphics_queue;
+	vkCmdPipelineBarrier( cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+  }
+
   void init_vulkan() {
   	init_instance();
   	init_device();
@@ -471,16 +500,23 @@ struct VulkanSystem {
 		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		check( vkCreateCommandPool( device, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
 	}
-
-
   }
 };
 
+struct RenderModel {
+	Buffer mat_buffer;
+	Buffer vertex_buf, index_buf;
 
-struct VertexBuffer {
-};
+	VkDescriptorSet desc_set;
 
-struct IndexBuffer {
+	void init() {
+		int vert_count(0);
+		int idx_count(0);
+
+		vertex_buf.init(sizeof( vr::RenderModel_Vertex_t ) * vert_count);
+		index_buf.init(sizeof(uint16_t) * idx_count);
+		
+	}
 };
 
 struct VRSystem {
@@ -490,8 +526,14 @@ struct VRSystem {
   vr::TrackedDevicePose_t tracked_pose[ vr::k_unMaxTrackedDeviceCount ];
   Matrix4 device_pose[ vr::k_unMaxTrackedDeviceCount ];
 
+  FrameBuffer left_eye_fb, right_eye_fb;
+
+  int render_width, render_height;
 
   VRSystem() {
+  	render_width = 0;
+  	render_height = 0;
+
     vr::EVRInitError err = vr::VRInitError_None;
     hmd = vr::VR_Init( &err, vr::VRApplication_Scene );
     check(err);
@@ -509,6 +551,34 @@ struct VRSystem {
 	}
   }
 
+  void render_stereo_targets() {
+	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
+	vkCmdSetViewport( cmd_buffer, 0, 1, &viewport );
+	VkRect2D scissor = { 0, 0, render_width, render_height};
+	vkCmdSetScissor( cmd_buffer, 0, 1, &scissor );
+
+	left_eye_fb.to_colour_optimal();
+	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+	 	left_eye_fb.to_depth_optimal();
+	left_eye_fb.start_render_pass();
+	//render stuff
+	left_eye_fb.end_render_pass();
+	left_eye_fb.to_read_optimal();
+
+
+	right_eye_fb.to_colour_optimal();
+	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+		right_eye_fb.to_depth_optimal();
+	right_eye_fb.start_render_pass();
+	//render stuff
+	right_eye_fb.end_render_pass();
+	right_eye_fb.to_read_optimal();
+
+  }
+
+  void render_scene() {
+
+  }
 
   std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
     vr::TrackedPropertyError *err = NULL;
@@ -648,14 +718,15 @@ struct VRSystem {
   void setup_render_targets() {
   	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
 
-	CreateFrameBuffer( render_width, render_height, left_eye_desc );
-	CreateFrameBuffer( render_width, render_height, right_eye_desc );
+	CreateFrameBuffer( render_width, render_height, left_eye_fb );
+	CreateFrameBuffer( render_width, render_height, right_eye_fb );
   }
 };
 
 struct WindowSystem {
   SDL_Window *window;
   uint32_t width, height;
+  Buffer vertex_buf, index_buf;
 
   WindowSystem() : width(800), height(800) {
     sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
@@ -670,6 +741,33 @@ struct WindowSystem {
       throw "";
     }
   }
+
+  void setup_window() {
+  	vector<Pos2Tex2> verts;
+
+  	//left eye verts
+  	verts.push_back( Pos2Tex2( Vector2(-1, -1), Vector2(0, 1)) );
+	verts.push_back( Pos2Tex2( Vector2(0, -1), Vector2(1, 1)) );
+	verts.push_back( Pos2Tex2( Vector2(-1, 1), Vector2(0, 0)) );
+	verts.push_back( Pos2Tex2( Vector2(0, 1), Vector2(1, 0)) );
+
+	// right eye verts
+	verts.push_back( Pos2Tex2( Vector2(0, -1), Vector2(0, 1)) );
+	verts.push_back( Pos2Tex2( Vector2(1, -1), Vector2(1, 1)) );
+	verts.push_back( Pos2Tex2( Vector2(0, 1), Vector2(0, 0)) );
+	verts.push_back( Pos2Tex2( Vector2(1, 1), Vector2(1, 0)) );
+
+	uint16_t indices[] = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6};
+
+
+	//aTODO: add initialisation
+	vertex_buf.init(sizeof(Pos2Tex2) * verts.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	index_buf.init(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+	for (int i(0); i < swapchain_img.size(); ++i)	
+		swapchain_to_present(i);
+  }
+
 };
 
 
@@ -691,12 +789,23 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
   throw "err";
 }
 
+enum Location {
+	HOST,
+	DEVICE,
+	HOST_COHERENT
+};
 
 struct Buffer {
   VkBuffer buffer;
   VkDeviceMemory memory;
 
+  Buffer() {}
+
   Buffer(size_T size, VkBufferUsageFlags usage) {
+  	init(size, usage);
+  }
+
+  void init(size_T size, VkBufferUsageFlags usage, Location loc) {
     auto vk = Global::vk();
     // Create the vertex buffer and fill with data
     VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -708,7 +817,10 @@ struct Buffer {
     vkGetBufferMemoryRequirements( vk.deve, *buffer, &memreq );
 
     VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-    alloc_info.memoryTypeIndex = get_mem_type( memreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT );
+    alloc_info.memoryTypeIndex = get_mem_type( memreq.memoryTypeBits, 
+    	(loc == HOST) ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT : 
+    	(loc == HOST_COHERENT) ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
     alloc_info.allocationSize = memreq.size;
 
     check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
@@ -797,14 +909,18 @@ struct Buffer {
 		img_view_ci.subresourceRange.baseArrayLayer = 0;
 		img_view_ci.subresourceRange.layerCount = 1;
 		check( vkCreateImageView( m_pDevice, &img_view_ci, nullptr, &view ));
+	}
   };
 
   struct FrameBuffer {
     Image image, depth_stencil;
     VkRenderPass render_pass;
     VkFramebuffer framebuffer;
+    int width, height;
 
-    void init(int width, int height) {
+    void init(int width_, int height_) {
+    	width = width_;
+    	height = height_;
     	auto vk = Global::vk();
 
     	image.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -879,6 +995,85 @@ struct Buffer {
 		framebufferDesc.m_nDepthStencilImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     }
+
+    void to_colour_optimal() {
+    	auto vk = Global::vk();
+    	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+		barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barier.oldLayout = image.layout;
+		barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		barier.image = image.img;
+		barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barier.subresourceRange.baseMipLevel = 0;
+		barier.subresourceRange.levelCount = 1;
+		barier.subresourceRange.baseArrayLayer = 0;
+		barier.subresourceRange.layerCount = 1;
+		barier.srcQueueFamilyIndex = vk.graphics_queue;
+		barier.dstQueueFamilyIndex = vk.graphics_queue;
+		vkCmdPipelineBarrier( vk.cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+		image.layout = barier.newLayout;
+    }
+
+
+	void to_depth_optimal() {
+		VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barier.image = depth_stencil.img;
+		barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		barier.subresourceRange.baseMipLevel = 0;
+		barier.subresourceRange.levelCount = 1;
+		barier.subresourceRange.baseArrayLayer = 0;
+		barier.subresourceRange.layerCount = 1;
+		barier.srcAccessMask = 0;
+		barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		barier.oldLayout = depth_stencil.layout;
+		barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		vkCmdPipelineBarrier( Global::vk().cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+		depth_stencil.layout = barier.newLayout;
+	}
+
+	void to_read_optimal() {
+		VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barier.image = image.img;
+		barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barier.subresourceRange.baseMipLevel = 0;
+		barier.subresourceRange.levelCount = 1;
+		barier.subresourceRange.baseArrayLayer = 0;
+		barier.subresourceRange.layerCount = 1;
+		barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barier.oldLayout = m_leftEyeDesc.m_nImageLayout;
+		barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkCmdPipelineBarrier( Global::vk().cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+		image.layout = barier.newLayout;
+	}
+
+
+	void start_render_pass() {
+		// Start the renderpass
+		VkRenderPassBeginInfo renderpassci = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+		renderpassci.renderPass = renderpass;
+		renderpassci.framebuffer = framebuffer;
+		renderpassci.renderArea.offset.x = 0;
+		renderpassci.renderArea.offset.y = 0;
+		renderpassci.renderArea.extent.width = width;
+		renderpassci.renderArea.extent.height = height;
+		renderpassci.clearValueCount = 2;
+		VkClearValue cv[ 2 ];
+		cv[ 0 ].color.float32[ 0 ] = 0.0f;
+		cv[ 0 ].color.float32[ 1 ] = 0.0f;
+		cv[ 0 ].color.float32[ 2 ] = 0.0f;
+		cv[ 0 ].color.float32[ 3 ] = 1.0f;
+		cv[ 1 ].depthStencil.depth = 1.0f;
+		cv[ 1 ].depthStencil.stencil = 0;
+		renderpassci.pClearValues = &cv[ 0 ];
+
+		vkCmdBeginRenderPass( Global::vk().cmd_buffer, &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	}
+
+	void end_render_pass() {
+		vkCmdEndRenderPass( Global::vk().cmd_buffer );
+	}
   };
 
   struct Global {
