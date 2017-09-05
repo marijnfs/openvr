@@ -64,6 +64,16 @@ void sdl_check(int err) {
   }
 }
 
+Matrix4 vrmat_to_mat4( const vr::HmdMatrix34_t &matPose )
+{
+  Matrix4 matrixObj(
+    matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
+    matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
+    matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
+    matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
+    );
+  return matrixObj;
+}
 
 struct FencedCommandBuffer
 {
@@ -898,20 +908,20 @@ struct VulkanSystem {
   }
 
   void swapchain_to_present(int i) {
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.srcAccessMask = 0;
-	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	barier.image = swapchain_img[i];
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = graphics_queue;
-	barier.dstQueueFamilyIndex = graphics_queue;
-	vkCmdPipelineBarrier( cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+  	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+  	barier.srcAccessMask = 0;
+  	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  	barier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  	barier.image = swapchain_img[i];
+  	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  	barier.subresourceRange.baseMipLevel = 0;
+  	barier.subresourceRange.levelCount = 1;
+  	barier.subresourceRange.baseArrayLayer = 0;
+  	barier.subresourceRange.layerCount = 1;
+  	barier.srcQueueFamilyIndex = graphics_queue;
+  	barier.dstQueueFamilyIndex = graphics_queue;
+  	vkCmdPipelineBarrier( cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
   }
 
   void init_vulkan() {
@@ -949,8 +959,14 @@ struct VRSystem {
   vr::IVRSystem *hmd;
   vr::IVRRenderModels *render_models;
   std::string driver_str, display_str;
+
   vr::TrackedDevicePose_t tracked_pose[ vr::k_unMaxTrackedDeviceCount ];
-  Matrix4 device_pose[ vr::k_unMaxTrackedDeviceCount ];
+  Matrix4 tracked_pose_mat4[ vr::k_unMaxTrackedDeviceCount ];
+  TrackedDeviceClass device_class[ vr::k_unMaxTrackedDeviceCount ];
+
+  Matrix4 hmd_pose;
+  Matrix4 eye_pos_left, eye_pos_right, eye_pose_center;
+  Matrix4 projection_left, projection_right;
 
   FrameRenderBuffer left_eye_fb, right_eye_fb;
 
@@ -961,8 +977,8 @@ struct VRSystem {
   	render_width = 0;
   	render_height = 0;
 
-	near_clip = 0.1f;
-	far_clip = 30.0f;
+  	near_clip = 0.1f;
+  	far_clip = 30.0f;
 
     vr::EVRInitError err = vr::VRInitError_None;
     hmd = vr::VR_Init( &err, vr::VRApplication_Scene );
@@ -975,52 +991,108 @@ struct VRSystem {
 
     cout << "driver: " << driver_str << " display: " << display_str << endl;
 
-	if ( !vr::VRCompositor() ) {
-		cerr << "Couldn't create VRCompositor" << endl;
-		throw "";
-	}
+  	if ( !vr::VRCompositor() ) {
+  		cerr << "Couldn't create VRCompositor" << endl;
+  		throw "";
+  	}
   }
 
   void render_stereo_targets() {
-	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
-	vkCmdSetViewport( cmd_buffer, 0, 1, &viewport );
-	VkRect2D scissor = { 0, 0, render_width, render_height};
-	vkCmdSetScissor( cmd_buffer, 0, 1, &scissor );
+  	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
+  	vkCmdSetViewport( cmd_buffer, 0, 1, &viewport );
+  	VkRect2D scissor = { 0, 0, render_width, render_height};
+  	vkCmdSetScissor( cmd_buffer, 0, 1, &scissor );
 
-	left_eye_fb.to_colour_optimal();
-	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-	 	left_eye_fb.to_depth_optimal();
-	left_eye_fb.start_render_pass();
-	//render stuff
-	left_eye_fb.end_render_pass();
-	left_eye_fb.to_read_optimal();
+  	left_eye_fb.to_colour_optimal();
+  	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+  	 	left_eye_fb.to_depth_optimal();
+  	left_eye_fb.start_render_pass();
+  	//render stuff
+  	left_eye_fb.end_render_pass();
+  	left_eye_fb.to_read_optimal();
 
 
-	right_eye_fb.to_colour_optimal();
-	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		right_eye_fb.to_depth_optimal();
-	right_eye_fb.start_render_pass();
-	//render stuff
-	right_eye_fb.end_render_pass();
-	right_eye_fb.to_read_optimal();
+  	right_eye_fb.to_colour_optimal();
+  	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+  		right_eye_fb.to_depth_optimal();
+  	right_eye_fb.start_render_pass();
+  	//render stuff
+  	right_eye_fb.end_render_pass();
+  	right_eye_fb.to_read_optimal();
 
   }
 
-	Matrix4 get_hmd_projection( vr::Hmd_Eye eye )
-	{
-		vr::HmdMatrix44_t mat = hmd->GetProjectionMatrix( eye, near_clip, far_clip );
+  Matrix4 get_eye_transform( vr::Hmd_Eye eye )
+  {
+    vr::HmdMatrix34_t mat_eye = m_pHMD->GetEyeToHeadTransform( eye );
+    Matrix4 mat(
+      mat_eye.m[0][0], mat_eye.m[1][0], mat_eye.m[2][0], 0.0, 
+      mat_eye.m[0][1], mat_eye.m[1][1], mat_eye.m[2][1], 0.0,
+      mat_eye.m[0][2], mat_eye.m[1][2], mat_eye.m[2][2], 0.0,
+      mat_eye.m[0][3], mat_eye.m[1][3], mat_eye.m[2][3], 1.0f
+    );
 
-		return Matrix4(
-			mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
-			mat.m[0][1], mat.m[1][1], mat.m[2][1], mat.m[3][1], 
-			mat.m[0][2], mat.m[1][2], mat.m[2][2], mat.m[3][2], 
-			mat.m[0][3], mat.m[1][3], mat.m[2][3], mat.m[3][3]
-		);
-	}
-}
+    return mat.invert();
+  }
+
+  Matrix4 get_hmd_projection( vr::Hmd_Eye eye )
+  {
+    vr::HmdMatrix44_t mat = hmd->GetProjectionMatrix( eye, near_clip, far_clip );
+
+    return Matrix4(
+      mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
+      mat.m[0][1], mat.m[1][1], mat.m[2][1], mat.m[3][1], 
+      mat.m[0][2], mat.m[1][2], mat.m[2][2], mat.m[3][2], 
+      mat.m[0][3], mat.m[1][3], mat.m[2][3], mat.m[3][3]
+    );
+  }
+
+
+  Matrix4 get_view_projection( vr::Hmd_Eye eye ) {
+    if( eye == vr::Eye_Left )
+      return projection_left * eye_pos_left * hmd_pose;
+    else if( eye == vr::Eye_Right )
+      return projection_right * eye_pos_right * hmd_pose;
+    throw StringException("not valid eye");
+  }
 
   void render_scene() {
 
+  }
+
+  void setup_render_models()
+  {
+    for( uint32_t d = vr::k_unTrackedDeviceIndex_Hmd + 1; d < vr::k_unMaxTrackedDeviceCount; d++ )
+    {
+      if( !hmd->IsTrackedDeviceConnected( d ) )
+        continue;
+
+      SetupRenderModelForTrackedDevice( d );
+    }
+
+  }
+
+  void setup_render_model_for_device(int d) {
+
+  }
+
+  void update_track_pose() {
+    vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+
+    for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d )
+    {
+      if ( tracked_pose[d].bPoseIsValid )
+      {
+        tracked_pose_mat4[d] = ConvertSteamVRMatrixToMatrix4( tracked_pose[d].mDeviceToAbsoluteTracking );
+        device_class[d] = hmd->GetTrackedDeviceClass(d);
+      }
+    }
+
+    if ( tracked_pose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid )
+    {
+      hmd_pose = tracked_pose_mat4[vr::k_unTrackedDeviceIndex_Hmd];
+      hmd_pose.invert();
+    }
   }
 
   std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {

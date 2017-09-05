@@ -2,7 +2,7 @@ set(TARGET_NAME hellovr_vulkan)
 
 add_executable(${TARGET_NAME}
   ${SHARED_SRC_FILES}
-  hellovr_vulkan_main.cpp
+  refactor_hellovr_vulkan.cpp
 )
 
 target_link_libraries(${TARGET_NAME}
