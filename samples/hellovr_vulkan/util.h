@@ -4,6 +4,54 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <vulkan/vulkan.h>
+#include <openvr.h>
+
+
+#if defined(POSIX)
+#include "unistd.h"
+#endif
+
+#ifndef _countof
+#define _countof(x) (sizeof(x)/sizeof((x)[0]))
+#endif
+
+inline void ThreadSleep( unsigned long nMilliseconds )
+{
+#if defined(_WIN32)
+  ::Sleep( nMilliseconds );
+#elif defined(POSIX)
+  usleep( nMilliseconds * 1000 );
+#endif
+}
+
+template <typename T>
+inline void check(VkResult res, std::string str, T other) {
+  if (res != VK_SUCCESS) {
+    std::cerr << str << other << " error: " << res << std::endl;
+    throw "err";
+  }
+}
+
+
+inline void check(VkResult res, std::string str) {
+	check(res, str, "");
+
+}
+
+inline void check(vr::EVRInitError err) {
+  if ( err != vr::VRInitError_None ) {
+    std::cerr << "Unable to init vr: " << vr::VR_GetVRInitErrorAsEnglishDescription(err) << std::endl;
+    throw "";
+  }
+}
+
+inline void sdl_check(int err) {
+  if (err < 0) {
+    std::cerr << "SDL error: " << SDL_GetError() << std::endl;
+    throw "";
+  }
+}
 
 struct StringException : public std::exception {
 	StringException(std::string msg_): msg(msg_){}
@@ -80,5 +128,31 @@ inline void gen_mipmap_rgba( const uint8_t *src, uint8_t *dst, int width, int he
 		}
 	}
 }
+
+
+inline Matrix4 vrmat_to_mat4( const vr::HmdMatrix34_t &matPose )
+{
+  Matrix4 matrixObj(
+    matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
+    matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
+    matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
+    matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
+    );
+  return matrixObj;
+}
+
+
+
+struct Pos3Tex2
+{
+  Vector3 pos;
+  Vector2 texpos;
+};
+
+struct Pos2Tex2
+{
+  Vector2 pos;
+  Vector2 texpos;
+};
 
 #endif
