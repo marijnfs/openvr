@@ -1,41 +1,42 @@
 #include "buffer.h"
 
-
+#include "util.h"
+#include "global.h"
 
 Buffer::Buffer() {}
 
-Buffer::Buffer(size_T size, VkBufferUsageFlags usage) {
-	init(size, usage);
+Buffer::Buffer(size_t size, VkBufferUsageFlags usage) {
+	init(size, usage, DEVICE);
 }
 
 template <typename T>
-void Buffer::init(size_T size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data) {
+void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data) {
 	init(size, usage, loc);
 
 	auto vk = Global::vk();
 	void *data(0);
-	check( vkMapMemory( vk.device, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+	check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
 
 	memcpy( data, &init_data[0], sizeof(T) * init_data.size() );
 
-	vkUnmapMemory(vk.device , memory);
+	vkUnmapMemory(vk.dev , memory);
 
 	VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
 	mem_range.memory = memory;
 	mem_range.size = VK_WHOLE_SIZE;
-	vkFlushMappedMemoryRanges( vk.device(), 1, &mem_range );
+	vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
 }
 
-void Buffer::init(size_T size, VkBufferUsageFlags usage, Location loc) {
+void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {
 	auto vk = Global::vk();
 // Create the vertex buffer and fill with data
 	VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bci.size = size;
 	bci.usage = usage;
 	check( vkCreateBuffer( vk.dev, &bci, nullptr, &buffer ), "vkCreateBuffer");
-	
+
 	VkMemoryRequirements memreq = {};
-	vkGetBufferMemoryRequirements( vk.deve, *buffer, &memreq );
+	vkGetBufferMemoryRequirements( vk.dev, buffer, &memreq );
 
 	VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	alloc_info.memoryTypeIndex = get_mem_type( memreq.memoryTypeBits, 
@@ -45,18 +46,18 @@ void Buffer::init(size_T size, VkBufferUsageFlags usage, Location loc) {
 	alloc_info.allocationSize = memreq.size;
 
 	check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
-	
-	check( vkBindBufferMemory( vk.dev, &buffer, &memory, 0 ), "vkBindBufferMemory" );
+
+	check( vkBindBufferMemory( vk.dev, buffer, memory, 0 ), "vkBindBufferMemory" );
 };
 
 
 Image::Image() {}
 
 Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
-	init(width, height, format, usage);
+	init(width, height, format, usage, aspect);
 }
 
-void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage, Vk) {
+void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
 	auto vk = Global::vk();
 
 	int msaa_sample_count(1);
@@ -73,17 +74,17 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	imgci.usage = ( VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
 	imgci.flags = 0;	
 
-	check( vkCreateImage( vk.device, &imgci, nullptr, &img ), "vkCreateImage");
+	check( vkCreateImage( vk.dev, &imgci, nullptr, &img ), "vkCreateImage");
 
 	VkMemoryRequirements mem_req = {};
-	vkGetImageMemoryRequirements( vk.device, img, &mem_req );
+	vkGetImageMemoryRequirements( vk.dev, img, &mem_req );
 
 	VkMemoryAllocateInfo mem_alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	mem_alloc_info.allocationSize = mem_req.size;
 	mem_alloc_info.memoryTypeIndex = get_mem_type( mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	check( vkAllocateMemory( vk.device, &mem_alloc_info, nullptr, &mem), "vkAllocateMemory");
-	check( vkBindImageMemory( vk.device, img, mem, 0 ), "vkBindImageMemory");
+	check( vkAllocateMemory( vk.dev, &mem_alloc_info, nullptr, &mem), "vkAllocateMemory");
+	check( vkBindImageMemory( vk.dev, img, mem, 0 ), "vkBindImageMemory");
 
 	//create view
 	VkImageViewCreateInfo img_view_ci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -97,7 +98,7 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	img_view_ci.subresourceRange.levelCount = 1;
 	img_view_ci.subresourceRange.baseArrayLayer = 0;
 	img_view_ci.subresourceRange.layerCount = 1;
-	check( vkCreateImageView( device, &img_view_ci, nullptr, &view ));
+	check( vkCreateImageView( vk.dev, &img_view_ci, nullptr, &view ), "vkCreateImageView");
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {
@@ -119,7 +120,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	att_ref[ 1 ].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	att_desc[ 0 ].format = VK_FORMAT_R8G8B8A8_SRGB;
-	att_desc[ 0 ].samples = msaa_sample_count;
+	att_desc[ 0 ].samples = (VkSampleCountFlagBits) msaa_sample_count;
 	att_desc[ 0 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	att_desc[ 0 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	att_desc[ 0 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -129,7 +130,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	att_desc[ 0 ].flags = 0;
 
 	att_desc[ 1 ].format = VK_FORMAT_D32_SFLOAT;
-	att_desc[ 1 ].samples = msaa_sample_count;
+	att_desc[ 1 ].samples = (VkSampleCountFlagBits) msaa_sample_count;
 	att_desc[ 1 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	att_desc[ 1 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	att_desc[ 1 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -160,7 +161,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	renderpass_ci.dependencyCount = 0;
 	renderpass_ci.pDependencies = NULL;
 
-	check( vkCreateRenderPass( vk.device, &renderpass_ci, NULL, &render_pass ), "vkCreateRenderPass");
+	check( vkCreateRenderPass( vk.dev, &renderpass_ci, NULL, &render_pass ), "vkCreateRenderPass");
 
 	// Create the framebuffer
 	VkImageView attachments[ 2 ] = { image.view, depth_stencil.view };
@@ -171,10 +172,10 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	fb_ci.width = width;
 	fb_ci.height = height;
 	fb_ci.layers = 1;
-	check( vkCreateFramebuffer( vk.device, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
+	check( vkCreateFramebuffer( vk.dev, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
 
-	framebufferDesc.m_nImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	framebufferDesc.m_nDepthStencilImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_stencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 }
 

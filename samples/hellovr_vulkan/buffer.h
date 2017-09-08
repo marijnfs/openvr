@@ -1,18 +1,27 @@
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
+#include <vulkan/vulkan.h>
+#include <vector>
+
+enum Location {
+	HOST,
+	DEVICE,
+	HOST_COHERENT
+};
+
 struct Buffer {
   VkBuffer buffer;
   VkDeviceMemory memory;
 
   Buffer();
 
-  Buffer(size_T size, VkBufferUsageFlags usage);
+  Buffer(size_t size, VkBufferUsageFlags usage);
 
   template <typename T>
-  void init(size_T size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data);
+  void init(size_t size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data);
 
-  void init(size_T size, VkBufferUsageFlags usage, Location loc);
+  void init(size_t size, VkBufferUsageFlags usage, Location loc);
 };
 
 struct ViewedBuffer {
@@ -30,7 +39,7 @@ struct Image {
 
     Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
-    void init(int width, int height, VkFormat format, VkImageUsageFlags usage, Vk);
+    void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 };
 
 struct FrameRenderBuffer {

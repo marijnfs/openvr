@@ -882,6 +882,12 @@ void VulkanSystem::init_vulkan() {
 	}
 }
 
+
+
+VkCommandBuffer cmd_buffer() {
+	
+}
+
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 {
   auto vk = Global::vk();

@@ -12,11 +12,6 @@ enum PSO //shader files
   PSO_COUNT
 };
 
-enum Location {
-	HOST,
-	DEVICE,
-	HOST_COHERENT
-};
 
 struct FencedCommandBuffer {
   VkCommandBuffer cmd_buffer;
@@ -124,6 +119,8 @@ struct VulkanSystem {
   void swapchain_to_present(int i);
 
   void init_vulkan();
+
+  VkCommandBuffer cmd_buffer();
 };
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop );
