@@ -15,7 +15,7 @@ Global() {
 
 static Global &inst() {
   static Global *g = new Global();
-  return g;
+  return *g;
 }
 
 static VulkanSystem &vk() {

@@ -2,6 +2,8 @@
 #define __VULKANSYSTEM_H__
 
 #include <vulkan/vulkan.h>
+#include <vector>
+#include <queue>
 
 enum PSO //shader files
 {
@@ -12,6 +14,47 @@ enum PSO //shader files
   PSO_COUNT
 };
 
+// Indices of descriptor sets for rendering, TODO: refactor
+enum DescriptorSetIndex_t
+{
+	DESCRIPTOR_SET_LEFT_EYE_SCENE = 0,
+	DESCRIPTOR_SET_RIGHT_EYE_SCENE,
+	DESCRIPTOR_SET_COMPANION_LEFT_TEXTURE,
+	DESCRIPTOR_SET_COMPANION_RIGHT_TEXTURE,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL0,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL1,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL2,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL3,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL4,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL5,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL6,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL7,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL8,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL9,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL10,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL11,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL12,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL13,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL14,
+	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL15,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL0,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL1,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL2,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL3,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL4,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL5,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL6,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL7,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL8,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL9,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL10,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL11,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL12,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL13,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL14,
+	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL15,
+	NUM_DESCRIPTOR_SETS
+};
 
 struct FencedCommandBuffer {
   VkCommandBuffer cmd_buffer;
@@ -21,6 +64,8 @@ struct FencedCommandBuffer {
   void end();
   bool finished();
   void reset();
+  void init();
+
 };
 
 
@@ -35,12 +80,12 @@ struct RenderModel {
 
 
 struct GraphicsObject {
-	vector<float> v;
+	std::vector<float> v;
 
 
 	void draw();
 	void init_cube(Matrix4 pos);
-	void add_vertex(t fl0, float fl1, float fl2, float fl3, float fl4);
+	void add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4);
 
 };
 
@@ -78,20 +123,20 @@ struct VulkanSystem {
 	VkImage scene_img;
 	VkDeviceMemory scene_img_mem;
 	VkImageView scene_img_view;
-	Buffer scene_staging
+	Buffer scene_staging;
 	VkBuffer scene_staging_buffer;
 	VkDeviceMemory scene_staging_buffer_memory;
 	VkSampler scene_sampler;
 
   //Shader stuff
   VkShaderModule shader_modules_vs[PSO_COUNT], shader_modules_ps[PSO_COUNT];
-  VkPipelines pipelines[PSO_COUNT];
+  VkPipeline pipelines[PSO_COUNT];
   VkPipelineLayout pipeline_layout;
   VkPipelineCache pipeline_cache;
 
   std::deque< FencedCommandBuffer > cmd_buffers;
-	
-	
+  VkCommandBuffer cur_cmd_buffer;
+
   VkSampler sampler;
 
   VkDebugReportCallbackEXT debug_callback;
@@ -101,8 +146,6 @@ struct VulkanSystem {
   void submit(FencedCommandBuffer fcb);
 
   void wait_queue();
-
-  FencedCommandBuffer get_cmd_buffer();
 
   void init_instance();
 

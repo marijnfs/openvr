@@ -5,11 +5,11 @@
 void FencedCommandBuffer::begin() {
 	VkCommandBufferBeginInfo cmbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	cmbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer( Global::vk().cmd_buffer, &cmbbi );
+	vkBeginCommandBuffer( cmd_buffer, &cmbbi );
 }
 
 void FencedCommandBuffer::end() {
-	vkEndCommandBuffer( Global::vk().cmd_buffer );
+	vkEndCommandBuffer( cmd_buffer );
 }
 
 bool FencedCommandBuffer::finished() {
@@ -19,6 +19,18 @@ bool FencedCommandBuffer::finished() {
 void FencedCommandBuffer::reset() {
 	vkResetCommandBuffer( cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 	vkResetFences( Global::vk().device, 1, &fence );
+}
+
+void FencedCommandBuffer::init() {
+	auto &vk = Global::vk();
+	VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	cmd_buffer_alloc_info.commandBufferCount = 1;
+	cmd_buffer_alloc_info.commandPool = vk.cmd_pool;
+	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	vkAllocateCommandBuffers( vk.device, &cmd_buffer_alloc_info, &cmd_buffer );
+
+	VkFenceCreateInfo fenceci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	vkCreateFence( vk.device, &fenceci, nullptr, &fence );
 }
 
 // ==== Render Model ====
@@ -37,17 +49,18 @@ void RenderModel::init() {
 
 void GraphicsObject::draw() {
 		//TODO fix
-	vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	auto vk = Global::vk();
+	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
 
 		// Update the persistently mapped pointer to the CB data with the latest matrix
 	memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
-	vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &desc_sets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &desc_sets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
 
 		// Draw
 	VkDeviceSize nOffsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
-	vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
+	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+	vkCmdDraw( vk.cur_cmd_buffer, m_uiVertcount, 1, 0, 0 );
 }
 
 void GraphicsObject::init_cube(Matrix4 pos) {
@@ -131,19 +144,6 @@ void VulkanSystem::submit(FencedCommandBuffer fcb) {
 
 void VulkanSystem::wait_queue() {
 	vkQueueWaitIdle( queue );
-}
-
-FencedCommandBuffer VulkanSystem::get_cmd_buffer() {
-	FencedCommandBuffer buf;
-	VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	cmd_buffer_alloc_info.commandBufferCount = 1;
-	cmd_buffer_alloc_info.commandPool = cmd_pool;
-	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	vkAllocateCommandBuffers( device, &cmd_buffer_alloc_info, &buf.cmd_buffer );
-
-	VkFenceCreateInfo fenceCci= { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	vkCreateFence( device, &fenceci, nullptr, &buf.fence );
-	return buf;
 }
 
 void VulkanSystem::init_instance() {
@@ -865,7 +865,7 @@ void VulkanSystem::swapchain_to_present(int i) {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = graphics_queue;
 	barier.dstQueueFamilyIndex = graphics_queue;
-	vkCmdPipelineBarrier( cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 void VulkanSystem::init_vulkan() {
@@ -884,8 +884,18 @@ void VulkanSystem::init_vulkan() {
 
 
 
-VkCommandBuffer cmd_buffer() {
-	
+VkCommandBuffer VulkanSystem::cur_cmd_buffer {
+	for (auto &buf : cmd_buffers) {
+		if (buf.finished()) {
+			buf.reset();
+			cur_cmd_buffer = buf.cmd_buffer;
+			return cur_cmd_buffer;
+		}
+	}
+	cmd_buffer.push_back(FencedCommandBuffer());
+	cmd_buffer.back()->init();
+	cur_cmd_buffer = buf.cmd_buffer
+	return cur_cmd_buffer;
 }
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )

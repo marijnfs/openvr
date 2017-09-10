@@ -6,7 +6,9 @@
 #include <streambuf>
 #include <vulkan/vulkan.h>
 #include <openvr.h>
-
+#include <iostream>
+#include <SDL.h>
+#include "shared/Matrices.h"
 
 #if defined(POSIX)
 #include "unistd.h"

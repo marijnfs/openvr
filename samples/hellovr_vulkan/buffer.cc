@@ -194,7 +194,7 @@ void FrameRenderBuffer::to_colour_optimal() {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	image.layout = barier.newLayout;
 }
 
@@ -211,7 +211,7 @@ void FrameRenderBuffer::to_depth_optimal() {
 	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	barier.oldLayout = depth_stencil.layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	depth_stencil.layout = barier.newLayout;
 }
 
@@ -225,9 +225,9 @@ void FrameRenderBuffer::to_read_optimal() {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barier.oldLayout = m_leftEyeDesc.m_nImageLayout;
+	barier.oldLayout = image.layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	image.layout = barier.newLayout;
 }
 
@@ -235,7 +235,7 @@ void FrameRenderBuffer::to_read_optimal() {
 void FrameRenderBuffer::start_render_pass() {
 	// Start the renderpass
 	VkRenderPassBeginInfo renderpassci = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderpassci.renderPass = renderpass;
+	renderpassci.renderPass = render_pass;
 	renderpassci.framebuffer = framebuffer;
 	renderpassci.renderArea.offset.x = 0;
 	renderpassci.renderArea.offset.y = 0;
@@ -251,9 +251,9 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 1 ].depthStencil.stencil = 0;
 	renderpassci.pClearValues = &cv[ 0 ];
 
-	vkCmdBeginRenderPass( Global::vk().cmd_buffer, &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-	vkCmdEndRenderPass( Global::vk().cmd_buffer );
+	vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }

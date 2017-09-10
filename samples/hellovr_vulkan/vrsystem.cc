@@ -1,4 +1,11 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
 #include "vrsystem.h"
+#include "util.h"
+
+using namespace std;
 
 VRSystem::VRSystem() {
 	render_width = 0;
@@ -25,10 +32,11 @@ VRSystem::VRSystem() {
 }
 
 void VRSystem::render_stereo_targets() {
+	auto vk = Global::vk();
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
-	vkCmdSetViewport( cmd_buffer, 0, 1, &viewport );
+	vkCmdSetViewport( vk.cur_cmd_buffer, 0, 1, &viewport );
 	VkRect2D scissor = { 0, 0, render_width, render_height};
-	vkCmdSetScissor( cmd_buffer, 0, 1, &scissor );
+	vkCmdSetScissor( vk.cur_cmd_buffer, 0, 1, &scissor );
 
 	left_eye_fb.to_colour_optimal();
 	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
@@ -51,7 +59,7 @@ void VRSystem::render_stereo_targets() {
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )
 {
-	vr::HmdMatrix34_t mat_eye = m_pHMD->GetEyeToHeadTransform( eye );
+	vr::HmdMatrix34_t mat_eye = hmd->GetEyeToHeadTransform( eye );
 	Matrix4 mat(
 		mat_eye.m[0][0], mat_eye.m[1][0], mat_eye.m[2][0], 0.0, 
 		mat_eye.m[0][1], mat_eye.m[1][1], mat_eye.m[2][1], 0.0,
@@ -94,7 +102,9 @@ void VRSystem::setup_render_models()
 		if( !hmd->IsTrackedDeviceConnected( d ) )
 			continue;
 
-		SetupRenderModelForTrackedDevice( d );
+		//TODO: Setup render model
+
+		//SetupRenderModelForTrackedDevice( d );
 	}
 
 }
@@ -110,7 +120,7 @@ void VRSystem::update_track_pose() {
 	{
 		if ( tracked_pose[d].bPoseIsValid )
 		{
-			tracked_pose_mat4[d] = ConvertSteamVRMatrixToMatrix4( tracked_pose[d].mDeviceToAbsoluteTracking );
+			tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
 			device_class[d] = hmd->GetTrackedDeviceClass(d);
 		}
 	}
@@ -122,28 +132,28 @@ void VRSystem::update_track_pose() {
 	}
 }
 
-std::string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
+string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
 	vr::TrackedPropertyError *err = NULL;
 	uint32_t buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );
 	if( buflen == 0)
 		return "";
 
-	std::string buf(' ', buflen);
-	buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, buf.c_str(), buflen, err );
+	string buf(' ', buflen);
+	buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, &buf[0], buflen, err );
 	return buf;      
 }
 
 vector<string> VRSystem::get_inst_ext_required() {
 	uint32_t buf_size = vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( nullptr, 0 );
 	if (!buf_size)
-		return;
+		throw StringException("no such GetVulkanInstanceExtensionsRequired");
 
-	std::string buf(' ', buf_size);
-	vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( buf.c_str(), buf_size );
+	string buf(' ', buf_size);
+	vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( &buf[0], buf_size );
 
     // Break up the space separated list into entries on the CUtlStringList
 	vector<string> ext_list;
-	std::string cur_ext;
+	string cur_ext;
 	uint32_t idx = 0;
 	while ( idx < buf_size ) {
 		if ( buf[ idx ] == ' ' ) {
@@ -164,14 +174,14 @@ vector<string> VRSystem::get_inst_ext_required() {
 vector<string> VRSystem::get_dev_ext_required() {
 	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( nullptr, 0 );
 	if (!buf_size)
-		return;
+		throw StringException("No such GetVulkanDeviceExtensionsRequired");
 
-	std::string buf(' ', buf_size);
-	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( buf.c_str(), buf_size );
+	string buf(' ', buf_size);
+	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( &buf[0], buf_size );
 
     // Break up the space separated list into entries on the CUtlStringList
 	vector<string> ext_list;
-	std::string cur_ext;
+	string cur_ext;
 	uint32_t idx = 0;
 	while ( idx < buf_size ) {
 		if ( buf[ idx ] == ' ' ) {
