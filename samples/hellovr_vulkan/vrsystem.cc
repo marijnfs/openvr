@@ -4,6 +4,9 @@
 
 #include "vrsystem.h"
 #include "util.h"
+#include "global.h"
+#include "vulkansystem.h"
+#include "shared/Matrices.h"
 
 using namespace std;
 
@@ -29,6 +32,12 @@ VRSystem::VRSystem() {
 		cerr << "Couldn't create VRCompositor" << endl;
 		throw "";
 	}
+
+	eye_pos_buffer.resize(2);
+	eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	
+
 }
 
 void VRSystem::render_stereo_targets() {
@@ -172,12 +181,13 @@ vector<string> VRSystem::get_inst_ext_required() {
 }
 
 vector<string> VRSystem::get_dev_ext_required() {
-	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( nullptr, 0 );
+	auto vk = Global::vk();
+	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, nullptr, 0 );
 	if (!buf_size)
 		throw StringException("No such GetVulkanDeviceExtensionsRequired");
 
 	string buf(' ', buf_size);
-	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( &buf[0], buf_size );
+	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, &buf[0], buf_size );
 
     // Break up the space separated list into entries on the CUtlStringList
 	vector<string> ext_list;
@@ -206,7 +216,7 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 #if defined ( _WIN32 )
 	instance_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
 #else
-	instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+	//instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
 #endif
 
 
@@ -232,22 +242,23 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 	}
 
 	vector<string> VRSystem::get_dev_ext_required_verified() {
+		auto vk = Global::vk();
 		auto dev_ext_req = get_dev_ext_required();
 		dev_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
 
 #if defined ( _WIN32 )
 		dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
 #else
-		dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+		//dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
 #endif
 
 
 		uint32_t n_dev_ext(0);
-		check( vkEnumerateDeviceExtensionProperties( NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
+		check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
 
 		vector<VkExtensionProperties> ext_prop(n_dev_ext);
 
-		check( vkEnumerateDeviceExtensionProperties( NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
+		check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
 
 		for (auto req_dev : dev_ext_req) {
 			bool found(false);
@@ -269,7 +280,7 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 
 		void VRSystem::setup_render_targets() {
 			hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
-
-			CreateFrameBuffer( render_width, render_height, left_eye_fb );
-			CreateFrameBuffer( render_width, render_height, right_eye_fb );
+			left_eye_fb.init(render_width, render_height);
+			right_eye_fb.init(render_width, render_height);
+			
 		}

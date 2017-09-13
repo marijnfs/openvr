@@ -23,7 +23,9 @@ struct VRSystem {
 
   FrameRenderBuffer left_eye_fb, right_eye_fb;
 
-  int render_width, render_height;
+  std::vector<Buffer> eye_pos_buffer;
+
+  uint32_t render_width, render_height;
   float near_clip, far_clip;
 
   VRSystem();
@@ -52,6 +54,8 @@ struct VRSystem {
   std::vector<std::string> get_dev_ext_required();
 
   std::vector<std::string> get_inst_ext_required_verified();
+
+  std::vector<std::string> get_dev_ext_required_verified();
 
   ~VRSystem();
 

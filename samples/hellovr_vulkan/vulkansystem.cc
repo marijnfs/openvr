@@ -13,12 +13,12 @@ void FencedCommandBuffer::end() {
 }
 
 bool FencedCommandBuffer::finished() {
-	return vkGetFenceStatus( Global::vk().device, m_commandBuffers.back().m_pFence ) == VK_SUCCESS;	
+	return vkGetFenceStatus( Global::vk().dev, fence ) == VK_SUCCESS;	
 }
 
 void FencedCommandBuffer::reset() {
 	vkResetCommandBuffer( cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-	vkResetFences( Global::vk().device, 1, &fence );
+	vkResetFences( Global::vk().dev, 1, &fence );
 }
 
 void FencedCommandBuffer::init() {
@@ -27,10 +27,10 @@ void FencedCommandBuffer::init() {
 	cmd_buffer_alloc_info.commandBufferCount = 1;
 	cmd_buffer_alloc_info.commandPool = vk.cmd_pool;
 	cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	vkAllocateCommandBuffers( vk.device, &cmd_buffer_alloc_info, &cmd_buffer );
+	vkAllocateCommandBuffers( vk.dev, &cmd_buffer_alloc_info, &cmd_buffer );
 
 	VkFenceCreateInfo fenceci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	vkCreateFence( vk.device, &fenceci, nullptr, &fence );
+	vkCreateFence( vk.dev, &fenceci, nullptr, &fence );
 }
 
 // ==== Render Model ====
@@ -39,8 +39,8 @@ void RenderModel::init() {
 	int vert_count(0);
 	int idx_count(0);
 
-	vertex_buf.init(sizeof( vr::RenderModel_Vertex_t ) * vert_count);
-	index_buf.init(sizeof(uint16_t) * idx_count);
+	vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * vert_count, HOST);
+	index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * idx_count, HOST);
 
 }
 
@@ -50,12 +50,12 @@ void RenderModel::init() {
 void GraphicsObject::draw() {
 		//TODO fix
 	auto vk = Global::vk();
-	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
-		// Update the persistently mapped pointer to the CB data with the latest matrix
-	memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+		// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
+	//memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &desc_sets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &desc_sets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
 
 		// Draw
 	VkDeviceSize nOffsets[ 1 ] = { 0 };

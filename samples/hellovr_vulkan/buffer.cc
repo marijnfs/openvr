@@ -50,6 +50,11 @@ void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {
 	check( vkBindBufferMemory( vk.dev, buffer, memory, 0 ), "vkBindBufferMemory" );
 };
 
+template <typename T>
+void Buffer::map(T **ptr) {
+  vkMapMemory( Global::vk().dev, memory, 0, VK_WHOLE_SIZE, 0, ptr );
+}
+
 
 Image::Image() {}
 
