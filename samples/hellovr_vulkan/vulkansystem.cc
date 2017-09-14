@@ -240,7 +240,11 @@ check( vkCreateDevice( chosen_dev, &dci, nullptr, &device ), "vkCreateDevice");
 vkGetDeviceQueue( device, graphics_queue, 0, &queue );
 }
 
+
+
 void init_descriptor_sets() {
+	//Create pool
+	size_t NUM_DESCRIPTOR_SETS(256);
 	VkDescriptorPoolSize pool_sizes[ 3 ];
 	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
 	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -256,6 +260,30 @@ void init_descriptor_sets() {
 	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
 	vkCreateDescriptorPool( device, &descpool_ci, nullptr, &desc_pool );
 
+
+	//Create Layout
+	VkDescriptorSetLayoutBinding lb[3] = {};
+	lb[0].binding = 0;
+	lb[0].descriptorCount = 1;
+	lb[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	lb[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	lb[1].binding = 1;
+	lb[1].descriptorCount = 1;
+	lb[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	lb[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	lb[2].binding = 2;
+	lb[2].descriptorCount = 1;
+	lb[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	lb[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutCreateInfo desc_set_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	desc_set_ci.bindingCount = 3;
+	desc_set_ci.pBindings = &lb[ 0 ];
+	check( vkCreateDescriptorSetLayout( device, &desc_set_ci, nullptr, &desc_set_layout ), "vkCreateDescriptorSetLayout");
+
+	//make desc sets
 	for ( int i = 0; i < NUM_DESCRIPTOR_SETS; i++ )
 	{
 		VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
@@ -321,6 +349,15 @@ void init_descriptor_sets() {
 		write_desc[ 0 ].dstSet = desc_sets[ DESCRIPTOR_SET_COMPANION_RIGHT_TEXTURE ];
 		vkUpdateDescriptorSets( device, _countof( write_desc ), write_desc, 0, nullptr );
 	}
+}
+
+void VulkanSystem::add_desc_set() {
+	desc_sets.push_back(VkDescriptorSet());
+	VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	desc_inf.descriptorPool = desc_pool;
+	desc_inf.descriptorSetCount = 1;
+	desc_inf.pSetLayouts = &desc_set_layout;
+	vkAllocateDescriptorSets( device, &desc_inf, &last(desc_sets) );
 }
 
 void VulkanSystem::init_swapchain() {
@@ -606,10 +643,11 @@ void VulkanSystem::init_shaders() {
 //define strides for data used in shaders
 	size_t strides[ PSO_COUNT ] =
 	{
-	sizeof( Pos3Tex2 ),			// PSO_SCENE
-	sizeof( float ) * 6,				// PSO_AXES
-	sizeof( vr::RenderModel_Vertex_t ),	// PSO_RENDERMODEL
-	sizeof( Pos2Tex2 )			// PSO_COMPANION
+		sizeof( Pos3Tex2 ),			// PSO_SCENE
+		sizeof( float ) * 6,				// PSO_AXES
+		sizeof( vr::RenderModel_Vertex_t ),	// PSO_RENDERMODEL
+		sizeof( Pos2Tex2 )			// PSO_COMPANION
+    }
 };
 
 VkVertexInputAttributeDescription attr_desc[ PSO_COUNT * 3 ]

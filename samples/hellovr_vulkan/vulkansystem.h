@@ -124,9 +124,10 @@ struct VulkanSystem {
   VkRenderPass swapchain_renderpass;
 
   VkCommandPool cmd_pool;
+
   VkDescriptorPool desc_pool;
-  VkDescriptorSet desc_sets[ NUM_DESCRIPTOR_SETS ];
-  VkDescriptorSetLayout desc_layout;
+  std::vector<VkDescriptorSet> desc_sets;
+  VkDescriptorSetLayout desc_set_layout;
 
   Buffer scene_constant_buffer[2]; //for both eyes
 	VkImage scene_img;
@@ -161,6 +162,8 @@ struct VulkanSystem {
   void init_device();
 
   void init_descriptor_sets();
+
+  void add_desc_set();
 
   void init_swapchain();
 
