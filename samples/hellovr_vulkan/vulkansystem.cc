@@ -44,9 +44,9 @@ void RenderModel::init() {
 
 }
 
+
+
 // ==== Graphics Object ====
-
-
 void GraphicsObject::draw() {
 		//TODO fix
 	auto vk = Global::vk();
@@ -179,68 +179,69 @@ void VulkanSystem::init_device() {
 	vector<VkPhysicalDevice> devices(n_dev);
 	check( vkEnumeratePhysicalDevices( instance, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
 
-VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
+	VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
 
-vkGetPhysicalDeviceProperties( chosen_dev, &prop);
-vkGetPhysicalDeviceMemoryProperties( chosen_dev, &mem_prop );
-vkGetPhysicalDeviceFeatures( chosen_dev, &features );
+	vkGetPhysicalDeviceProperties( chosen_dev, &prop);
+	vkGetPhysicalDeviceMemoryProperties( chosen_dev, &mem_prop );
+	vkGetPhysicalDeviceFeatures( chosen_dev, &features );
 
-std::vector< std::string > requiredDeviceExtensions;
-GetVulkanDeviceExtensionsRequired( chosen_dev, requiredDeviceExtensions );
+	std::vector< std::string > requiredDeviceExtensions;
+	GetVulkanDeviceExtensionsRequired( chosen_dev, requiredDeviceExtensions );
 
-auto dev_ext = get_dev_ext_required();
-// Add additional required extensions
-dev_ext.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+	auto dev_ext = get_dev_ext_required();
+	// Add additional required extensions
+	dev_ext.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
 
 
-int n_queue(0);
-vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, 0);
-vector<VkQueueFamilyProperties> queue_family(n_queue);
-vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
-if (n_queue == 0) {
-	cerr << "Failed to get queue properties.\n" << endl;
-	throw "";
-}
-
-graphics_queue = -1;
-for (int i(0); i < queue_family.size(); ++i) {
-	if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-		graphics_queue = i;
-		break;
+	int n_queue(0);
+	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, 0);
+	vector<VkQueueFamilyProperties> queue_family(n_queue);
+	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
+	if (n_queue == 0) {
+		cerr << "Failed to get queue properties.\n" << endl;
+		throw "";
 	}
+
+	graphics_queue = -1;
+	for (int i(0); i < queue_family.size(); ++i) {
+		if (queue_family[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			graphics_queue = i;
+			break;
+		}
+	}
+
+	if (graphics_queue < 0) {
+		cerr << "no graphics queue" << endl;
+		throw "";
+	}
+
+	auto dev_ext = get_dev_ext_required_verified();
+	vector<char *> pp_dev_ext(dev_ext.size());
+	for (int i(0); i < dev_ext.size(); ++i)
+		pp_dev_ext[i] = dev_ext[i].c_str();
+
+	//create device
+	// Create the device
+	VkDeviceQueueCreateInfo dqci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+	dqci.queueFamilyIndex = graphics_queue;
+	dqci.queueCount = 1;
+	float fQueuePriority = 1.0f;
+	dqci.pQueuePriorities = &fQueuePriority;
+
+	VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	dci.queueCreateInfoCount = 1;
+	dci.pQueueCreateInfos = &dqci;
+	dci.enabledExtensionCount = dev_ext.size();
+	dci.ppEnabledExtensionNames = &pp_dev_ext[0];
+	dci.pEnabledFeatures = &features;
+
+	check( vkCreateDevice( chosen_dev, &dci, nullptr, &device ), "vkCreateDevice");
+
+	vkGetDeviceQueue( device, graphics_queue, 0, &queue );
 }
 
-if (graphics_queue < 0) {
-	cerr << "no graphics queue" << endl;
-	throw "";
-}
 
-auto dev_ext = get_dev_ext_required_verified();
-vector<char *> pp_dev_ext(dev_ext.size());
-for (int i(0); i < dev_ext.size(); ++i)
-	pp_dev_ext[i] = dev_ext[i].c_str();
-
-//create device
-// Create the device
-VkDeviceQueueCreateInfo dqci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-dqci.queueFamilyIndex = graphics_queue;
-dqci.queueCount = 1;
-float fQueuePriority = 1.0f;
-dqci.pQueuePriorities = &fQueuePriority;
-
-VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-dci.queueCreateInfoCount = 1;
-dci.pQueueCreateInfos = &dqci;
-dci.enabledExtensionCount = dev_ext.size();
-dci.ppEnabledExtensionNames = &pp_dev_ext[0];
-dci.pEnabledFeatures = &features;
-
-check( vkCreateDevice( chosen_dev, &dci, nullptr, &device ), "vkCreateDevice");
-
-vkGetDeviceQueue( device, graphics_queue, 0, &queue );
-}
-
-void init_descriptor_sets() {
+void VulkanSystem::init_descriptor_sets() {
 	VkDescriptorPoolSize pool_sizes[ 3 ];
 	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
 	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -255,6 +256,7 @@ void init_descriptor_sets() {
 	descpool_ci.poolSizeCount = _countof( pool_sizes );
 	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
 	vkCreateDescriptorPool( device, &descpool_ci, nullptr, &desc_pool );
+
 
 	for ( int i = 0; i < NUM_DESCRIPTOR_SETS; i++ )
 	{
