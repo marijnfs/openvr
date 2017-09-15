@@ -98,6 +98,15 @@ struct GraphicsObject {
 
 };
 
+struct Descriptor {
+	int idx = 0;
+	VkDescriptorSet desc;
+
+	void init();
+	void register_texture(VkImageView view);
+	void register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler);
+};
+
 struct VulkanSystem {
   VkInstance inst;
 
@@ -124,9 +133,10 @@ struct VulkanSystem {
   VkRenderPass swapchain_renderpass;
 
   VkCommandPool cmd_pool;
+
   VkDescriptorPool desc_pool;
-  VkDescriptorSet desc_sets[ NUM_DESCRIPTOR_SETS ];
-  VkDescriptorSetLayout desc_layout;
+  std::vector<VkDescriptorSet> desc_sets;
+  VkDescriptorSetLayout desc_set_layout;
 
   Buffer scene_constant_buffer[2]; //for both eyes
 	VkImage scene_img;
@@ -156,6 +166,8 @@ struct VulkanSystem {
 
   void wait_queue();
 
+  void init(); //general init
+
   void init_instance();
 
   void init_device();
@@ -167,6 +179,8 @@ struct VulkanSystem {
   void init_shaders();
 
   void init_texture_maps();
+
+  void add_desc_set();
 
   void swapchain_to_present(int i);
 

@@ -38,12 +38,20 @@ struct Image {
     VkDeviceMemory mem;
     VkImageLayout layout;
     VkImageView view;
+    VkSampler sampler;
+
+    int mip_levels = 1;
 
     Image();
-
     Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
     void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
+    void init_from_img(std::string path);
+
+    void to_colour_optimal();
+    void to_depth_optimal();
+    void to_read_optimal();
+
 };
 
 struct FrameRenderBuffer {
@@ -54,9 +62,7 @@ struct FrameRenderBuffer {
 
     void init(int width_, int height_);
 
-    void to_colour_optimal();
-	void to_depth_optimal();
-	void to_read_optimal();
+
 
 	void start_render_pass();
 	void end_render_pass();

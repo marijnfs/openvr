@@ -62,7 +62,7 @@ Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, Vk
 	init(width, height, format, usage, aspect);
 }
 
-void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int miplevels) {
 	auto vk = Global::vk();
 
 	int msaa_sample_count(1);
@@ -71,12 +71,12 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	imgci.extent.width = width;
 	imgci.extent.height = height;
 	imgci.extent.depth = 1;
-	imgci.mipLevels = 1;
+	imgci.mipLevels = miplevels;
 	imgci.arrayLayers = 1;
 	imgci.format = VK_FORMAT_R8G8B8A8_SRGB;
 	imgci.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imgci.samples = ( VkSampleCountFlagBits ) msaa_sample_count;
-	imgci.usage = ( VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT );
+	imgci.usage = usage;
 	imgci.flags = 0;	
 
 	check( vkCreateImage( vk.dev, &imgci, nullptr, &img ), "vkCreateImage");
@@ -104,7 +104,234 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	img_view_ci.subresourceRange.baseArrayLayer = 0;
 	img_view_ci.subresourceRange.layerCount = 1;
 	check( vkCreateImageView( vk.dev, &img_view_ci, nullptr, &view ), "vkCreateImageView");
+
+	if (true) { //Do we always need sampler?
+		VkSamplerCreateInfo sampler_ci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		sampler_ci.magFilter = VK_FILTER_LINEAR;
+		sampler_ci.minFilter = VK_FILTER_LINEAR;
+		sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		sampler_ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		sampler_ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		sampler_ci.anisotropyEnable = VK_TRUE;
+		sampler_ci.maxAnisotropy = 16.0f;
+		sampler_ci.minLod = 0.0f;
+		sampler_ci.maxLod = ( float ) mip_levels; 
+		vkCreateSampler( vk.dev, &sampler_ci, nullptr, &sampler );
+	}
 }
+
+void Image::init_from_img(string img_path) {
+	auto vk = Global::vk();
+	std::vector< unsigned char > imageRGBA;
+	check( lodepng::decode( imageRGBA, width, height, img_path.c_str() ) );
+	
+	// Copy the base level to a buffer, reserve space for mips (overreserve by a bit to avoid having to calc mipchain size ahead of time)
+	VkDeviceSize buf_size = 0;
+	uint8_t *ptr = new uint8_t[ width * height * 4 * 2 ];
+	uint8_t *prev_buffer = ptr;
+	uint8_t *cur_buffer = ptr;
+	memcpy( cur_buffer, &imageRGBA[0], sizeof( uint8_t ) * width * height * 4 );
+	cur_buffer += sizeof( uint8_t ) * width * height * 4;
+
+	std::vector< VkBufferImageCopy > img_copies;
+	VkBufferImageCopy buf_img_cpy = {};
+	buf_img_cpy.bufferOffset = 0;
+	buf_img_cpy.bufferRowLength = 0;
+	buf_img_cpy.bufferImageHeight = 0;
+	buf_img_cpy.imageSubresource.baseArrayLayer = 0;
+	buf_img_cpy.imageSubresource.layerCount = 1;
+	buf_img_cpy.imageSubresource.mipLevel = 0;
+	buf_img_cpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	buf_img_cpy.imageOffset.x = 0;
+	buf_img_cpy.imageOffset.y = 0;
+	buf_img_cpy.imageOffset.z = 0;
+	buf_img_cpy.imageExtent.width = width;
+	buf_img_cpy.imageExtent.height = height;
+	buf_img_cpy.imageExtent.depth = 1;
+	img_copies.push_back( buf_img_cpy );
+
+	int mip_width = width;
+	int mip_height = height;
+
+	while( mip_width > 1 && mip_height > 1 )
+	{
+		GenMipMapRGBA( prev_buffer, cur_buffer, mip_width, mip_height, &mip_width, &mip_height );
+		buf_img_cpy.bufferOffset = cur_buffer - ptr;
+		buf_img_cpy.imageSubresource.mipLevel++;
+		buf_img_cpy.imageExtent.width = mip_width;
+		buf_img_cpy.imageExtent.height = mip_height;
+		img_copies.push_back( buf_img_cpy );
+		prev_buffer = cur_buffer;
+		cur_buffer += ( mip_width * mip_height * 4 * sizeof( uint8_t ) );
+	}
+	buf_size = cur_buffer - ptr;
+
+	init();
+
+	// Create the image
+	VkImageCreateInfo img_ci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	img_ci.imageType = VK_IMAGE_TYPE_2D;
+	img_ci.extent.width = width;
+	img_ci.extent.height = height;
+	img_ci.extent.depth = 1;
+	img_ci.mipLevels = ( uint32_t ) img_copies.size();
+	img_ci.arrayLayers = 1;
+	img_ci.format = VK_FORMAT_R8G8B8A8_UNORM;
+	img_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
+	img_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+	img_ci.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	img_ci.flags = 0;
+	vkCreateImage( vk.dev, &img_ci, nullptr, &img );
+
+	VkMemoryRequirements mem_req = {};
+	vkGetImageMemoryRequirements( vk.dev, img, &mem_req );
+
+	VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+	memoryAllocateInfo.allocationSize = mem_req.size;
+	MemoryTypeFromProperties( m_physicalDeviceMemoryProperties, mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memoryAllocateInfo.memoryTypeIndex );
+	vkAllocateMemory( vk.dev, &memoryAllocateInfo, nullptr, &m_pSceneImageMemory );
+	vkBindImageMemory( vk.dev, img, m_pSceneImageMemory, 0 );
+
+	VkImageViewCreateInfo imageViewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	imageViewCreateInfo.flags = 0;
+	imageViewCreateInfo.image = img;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = img_ci.format;
+	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = img_ci.mipLevels;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+	vkCreateImageView( vk.dev, &imageViewCreateInfo, nullptr, &m_pSceneImageView );
+
+	// Create a staging buffer
+	if ( !CreateVulkanBuffer( vk.dev, m_physicalDeviceMemoryProperties, pBuffer, nBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &m_pSceneStagingBuffer, &m_pSceneStagingBufferMemory ) )
+	{
+		return false;
+	}
+
+	// Create a read pixel buffer
+	if ( !CreateVulkanBuffer( vk.dev, m_physicalDeviceMemoryProperties, pBuffer, nBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &getPixelBuffer, &getPixelBufferMemory ) )
+	{
+		return false;
+	}
+
+
+	// Transition the image to TRANSFER_DST to receive image
+	VkImageMemoryBarrier imageMemoryBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	imageMemoryBarrier.srcAccessMask = 0;
+	imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	imageMemoryBarrier.image = img;
+	imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	imageMemoryBarrier.subresourceRange.levelCount = img_ci.mipLevels;
+	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	imageMemoryBarrier.subresourceRange.layerCount = 1;
+	imageMemoryBarrier.srcQueueFamilyIndex = m_nQueueFamilyIndex;
+	imageMemoryBarrier.dstQueueFamilyIndex = m_nQueueFamilyIndex;
+	vkCmdPipelineBarrier( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier );
+
+	// Issue the copy to fill the image data
+	vkCmdCopyBufferToImage( m_currentCommandBuffer.m_pCommandBuffer, m_pSceneStagingBuffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
+
+	// Transition the image to SHADER_READ_OPTIMAL for reading
+	imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	vkCmdPipelineBarrier( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier );
+	
+	// Create the sampler
+	VkSamplerCreateInfo samplerCreateInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerCreateInfo.anisotropyEnable = VK_TRUE;
+	samplerCreateInfo.maxAnisotropy = 16.0f;
+	samplerCreateInfo.minLod = 0.0f;
+	samplerCreateInfo.maxLod = ( float ) img_ci.mipLevels;
+	vkCreateSampler( vk.dev, &samplerCreateInfo, nullptr, &m_pSceneSampler );
+
+	delete [] ptr;
+}
+
+void Image::to_colour_optimal() {
+	auto vk = Global::vk();
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barier.oldLayout = layout;
+	barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barier.image = img;
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	image.layout = barier.newLayout;
+}
+
+
+void Image::to_depth_optimal() {
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.image = img;
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcAccessMask = 0;
+	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	barier.oldLayout = layout;
+	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	depth_stencil.layout = barier.newLayout;
+}
+
+void Image::to_read_optimal() {
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.image = img;
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcAccessMask = 0;
+	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barier.oldLayout = layout;
+	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	image.layout = barier.newLayout;
+}
+
+void Image::to_transfer_dst() {
+	// Transition the image to TRANSFER_DST to receive image
+	auto vk = Global::vk();
+
+	VkImageMemoryBarrierbarier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = 0;
+	barier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barier.image = img;
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = mip_levels;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, barier );
+}
+
 
 void FrameRenderBuffer::init(int width_, int height_) {
 	width = width_;
@@ -184,58 +411,6 @@ void FrameRenderBuffer::init(int width_, int height_) {
 
 }
 
-void FrameRenderBuffer::to_colour_optimal() {
-	auto vk = Global::vk();
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barier.oldLayout = image.layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	barier.image = image.img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = vk.graphics_queue;
-	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	image.layout = barier.newLayout;
-}
-
-
-void FrameRenderBuffer::to_depth_optimal() {
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.image = depth_stencil.img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcAccessMask = 0;
-	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	barier.oldLayout = depth_stencil.layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	depth_stencil.layout = barier.newLayout;
-}
-
-void FrameRenderBuffer::to_read_optimal() {
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.image = image.img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barier.oldLayout = image.layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	image.layout = barier.newLayout;
-}
-
 
 void FrameRenderBuffer::start_render_pass() {
 	// Start the renderpass
@@ -256,9 +431,9 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 1 ].depthStencil.stencil = 0;
 	renderpassci.pClearValues = &cv[ 0 ];
 
-	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( Global::vk().cur_cmd_buffer, &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-	vkCmdEndRenderPass( Global::vk().cmd_buffer() );
+	vkCmdEndRenderPass( Global::vk().cur_cmd_buffer );
 }
