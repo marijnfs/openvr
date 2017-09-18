@@ -3,6 +3,11 @@
 #include "util.h"
 #include "global.h"
 
+#include "shared/lodepng.h"
+
+
+using namespace std;
+
 Buffer::Buffer() {}
 
 Buffer::Buffer(size_t size, VkBufferUsageFlags usage) {
@@ -58,12 +63,16 @@ void Buffer::map(T **ptr) {
 
 Image::Image() {}
 
-Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+Image::Image(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) : width(width_), height(height_) {
 	init(width, height, format, usage, aspect);
 }
 
-void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int miplevels) {
+void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_) {
+	width = width_;
+	height = height_;
+
 	auto vk = Global::vk();
+	mip_levels = mip_levels_;
 
 	int msaa_sample_count(1);
 	VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -71,7 +80,7 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	imgci.extent.width = width;
 	imgci.extent.height = height;
 	imgci.extent.depth = 1;
-	imgci.mipLevels = miplevels;
+	imgci.mipLevels = mip_levels;
 	imgci.arrayLayers = 1;
 	imgci.format = VK_FORMAT_R8G8B8A8_SRGB;
 	imgci.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -120,10 +129,12 @@ void Image::init(int width, int height, VkFormat format, VkImageUsageFlags usage
 	}
 }
 
-void Image::init_from_img(string img_path) {
+void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
 	auto vk = Global::vk();
 	std::vector< unsigned char > imageRGBA;
-	check( lodepng::decode( imageRGBA, width, height, img_path.c_str() ) );
+	if (lodepng::decode( imageRGBA, width, height, img_path.c_str() ) != 0) {
+		throw StringException("failed to load texture lodepng");
+	}
 	
 	// Copy the base level to a buffer, reserve space for mips (overreserve by a bit to avoid having to calc mipchain size ahead of time)
 	VkDeviceSize buf_size = 0;
@@ -155,7 +166,7 @@ void Image::init_from_img(string img_path) {
 
 	while( mip_width > 1 && mip_height > 1 )
 	{
-		GenMipMapRGBA( prev_buffer, cur_buffer, mip_width, mip_height, &mip_width, &mip_height );
+		gen_mipmap_rgba( prev_buffer, cur_buffer, mip_width, mip_height, &mip_width, &mip_height );
 		buf_img_cpy.bufferOffset = cur_buffer - ptr;
 		buf_img_cpy.imageSubresource.mipLevel++;
 		buf_img_cpy.imageExtent.width = mip_width;
@@ -166,96 +177,16 @@ void Image::init_from_img(string img_path) {
 	}
 	buf_size = cur_buffer - ptr;
 
-	init();
+	init(width, height, format, usage, aspect, img_copies.size());
 
-	// Create the image
-	VkImageCreateInfo img_ci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-	img_ci.imageType = VK_IMAGE_TYPE_2D;
-	img_ci.extent.width = width;
-	img_ci.extent.height = height;
-	img_ci.extent.depth = 1;
-	img_ci.mipLevels = ( uint32_t ) img_copies.size();
-	img_ci.arrayLayers = 1;
-	img_ci.format = VK_FORMAT_R8G8B8A8_UNORM;
-	img_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
-	img_ci.samples = VK_SAMPLE_COUNT_1_BIT;
-	img_ci.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	img_ci.flags = 0;
-	vkCreateImage( vk.dev, &img_ci, nullptr, &img );
+	Buffer staging_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	//TODO: copy data in staging buffer
 
-	VkMemoryRequirements mem_req = {};
-	vkGetImageMemoryRequirements( vk.dev, img, &mem_req );
-
-	VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	memoryAllocateInfo.allocationSize = mem_req.size;
-	MemoryTypeFromProperties( m_physicalDeviceMemoryProperties, mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memoryAllocateInfo.memoryTypeIndex );
-	vkAllocateMemory( vk.dev, &memoryAllocateInfo, nullptr, &m_pSceneImageMemory );
-	vkBindImageMemory( vk.dev, img, m_pSceneImageMemory, 0 );
-
-	VkImageViewCreateInfo imageViewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-	imageViewCreateInfo.flags = 0;
-	imageViewCreateInfo.image = img;
-	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	imageViewCreateInfo.format = img_ci.format;
-	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-	imageViewCreateInfo.subresourceRange.levelCount = img_ci.mipLevels;
-	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-	imageViewCreateInfo.subresourceRange.layerCount = 1;
-	vkCreateImageView( vk.dev, &imageViewCreateInfo, nullptr, &m_pSceneImageView );
-
-	// Create a staging buffer
-	if ( !CreateVulkanBuffer( vk.dev, m_physicalDeviceMemoryProperties, pBuffer, nBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &m_pSceneStagingBuffer, &m_pSceneStagingBufferMemory ) )
-	{
-		return false;
-	}
-
-	// Create a read pixel buffer
-	if ( !CreateVulkanBuffer( vk.dev, m_physicalDeviceMemoryProperties, pBuffer, nBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &getPixelBuffer, &getPixelBufferMemory ) )
-	{
-		return false;
-	}
-
-
-	// Transition the image to TRANSFER_DST to receive image
-	VkImageMemoryBarrier imageMemoryBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	imageMemoryBarrier.srcAccessMask = 0;
-	imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	imageMemoryBarrier.image = img;
-	imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
-	imageMemoryBarrier.subresourceRange.levelCount = img_ci.mipLevels;
-	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-	imageMemoryBarrier.subresourceRange.layerCount = 1;
-	imageMemoryBarrier.srcQueueFamilyIndex = m_nQueueFamilyIndex;
-	imageMemoryBarrier.dstQueueFamilyIndex = m_nQueueFamilyIndex;
-	vkCmdPipelineBarrier( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier );
-
-	// Issue the copy to fill the image data
-	vkCmdCopyBufferToImage( m_currentCommandBuffer.m_pCommandBuffer, m_pSceneStagingBuffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
-
-	// Transition the image to SHADER_READ_OPTIMAL for reading
-	imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	vkCmdPipelineBarrier( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier );
+	//TODO: create getpixel buffer?
 	
-	// Create the sampler
-	VkSamplerCreateInfo samplerCreateInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-	samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-	samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerCreateInfo.anisotropyEnable = VK_TRUE;
-	samplerCreateInfo.maxAnisotropy = 16.0f;
-	samplerCreateInfo.minLod = 0.0f;
-	samplerCreateInfo.maxLod = ( float ) img_ci.mipLevels;
-	vkCreateSampler( vk.dev, &samplerCreateInfo, nullptr, &m_pSceneSampler );
+	to_transfer_dst();
+	vkCmdCopyBufferToImage( vk.cur_cmd_buffer, staging_buffer.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
+	to_read_optimal();
 
 	delete [] ptr;
 }
@@ -276,7 +207,7 @@ void Image::to_colour_optimal() {
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
 	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	image.layout = barier.newLayout;
+	layout = barier.newLayout;
 }
 
 
@@ -293,7 +224,7 @@ void Image::to_depth_optimal() {
 	barier.oldLayout = layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	depth_stencil.layout = barier.newLayout;
+	layout = barier.newLayout;
 }
 
 void Image::to_read_optimal() {
@@ -309,14 +240,14 @@ void Image::to_read_optimal() {
 	barier.oldLayout = layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	image.layout = barier.newLayout;
+	layout = barier.newLayout;
 }
 
 void Image::to_transfer_dst() {
 	// Transition the image to TRANSFER_DST to receive image
 	auto vk = Global::vk();
 
-	VkImageMemoryBarrierbarier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -329,7 +260,7 @@ void Image::to_transfer_dst() {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, barier );
+	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 
@@ -338,7 +269,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	height = height_;
 	auto vk = Global::vk();
 
-	image.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+	img.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	int msaa_sample_count(1);
@@ -396,7 +327,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	check( vkCreateRenderPass( vk.dev, &renderpass_ci, NULL, &render_pass ), "vkCreateRenderPass");
 
 	// Create the framebuffer
-	VkImageView attachments[ 2 ] = { image.view, depth_stencil.view };
+	VkImageView attachments[ 2 ] = { img.view, depth_stencil.view };
 	VkFramebufferCreateInfo fb_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	fb_ci.renderPass = render_pass;
 	fb_ci.attachmentCount = 2;
@@ -406,7 +337,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	fb_ci.layers = 1;
 	check( vkCreateFramebuffer( vk.dev, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
 
-	image.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	img.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depth_stencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 }

@@ -47,22 +47,22 @@ void VRSystem::render_stereo_targets() {
 	VkRect2D scissor = { 0, 0, render_width, render_height};
 	vkCmdSetScissor( vk.cur_cmd_buffer, 0, 1, &scissor );
 
-	left_eye_fb.to_colour_optimal();
+	left_eye_fb.img.to_colour_optimal();
 	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		left_eye_fb.to_depth_optimal();
+		left_eye_fb.depth_stencil.to_depth_optimal();
 	left_eye_fb.start_render_pass();
   	//render stuff
 	left_eye_fb.end_render_pass();
-	left_eye_fb.to_read_optimal();
+	left_eye_fb.img.to_read_optimal();
 
 
-	right_eye_fb.to_colour_optimal();
+	right_eye_fb.img.to_colour_optimal();
 	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		right_eye_fb.to_depth_optimal();
+		right_eye_fb.depth_stencil.to_depth_optimal();
 	right_eye_fb.start_render_pass();
   	//render stuff
 	right_eye_fb.end_render_pass();
-	right_eye_fb.to_read_optimal();
+	right_eye_fb.img.to_read_optimal();
 
 }
 
@@ -229,17 +229,17 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 
 	for (auto req_inst : instance_ext_req) {
 		bool found(false);
-		for (auto prop : ext_prop)
+		for (auto prop : ext_prop) 
 			if (req_inst == string(prop.extensionName))
 				found = true;
-			if (!found) {
-				cerr << "couldn't find extension" << endl;
-				throw "";
-			}
+		if (!found) {
+			cerr << "couldn't find extension" << endl;
+			throw "";
 		}
-		
-		return instance_ext_req;
 	}
+		
+	return instance_ext_req;
+}
 
 	vector<string> VRSystem::get_dev_ext_required_verified() {
 		auto vk = Global::vk();

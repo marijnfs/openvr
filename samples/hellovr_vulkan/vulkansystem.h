@@ -23,48 +23,6 @@ enum PSO //shader files
   PSO_COUNT
 };
 
-// Indices of descriptor sets for rendering, TODO: refactor
-enum DescriptorSetIndex_t
-{
-	DESCRIPTOR_SET_LEFT_EYE_SCENE = 0,
-	DESCRIPTOR_SET_RIGHT_EYE_SCENE,
-	DESCRIPTOR_SET_COMPANION_LEFT_TEXTURE,
-	DESCRIPTOR_SET_COMPANION_RIGHT_TEXTURE,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL0,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL1,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL2,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL3,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL4,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL5,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL6,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL7,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL8,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL9,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL10,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL11,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL12,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL13,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL14,
-	DESCRIPTOR_SET_LEFT_EYE_RENDER_MODEL15,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL0,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL1,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL2,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL3,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL4,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL5,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL6,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL7,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL8,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL9,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL10,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL11,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL12,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL13,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL14,
-	DESCRIPTOR_SET_RIGHT_EYE_RENDER_MODEL15,
-	NUM_DESCRIPTOR_SETS
-};
-
 struct FencedCommandBuffer {
   VkCommandBuffer cmd_buffer;
   VkFence fence;
@@ -87,8 +45,24 @@ struct RenderModel {
 	void init();
 };
 
+struct Descriptor {
+	int idx = 0;
+	VkDescriptorSet desc;
+
+	void init();
+	void register_texture(VkImageView view);
+	void register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler);
+};
+
 
 struct GraphicsObject {
+	Descriptor desc;
+	Buffer vertex_buf;
+	Buffer index_buf;
+
+	int n_vertex, n_index;
+	Image texture;
+
 	std::vector<float> v;
 
 
@@ -98,13 +72,21 @@ struct GraphicsObject {
 
 };
 
-struct Descriptor {
-	int idx = 0;
-	VkDescriptorSet desc;
 
-	void init();
-	void register_texture(VkImageView view);
-	void register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler);
+struct Swapchain {
+  VkSurfaceKHR surface;
+  VkSwapchainKHR swapchain;
+
+  std::vector< VkImage > images;
+  std::vector< VkImageView > views;
+  std::vector< VkFramebuffer > framebuffers;
+  std::vector< VkSemaphore > semaphores;
+
+  uint32_t n_swap;
+
+  VkRenderPass renderpass;
+
+  void init();
 };
 
 struct VulkanSystem {
@@ -117,22 +99,14 @@ struct VulkanSystem {
   VkPhysicalDeviceFeatures features;
 
   VkQueue queue;
-  VkSurfaceKHR surface;
-  VkSwapchainKHR swapchain;
 
   int graphics_queue;
-  uint32_t n_swap;
   uint32_t frame_idx;
   uint32_t current_frame;
 
-  std::vector< VkImage > swapchain_img;
-  std::vector< VkImageView > swapchain_view;
-  std::vector< VkFramebuffer > swapchain_framebuffers;
-  std::vector< VkSemaphore > swapchain_semaphores;
-
-  VkRenderPass swapchain_renderpass;
-
   VkCommandPool cmd_pool;
+  Swapchain swapchain;
+
 
   VkDescriptorPool desc_pool;
   std::vector<VkDescriptorSet> desc_sets;

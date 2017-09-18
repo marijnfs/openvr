@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <string>
 
 enum Location {
 	HOST,
@@ -40,22 +41,24 @@ struct Image {
     VkImageView view;
     VkSampler sampler;
 
+    unsigned width = 0, height = 0;
     int mip_levels = 1;
 
     Image();
     Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
-    void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
-    void init_from_img(std::string path);
+    void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_ = 1);
+    void init_from_img(std::string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
     void to_colour_optimal();
     void to_depth_optimal();
     void to_read_optimal();
+    void to_transfer_dst();
 
 };
 
 struct FrameRenderBuffer {
-    Image image, depth_stencil;
+    Image img, depth_stencil;
     VkRenderPass render_pass;
     VkFramebuffer framebuffer;
     int width, height;
