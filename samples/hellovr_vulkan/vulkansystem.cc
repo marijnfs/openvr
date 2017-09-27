@@ -1,6 +1,7 @@
 #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
+#include "shared/lodepng.h"
 
 using namespace std;
 
@@ -628,10 +629,10 @@ void VulkanSystem::init_shaders() {
 
 	VkRenderPass render_passes[ PSO_COUNT ] =
 	{
-		renderpass,
-		renderpass,
-		renderpass,
-	 	companion_renderpass
+		swapchain.renderpass,
+		swapchain.renderpass,
+		swapchain.renderpass,
+	 	swapchain.companion_renderpass
 	};
 
 //define strides for data used in shaders
@@ -721,7 +722,7 @@ void VulkanSystem::init_shaders() {
 
 		// VkPipelineMultisampleStateCreateInfo
 		VkPipelineMultisampleStateCreateInfo multisample_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-		multisample_ci.rasterizationSamples = ( pso == PSO_COMPANION ) ? VK_SAMPLE_COUNT_1_BIT : ( VkSampleCountFlagBits ) msaa_sample_count;
+		multisample_ci.rasterizationSamples = ( pso == PSO_COMPANION ) ? VK_SAMPLE_COUNT_1_BIT : ( VkSampleCountFlagBits ) msaa;
 		multisample_ci.minSampleShading = 0.0f;
 		uint32_t sample_mask = 0xFFFFFFFF;
 		multisample_ci.pSampleMask = &sample_mask;
@@ -771,10 +772,10 @@ void VulkanSystem::init_shaders() {
 
 
 		// Create the pipeline
-		check( vkCreateGraphicsPipelines( device, pipeline_cache, 1, &pipeline_ci, NULL, &pipelines[ pso ] ), "vkCreateGraphicsPipelines");
+		check( vkCreateGraphicsPipelines( dev, pipeline_cache, 1, &pipeline_ci, NULL, &pipelines[ pso ] ), "vkCreateGraphicsPipelines");
 	}
 }
-
+/*
 void VulkanSystem::init_texture_maps() {
 	string tex_path = "../cube_texture.png";
 
@@ -881,8 +882,10 @@ void VulkanSystem::init_texture_maps() {
 		return false;
 	}
 }
+*/
 
-void VulkanSystem::swapchain_to_present(int i) {
+void Swapchain::to_present(int i) {
+	auto vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -894,9 +897,9 @@ void VulkanSystem::swapchain_to_present(int i) {
 	barier.subresourceRange.levelCount = 1;
 	barier.subresourceRange.baseArrayLayer = 0;
 	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = graphics_queue;
-	barier.dstQueueFamilyIndex = graphics_queue;
-	vkCmdPipelineBarrier( cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 void VulkanSystem::init_vulkan() {
@@ -909,13 +912,12 @@ void VulkanSystem::init_vulkan() {
 		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 		cmdpoolci.queueFamilyIndex = graphics_queue;
 		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		check( vkCreateCommandPool( device, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+		check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
 	}
 }
 
 
-
-VkCommandBuffer VulkanSystem::cur_cmd_buffer {
+VkCommandBuffer VulkanSystem::cmd_buffer() {
 	for (auto &buf : cmd_buffers) {
 		if (buf.finished()) {
 			buf.reset();
@@ -923,9 +925,9 @@ VkCommandBuffer VulkanSystem::cur_cmd_buffer {
 			return cur_cmd_buffer;
 		}
 	}
-	cmd_buffer.push_back(FencedCommandBuffer());
-	cmd_buffer.back()->init();
-	cur_cmd_buffer = buf.cmd_buffer
+	cmd_buffers.push_back(FencedCommandBuffer());
+	cmd_buffers.back().init();
+	cur_cmd_buffer = cmd_buffers.back().cmd_buffer;
 	return cur_cmd_buffer;
 }
 

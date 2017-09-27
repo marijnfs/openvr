@@ -87,6 +87,7 @@ struct Swapchain {
   VkRenderPass renderpass, companion_renderpass;
 
   void init();
+  void to_present(int i);
 };
 
 struct VulkanSystem {
@@ -103,6 +104,7 @@ struct VulkanSystem {
   int graphics_queue;
   uint32_t frame_idx;
   uint32_t current_frame;
+  uint32_t msaa = 1;
 
   VkCommandPool cmd_pool;
   Swapchain swapchain;

@@ -5,6 +5,7 @@
 #include <SDL_syswm.h>
 #include <stdio.h>
 
+#include "buffer.h"
 
 struct WindowSystem {
   SDL_Window *window;
