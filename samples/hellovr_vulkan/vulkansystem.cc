@@ -628,10 +628,10 @@ void VulkanSystem::init_shaders() {
 
 	VkRenderPass render_passes[ PSO_COUNT ] =
 	{
-		left_eye_fb.render_pass,
-		left_eye_fb.render_pass,
-		left_eye_fb.render_pass,
-		swapchain.renderpass
+		renderpass,
+		renderpass,
+		renderpass,
+	 	companion_renderpass
 	};
 
 //define strides for data used in shaders

@@ -84,7 +84,7 @@ struct Swapchain {
 
   uint32_t n_swap;
 
-  VkRenderPass renderpass;
+  VkRenderPass renderpass, companion_renderpass;
 
   void init();
 };
