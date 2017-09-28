@@ -535,7 +535,6 @@ void VulkanSystem::init() {
 	
 	init_descriptor_sets();
 	init_shaders();
-	init_swapchain();
 }
 
 void VulkanSystem::init_descriptor_sets() {
@@ -905,8 +904,8 @@ void Swapchain::to_present(int i) {
 void VulkanSystem::init_vulkan() {
 	init_instance();
 	init_device();
-	init_swapchain();
-
+	swapchain.init();
+	
 	// Create the command pool
 	{
 		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
