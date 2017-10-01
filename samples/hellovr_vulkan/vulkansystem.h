@@ -68,6 +68,12 @@ struct GraphicsObject {
 
 	void draw();
 	void init_cube(Matrix4 pos);
+  void init_screen();
+  void set_pos(std::vector<float>);
+  //void set_pos(std::vector<float>);
+
+
+
 	void add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4);
 
 };

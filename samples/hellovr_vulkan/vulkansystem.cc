@@ -346,8 +346,7 @@ void Swapchain::init() {
 
 
 VulkanSystem::VulkanSystem() {
-	init_instance();
-	init_device();
+	init();
 
 }
 

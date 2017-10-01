@@ -26,6 +26,10 @@ struct Global {
 	  return *(inst().ws_ptr);
 	}
 
+	static void init() {
+		inst();
+	}
+
 	VulkanSystem *vk_ptr;
 	VRSystem *vr_ptr;
 	WindowSystem *ws_ptr;

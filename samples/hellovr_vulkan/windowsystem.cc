@@ -15,6 +15,8 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 		cerr << "SDL Window problem: " << SDL_GetError() << endl;
 		throw "";
 	}
+
+	setup_window();
 }
 
 void WindowSystem::setup_window() {

@@ -38,6 +38,8 @@ VRSystem::VRSystem() {
 	eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	
 
+	setup_render_targets();
+	setup_render_models();
 }
 
 void VRSystem::render_stereo_targets() {
@@ -63,7 +65,6 @@ void VRSystem::render_stereo_targets() {
   	//render stuff
 	right_eye_fb.end_render_pass();
 	right_eye_fb.img.to_read_optimal();
-
 }
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )
