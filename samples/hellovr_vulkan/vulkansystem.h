@@ -89,11 +89,14 @@ struct Swapchain {
   std::vector< VkSemaphore > semaphores;
 
   uint32_t n_swap;
+  uint32_t frame_idx = 0;
 
   VkRenderPass renderpass, companion_renderpass;
 
   void init();
   void to_present(int i);
+
+  
 };
 
 struct VulkanSystem {

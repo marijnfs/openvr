@@ -42,6 +42,77 @@ VRSystem::VRSystem() {
 	setup_render_models();
 }
 
+void VRSystem::render_companion_window() {
+	ws = Global::ws();
+}
+
+void VRSystem::render_frame() {
+	m_currentCommandBuffer = GetCommandBuffer();
+
+	// Start the command buffer
+	VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer, &commandBufferBeginInfo );
+
+
+	render_stereo_targets();
+	render_companion_window();
+
+	vkEndCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer );
+
+	// Submit the command buffer
+	VkPipelineStageFlags nWaitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &m_currentCommandBuffer.m_pCommandBuffer;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &m_pSwapchainSemaphores[ m_nFrameIndex ];
+	submitInfo.pWaitDstStageMask = &nWaitDstStageMask;
+	vkQueueSubmit( m_pQueue, 1, &submitInfo, m_currentCommandBuffer.m_pFence );
+
+	// Add the command buffer back for later recycling
+	m_commandBuffers.push_front( m_currentCommandBuffer );
+
+	// Submit to SteamVR
+	vr::VRTextureBounds_t bounds;
+	bounds.uMin = 0.0f;
+	bounds.uMax = 1.0f;
+	bounds.vMin = 0.0f;
+	bounds.vMax = 1.0f;
+
+	vr::VRVulkanTextureData_t vulkanData;
+	vulkanData.m_nImage = ( uint64_t ) m_leftEyeDesc.m_pImage;
+	vulkanData.m_pDevice = ( VkDevice_T * ) m_pDevice;
+	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) m_pPhysicalDevice;
+	vulkanData.m_pInstance = ( VkInstance_T *) m_pInstance;
+	vulkanData.m_pQueue = ( VkQueue_T * ) m_pQueue;
+	vulkanData.m_nQueueFamilyIndex = m_nQueueFamilyIndex;
+
+	vulkanData.m_nWidth = m_nRenderWidth;
+	vulkanData.m_nHeight = m_nRenderHeight;
+	vulkanData.m_nFormat = VK_FORMAT_R8G8B8A8_SRGB;
+	vulkanData.m_nSampleCount = m_nMSAASampleCount;
+
+
+	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
+	vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
+
+	vulkanData.m_nImage = ( uint64_t ) m_rightEyeDesc.m_pImage;
+	vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
+
+	//present (for window)
+	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = NULL;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &m_pSwapchain;
+	presentInfo.pImageIndices = &m_nCurrentSwapchainImage;
+	vkQueuePresentKHR( m_pQueue, &presentInfo );
+
+	m_nFrameIndex = ( m_nFrameIndex + 1 ) % m_swapchainImages.size();
+
+}
+
 void VRSystem::render_stereo_targets() {
 	auto vk = Global::vk();
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };

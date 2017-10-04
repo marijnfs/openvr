@@ -6,6 +6,11 @@ using namespace std;
 WindowSystem::WindowSystem() : width(800), height(800) {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
 
+
+	setup_window();
+}
+
+void WindowSystem::setup_window() {
 	int pos_x = 700;
 	int pos_y = 100;
 	Uint32 wflags = SDL_WINDOW_SHOWN;
@@ -16,10 +21,10 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 		throw "";
 	}
 
-	setup_window();
-}
+	string title("Window Title");
+	SDL_SetWindowTitle( window, title.c_str() );
+	
 
-void WindowSystem::setup_window() {
 	vector<Pos2Tex2> verts;
 
 	//left eye verts

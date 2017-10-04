@@ -34,33 +34,26 @@ struct VRSystem {
 
   VRSystem();
 
-  void render_stereo_targets() ;
-
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
-
   Matrix4 get_hmd_projection( vr::Hmd_Eye eye );
-
-
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
+  void update_track_pose();
 
+
+  void render_stereo_targets() ;
   void render_scene();
+  void render_frame();
 
   void setup_render_models();
-
   void setup_render_model_for_device(int d);
-
   void setup_render_targets();
 
-  void update_track_pose();
 
   std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop);
 
   std::vector<std::string> get_inst_ext_required();
-
   std::vector<std::string> get_dev_ext_required();
-
   std::vector<std::string> get_inst_ext_required_verified();
-
   std::vector<std::string> get_dev_ext_required_verified();
 
   ~VRSystem();
