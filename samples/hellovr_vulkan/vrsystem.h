@@ -40,10 +40,11 @@ struct VRSystem {
   void update_track_pose();
 
 
+  void render_frame();
   void render_stereo_targets() ;
   void render_scene();
-  void render_frame();
-
+  void render_companion_window();
+  
   void setup_render_models();
   void setup_render_model_for_device(int d);
   void setup_render_targets();

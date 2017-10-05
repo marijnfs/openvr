@@ -171,6 +171,12 @@ struct VulkanSystem {
 
   void init_vulkan();
 
+  void start_cmd_buffer();
+
+  void end_cmd_buffer();
+
+  void submit_cmd_buffer();
+
   VkCommandBuffer cmd_buffer();
 };
 

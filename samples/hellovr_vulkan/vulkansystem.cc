@@ -946,3 +946,30 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
   // No memory types matched, return failure
   throw "err";
 }
+
+
+void VulkanSystem::start_cmd_buffer() {
+	// Start the command buffer
+	VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
+}
+
+void VulkanSystem::end_cmd_buffer() {
+	vkEndCommandBuffer( cur_cmd_buffer );
+}
+
+void VulkanSystem::submit_cmd_buffer() {
+
+// Submit the command buffer
+	VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	si.commandBufferCount = 1;
+	si.pCommandBuffers = &cur_cmd_buffer.cmd_buffer;
+	si.waitSemaphoreCount = 1;
+	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
+	si.pWaitDstStageMask = &mask;
+
+	vkQueueSubmit( queue, 1, &si, cur_cmd_buffer.fence );
+
+}

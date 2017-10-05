@@ -43,35 +43,22 @@ VRSystem::VRSystem() {
 }
 
 void VRSystem::render_companion_window() {
-	ws = Global::ws();
+	auto ws = Global::ws();
 }
 
 void VRSystem::render_frame() {
-	m_currentCommandBuffer = GetCommandBuffer();
+	auto vk = Global::vk();
 
-	// Start the command buffer
-	VkCommandBufferBeginInfo commandBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	vkBeginCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer, &commandBufferBeginInfo );
+	auto cmd_buf = vk.cmd_buffer();
+	vk.start_cmd_buffer();
+
 
 
 	render_stereo_targets();
 	render_companion_window();
 
-	vkEndCommandBuffer( m_currentCommandBuffer.m_pCommandBuffer );
-
-	// Submit the command buffer
-	VkPipelineStageFlags nWaitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_currentCommandBuffer.m_pCommandBuffer;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &m_pSwapchainSemaphores[ m_nFrameIndex ];
-	submitInfo.pWaitDstStageMask = &nWaitDstStageMask;
-	vkQueueSubmit( m_pQueue, 1, &submitInfo, m_currentCommandBuffer.m_pFence );
-
-	// Add the command buffer back for later recycling
-	m_commandBuffers.push_front( m_currentCommandBuffer );
+	vk.end_cmd_buffer();
+	vk.submit_cmd_buffer();
 
 	// Submit to SteamVR
 	vr::VRTextureBounds_t bounds;
