@@ -527,6 +527,24 @@ void Descriptor::register_model_texture(VkBuffer buf, VkImageView view, VkSample
 	vkUpdateDescriptorSets( vk.dev, _countof( write_desc_set ), write_desc_set, 0, nullptr );
 }
 
+void Descriptor::bind() {	
+	auto vk = Global::vk();
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
+
+
+
+	// vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	
+	// // Update the persistently mapped pointer to the CB data with the latest matrix
+	// memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+
+	// vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+
+	// // Draw
+	// VkDeviceSize nOffsets[ 1 ] = { 0 };
+	// vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+}
+
 
 void VulkanSystem::init() {
 	init_instance();

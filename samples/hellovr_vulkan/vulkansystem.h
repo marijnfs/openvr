@@ -48,10 +48,15 @@ struct RenderModel {
 struct Descriptor {
 	int idx = 0;
 	VkDescriptorSet desc;
+  VkImageView *view_ptr = 0;
+  VkSampler *sampler_ptr = 0;
+  VkBuffer *buffer_ptr = 0;
 
 	void init();
 	void register_texture(VkImageView view);
 	void register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler);
+
+  void bind();
 };
 
 
