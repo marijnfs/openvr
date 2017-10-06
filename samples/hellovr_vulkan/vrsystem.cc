@@ -159,7 +159,17 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 }
 
 void VRSystem::render_scene() {
+	vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	
+	// Update the persistently mapped pointer to the CB data with the latest matrix
+	memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
+	vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+
+	// Draw
+	VkDeviceSize nOffsets[ 1 ] = { 0 };
+	vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+	vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
 }
 
 void VRSystem::setup_render_models()

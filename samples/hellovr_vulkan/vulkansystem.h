@@ -121,16 +121,19 @@ struct VulkanSystem {
 
 
   VkDescriptorPool desc_pool;
-  std::vector<VkDescriptorSet> desc_sets;
   VkDescriptorSetLayout desc_set_layout;
+  std::vector<VkDescriptorSet> desc_sets;
 
   Buffer scene_constant_buffer[2]; //for both eyes
+
 	VkImage scene_img;
 	VkDeviceMemory scene_img_mem;
 	VkImageView scene_img_view;
+
 	Buffer scene_staging;
 	VkBuffer scene_staging_buffer;
 	VkDeviceMemory scene_staging_buffer_memory;
+
 	VkSampler scene_sampler;
 
   //Shader stuff
