@@ -90,13 +90,14 @@ struct Swapchain {
 
   uint32_t n_swap;
   uint32_t frame_idx = 0;
+  uint32_t current_swapchain_image = 0;
 
   VkRenderPass renderpass, companion_renderpass;
 
   void init();
   void to_present(int i);
 
-  
+  void get_image();  
 };
 
 struct VulkanSystem {

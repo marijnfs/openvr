@@ -900,6 +900,13 @@ void Swapchain::to_present(int i) {
 	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
+void Swapchain::get_image() {
+	auto vk = Global::vk();
+	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
+
+
+}
+
 void VulkanSystem::init_vulkan() {
 	init_instance();
 	init_device();

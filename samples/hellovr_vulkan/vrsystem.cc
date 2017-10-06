@@ -52,7 +52,7 @@ void VRSystem::render_frame() {
 	auto cmd_buf = vk.cmd_buffer();
 	vk.start_cmd_buffer();
 
-
+	vk.swapchain.get_image();
 
 	render_stereo_targets();
 	render_companion_window();
@@ -68,36 +68,35 @@ void VRSystem::render_frame() {
 	bounds.vMax = 1.0f;
 
 	vr::VRVulkanTextureData_t vulkanData;
-	vulkanData.m_nImage = ( uint64_t ) m_leftEyeDesc.m_pImage;
-	vulkanData.m_pDevice = ( VkDevice_T * ) m_pDevice;
-	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) m_pPhysicalDevice;
-	vulkanData.m_pInstance = ( VkInstance_T *) m_pInstance;
-	vulkanData.m_pQueue = ( VkQueue_T * ) m_pQueue;
-	vulkanData.m_nQueueFamilyIndex = m_nQueueFamilyIndex;
+	vulkanData.m_nImage = ( uint64_t ) left_eye_fb.image.img;
+	vulkanData.m_pDevice = ( VkDevice_T * ) vk.dev;
+	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) vk.phys_dev;
+	vulkanData.m_pInstance = ( VkInstance_T *) vk.inst;
+	vulkanData.m_pQueue = ( VkQueue_T * ) vk.queue;
+	vulkanData.m_nQueueFamilyIndex = vk.graphics_queue;
 
-	vulkanData.m_nWidth = m_nRenderWidth;
-	vulkanData.m_nHeight = m_nRenderHeight;
+	vulkanData.m_nWidth = render_width;
+	vulkanData.m_nHeight = render_height;
 	vulkanData.m_nFormat = VK_FORMAT_R8G8B8A8_SRGB;
-	vulkanData.m_nSampleCount = m_nMSAASampleCount;
+	vulkanData.m_nSampleCount = vk.msaa;
 
 
 	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
 	vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
 
-	vulkanData.m_nImage = ( uint64_t ) m_rightEyeDesc.m_pImage;
+	vulkanData.m_nImage = ( uint64_t ) right_eye_fb.image.img;
 	vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
 
-	//present (for window)
-	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = NULL;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &m_pSwapchain;
-	presentInfo.pImageIndices = &m_nCurrentSwapchainImage;
-	vkQueuePresentKHR( m_pQueue, &presentInfo );
+	//present (for companion window)
+	VkPresentInfoKHR pi = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+	pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	pi.pNext = NULL;
+	pi.swapchainCount = 1;
+	pi.pSwapchains = &swapchain.swapchain;
+	pi.pImageIndices = &vk.swapchain.current_swapchain_image;
+	vkQueuePresentKHR( vk.queue, &pi );
 
-	m_nFrameIndex = ( m_nFrameIndex + 1 ) % m_swapchainImages.size();
-
+	swapchain.frame_idx = ( swapchain.frame_idx + 1 ) % swapchain.images.size();
 }
 
 void VRSystem::render_stereo_targets() {
@@ -300,46 +299,46 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 	return instance_ext_req;
 }
 
-	vector<string> VRSystem::get_dev_ext_required_verified() {
-		auto vk = Global::vk();
-		auto dev_ext_req = get_dev_ext_required();
-		dev_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
+vector<string> VRSystem::get_dev_ext_required_verified() {
+	auto vk = Global::vk();
+	auto dev_ext_req = get_dev_ext_required();
+	dev_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
 
-#if defined ( _WIN32 )
-		dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
-#else
-		//dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
-#endif
+	#if defined ( _WIN32 )
+	dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
+	#else
+	//dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+	#endif
 
 
-		uint32_t n_dev_ext(0);
-		check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
+	uint32_t n_dev_ext(0);
+	check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
 
-		vector<VkExtensionProperties> ext_prop(n_dev_ext);
+	vector<VkExtensionProperties> ext_prop(n_dev_ext);
 
-		check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
+	check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
 
-		for (auto req_dev : dev_ext_req) {
-			bool found(false);
-			for (auto prop : ext_prop)
-				if (req_dev == string(prop.extensionName))
-					found = true;
-				if (!found) {
-					cerr << "couldn't find extension" << endl;
-					throw "";
-				}
+	for (auto req_dev : dev_ext_req) {
+		bool found(false);
+		for (auto prop : ext_prop)
+			if (req_dev == string(prop.extensionName))
+				found = true;
+			if (!found) {
+				cerr << "couldn't find extension" << endl;
+				throw "";
 			}
-			
-			return dev_ext_req;
-		}
+	}
+		
+	return dev_ext_req;
+}
 
-		VRSystem::~VRSystem() {
-			vr::VR_Shutdown();
-		}
+VRSystem::~VRSystem() {
+	vr::VR_Shutdown();
+}
 
-		void VRSystem::setup_render_targets() {
-			hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
-			left_eye_fb.init(render_width, render_height);
-			right_eye_fb.init(render_width, render_height);
-			
-		}
+void VRSystem::setup_render_targets() {
+	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
+	left_eye_fb.init(render_width, render_height);
+	right_eye_fb.init(render_width, render_height);
+	
+}

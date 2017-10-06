@@ -15,7 +15,7 @@ struct WindowSystem {
   WindowSystem();
 
   void setup_window();
-
+  
 };
 
 #endif
