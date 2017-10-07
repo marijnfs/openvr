@@ -135,11 +135,11 @@ struct VulkanSystem {
 	VkDeviceMemory scene_img_mem;
 	VkImageView scene_img_view;
 
-	Buffer scene_staging;
-	VkBuffer scene_staging_buffer;
-	VkDeviceMemory scene_staging_buffer_memory;
+	// Buffer scene_staging;
+	// VkBuffer scene_staging_buffer;
+	// VkDeviceMemory scene_staging_buffer_memory;
 
-	VkSampler scene_sampler;
+	// VkSampler scene_sampler;
 
   //Shader stuff
   VkShaderModule shader_modules_vs[PSO_COUNT], shader_modules_ps[PSO_COUNT];
@@ -149,6 +149,7 @@ struct VulkanSystem {
 
   std::deque< FencedCommandBuffer > cmd_buffers;
   VkCommandBuffer cur_cmd_buffer;
+  VkFence cur_fence;
 
   VkSampler sampler;
 

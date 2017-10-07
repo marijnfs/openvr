@@ -7,6 +7,7 @@
 
 #include "shared/Matrices.h"
 #include "buffer.h"
+#include "vulkansystem.h"
 
 struct VRSystem {
   vr::IVRSystem *hmd;
@@ -29,6 +30,9 @@ struct VRSystem {
   //buffers
   std::vector<Buffer> eye_pos_buffer;
 
+  //graphics objects
+  std::vector<GraphicsObject> objects;
+
   uint32_t render_width, render_height;
   float near_clip, far_clip;
 
@@ -44,7 +48,7 @@ struct VRSystem {
   void render_stereo_targets() ;
   void render_scene();
   void render_companion_window();
-  
+
   void setup_render_models();
   void setup_render_model_for_device(int d);
   void setup_render_targets();

@@ -945,12 +945,15 @@ VkCommandBuffer VulkanSystem::cmd_buffer() {
 		if (buf.finished()) {
 			buf.reset();
 			cur_cmd_buffer = buf.cmd_buffer;
+			cur_fence = buf.fence;
 			return cur_cmd_buffer;
 		}
 	}
 	cmd_buffers.push_back(FencedCommandBuffer());
 	cmd_buffers.back().init();
 	cur_cmd_buffer = cmd_buffers.back().cmd_buffer;
+	cur_fence = cmd_buffers.back().fence;
+
 	return cur_cmd_buffer;
 }
 
@@ -990,11 +993,11 @@ void VulkanSystem::submit_cmd_buffer() {
 	VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	si.commandBufferCount = 1;
-	si.pCommandBuffers = &cur_cmd_buffer.cmd_buffer;
+	si.pCommandBuffers = &cur_cmd_buffer;
 	si.waitSemaphoreCount = 1;
 	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
 	si.pWaitDstStageMask = &mask;
 
-	vkQueueSubmit( queue, 1, &si, cur_cmd_buffer.fence );
+	vkQueueSubmit( queue, 1, &si, cur_fence );
 
 }

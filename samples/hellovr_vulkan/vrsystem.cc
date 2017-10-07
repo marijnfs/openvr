@@ -68,7 +68,7 @@ void VRSystem::render_frame() {
 	bounds.vMax = 1.0f;
 
 	vr::VRVulkanTextureData_t vulkanData;
-	vulkanData.m_nImage = ( uint64_t ) left_eye_fb.image.img;
+	vulkanData.m_nImage = ( uint64_t ) left_eye_fb.img.img;
 	vulkanData.m_pDevice = ( VkDevice_T * ) vk.dev;
 	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) vk.phys_dev;
 	vulkanData.m_pInstance = ( VkInstance_T *) vk.inst;
@@ -84,7 +84,7 @@ void VRSystem::render_frame() {
 	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
 	vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
 
-	vulkanData.m_nImage = ( uint64_t ) right_eye_fb.image.img;
+	vulkanData.m_nImage = ( uint64_t ) right_eye_fb.img.img;
 	vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
 
 	//present (for companion window)
@@ -92,11 +92,11 @@ void VRSystem::render_frame() {
 	pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	pi.pNext = NULL;
 	pi.swapchainCount = 1;
-	pi.pSwapchains = &swapchain.swapchain;
+	pi.pSwapchains = &vk.swapchain.swapchain;
 	pi.pImageIndices = &vk.swapchain.current_swapchain_image;
 	vkQueuePresentKHR( vk.queue, &pi );
 
-	swapchain.frame_idx = ( swapchain.frame_idx + 1 ) % swapchain.images.size();
+	vk.swapchain.frame_idx = ( vk.swapchain.frame_idx + 1 ) % vk.swapchain.images.size();
 }
 
 void VRSystem::render_stereo_targets() {
@@ -159,17 +159,8 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 }
 
 void VRSystem::render_scene() {
-	vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
-	
-	// Update the persistently mapped pointer to the CB data with the latest matrix
-	memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
-
-	vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
-
-	// Draw
-	VkDeviceSize nOffsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
-	vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
+	for (auto ob : objects)
+		ob.draw();
 }
 
 void VRSystem::setup_render_models()
