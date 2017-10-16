@@ -200,6 +200,11 @@ void VRSystem::update_track_pose() {
 	}
 }
 
+GraphicsObject &VRSystem::create_object() {
+	
+}
+
+
 string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
 	vr::TrackedPropertyError *err = NULL;
 	uint32_t buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );

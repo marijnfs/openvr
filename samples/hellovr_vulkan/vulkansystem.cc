@@ -85,40 +85,40 @@ void GraphicsObject::init_cube(Matrix4 pos) {
 	add_vertex( H.x, H.y, H.z, 0, 0);
 	add_vertex( E.x, E.y, E.z, 0, 1);
 
-add_vertex( B.x, B.y, B.z, 0, 1); //Back
-add_vertex( A.x, A.y, A.z, 1, 1);
-add_vertex( D.x, D.y, D.z, 1, 0);
-add_vertex( D.x, D.y, D.z, 1, 0);
-add_vertex( C.x, C.y, C.z, 0, 0);
-add_vertex( B.x, B.y, B.z, 0, 1);
+	add_vertex( B.x, B.y, B.z, 0, 1); //Back
+	add_vertex( A.x, A.y, A.z, 1, 1);
+	add_vertex( D.x, D.y, D.z, 1, 0);
+	add_vertex( D.x, D.y, D.z, 1, 0);
+	add_vertex( C.x, C.y, C.z, 0, 0);
+	add_vertex( B.x, B.y, B.z, 0, 1);
 
-add_vertex( H.x, H.y, H.z, 0, 1); //Top
-add_vertex( G.x, G.y, G.z, 1, 1);
-add_vertex( C.x, C.y, C.z, 1, 0);
-add_vertex( C.x, C.y, C.z, 1, 0);
-add_vertex( D.x, D.y, D.z, 0, 0);
-add_vertex( H.x, H.y, H.z, 0, 1);
+	add_vertex( H.x, H.y, H.z, 0, 1); //Top
+	add_vertex( G.x, G.y, G.z, 1, 1);
+	add_vertex( C.x, C.y, C.z, 1, 0);
+	add_vertex( C.x, C.y, C.z, 1, 0);
+	add_vertex( D.x, D.y, D.z, 0, 0);
+	add_vertex( H.x, H.y, H.z, 0, 1);
 
-add_vertex( A.x, A.y, A.z, 0, 1); //Bottom
-add_vertex( B.x, B.y, B.z, 1, 1);
-add_vertex( F.x, F.y, F.z, 1, 0);
-add_vertex( F.x, F.y, F.z, 1, 0);
-add_vertex( E.x, E.y, E.z, 0, 0);
-add_vertex( A.x, A.y, A.z, 0, 1);
+	add_vertex( A.x, A.y, A.z, 0, 1); //Bottom
+	add_vertex( B.x, B.y, B.z, 1, 1);
+	add_vertex( F.x, F.y, F.z, 1, 0);
+	add_vertex( F.x, F.y, F.z, 1, 0);
+	add_vertex( E.x, E.y, E.z, 0, 0);
+	add_vertex( A.x, A.y, A.z, 0, 1);
 
-add_vertex( A.x, A.y, A.z, 0, 1); //Left
-add_vertex( E.x, E.y, E.z, 1, 1);
-add_vertex( H.x, H.y, H.z, 1, 0);
-add_vertex( H.x, H.y, H.z, 1, 0);
-add_vertex( D.x, D.y, D.z, 0, 0);
-add_vertex( A.x, A.y, A.z, 0, 1);
+	add_vertex( A.x, A.y, A.z, 0, 1); //Left
+	add_vertex( E.x, E.y, E.z, 1, 1);
+	add_vertex( H.x, H.y, H.z, 1, 0);
+	add_vertex( H.x, H.y, H.z, 1, 0);
+	add_vertex( D.x, D.y, D.z, 0, 0);
+	add_vertex( A.x, A.y, A.z, 0, 1);
 
-add_vertex( F.x, F.y, F.z, 0, 1); //Right
-add_vertex( B.x, B.y, B.z, 1, 1);
-add_vertex( C.x, C.y, C.z, 1, 0);
-add_vertex( C.x, C.y, C.z, 1, 0);
-add_vertex( G.x, G.y, G.z, 0, 0);
-add_vertex( F.x, F.y, F.z, 0, 1);
+	add_vertex( F.x, F.y, F.z, 0, 1); //Right
+	add_vertex( B.x, B.y, B.z, 1, 1);
+	add_vertex( C.x, C.y, C.z, 1, 0);
+	add_vertex( C.x, C.y, C.z, 1, 0);
+	add_vertex( G.x, G.y, G.z, 0, 0);
+	add_vertex( F.x, F.y, F.z, 0, 1);
 }
 
 void GraphicsObject::add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4) {

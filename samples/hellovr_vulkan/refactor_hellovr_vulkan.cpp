@@ -24,4 +24,16 @@ using namespace std;
 int main() {
   Global::inst();
 
+  auto vr = Global::vr();
+
+  auto &ob = vr.create_object();
+
+  Matrix4 pos;
+  pos.translate(1, 1, 1);
+
+  ob.init_cube(pos);
+
+  while (true) {
+  	vr.render_frame();
+  }
 }

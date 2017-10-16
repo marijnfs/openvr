@@ -75,7 +75,6 @@ struct GraphicsObject {
 	void init_cube(Matrix4 pos);
   void init_screen();
   void set_pos(std::vector<float>);
-  //void set_pos(std::vector<float>);
 
 
 
