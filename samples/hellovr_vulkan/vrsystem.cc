@@ -201,7 +201,8 @@ void VRSystem::update_track_pose() {
 }
 
 GraphicsObject &VRSystem::create_object() {
-	
+	objects.push_back(GraphicsObject());
+	return last(objects);
 }
 
 
