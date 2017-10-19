@@ -33,6 +33,7 @@ VRSystem::VRSystem() {
 		throw "";
 	}
 
+	//setup eye pos buffer
 	eye_pos_buffer.resize(2);
 	eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
@@ -40,6 +41,13 @@ VRSystem::VRSystem() {
 
 	setup_render_targets();
 	setup_render_models();
+}
+
+void VRSystem::setup_render_targets() {
+	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
+	left_eye_fb.init(render_width, render_height);
+	right_eye_fb.init(render_width, render_height);
+	
 }
 
 void VRSystem::render_companion_window() {
@@ -343,9 +351,3 @@ VRSystem::~VRSystem() {
 	vr::VR_Shutdown();
 }
 
-void VRSystem::setup_render_targets() {
-	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
-	left_eye_fb.init(render_width, render_height);
-	right_eye_fb.init(render_width, render_height);
-	
-}
