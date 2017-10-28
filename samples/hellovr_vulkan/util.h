@@ -1,6 +1,7 @@
 #ifndef __UTIL_REFRACTOR_H__
 #define __UTIL_REFRACTOR_H__
 
+#include <vector>
 #include <string>
 #include <fstream>
 #include <streambuf>
@@ -35,6 +36,11 @@ inline void check(VkResult res, std::string str, T other) {
   }
 }
 
+template <typename T>
+inline T &last(std::vector<T> &v) {
+	assert(v.size());
+	return v[v.size() - 1];
+}
 
 inline void check(VkResult res, std::string str) {
 	check(res, str, "");
