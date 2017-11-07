@@ -11,6 +11,10 @@
 using namespace std;
 
 VRSystem::VRSystem() {
+}
+
+void VRSystem::init() {
+	
 	render_width = 0;
 	render_height = 0;
 

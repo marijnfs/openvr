@@ -36,7 +36,9 @@ struct VRSystem {
   uint32_t render_width, render_height;
   float near_clip, far_clip;
 
+
   VRSystem();
+  void init();
 
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
   Matrix4 get_hmd_projection( vr::Hmd_Eye eye );

@@ -4,6 +4,10 @@
 using namespace std;
 
 WindowSystem::WindowSystem() : width(800), height(800) {
+
+}
+
+void WindowSystem::init() {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
 
 
@@ -11,6 +15,7 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 }
 
 void WindowSystem::setup_window() {
+	cout << "in setup window" << endl;
 	int pos_x = 700;
 	int pos_y = 100;
 	Uint32 wflags = SDL_WINDOW_SHOWN;
@@ -20,6 +25,8 @@ void WindowSystem::setup_window() {
 		cerr << "SDL Window problem: " << SDL_GetError() << endl;
 		throw "";
 	}
+
+	cout << "setting title" << endl;
 
 	string title("Window Title");
 	SDL_SetWindowTitle( window, title.c_str() );
@@ -41,8 +48,11 @@ void WindowSystem::setup_window() {
 
 	uint16_t indices[] = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6};
 
+	cout << "setting up buffers" << endl;
 
 //aTODO: add initialisation
 	vertex_buf.init(sizeof(Pos2Tex2) * verts.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
 	index_buf.init(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
+
+	cout << " done with buffers" << endl;
 }

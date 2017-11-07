@@ -13,8 +13,10 @@ struct WindowSystem {
   Buffer vertex_buf, index_buf;
 
   WindowSystem();
+  void init();
 
   void setup_window();
+
   
 };
 

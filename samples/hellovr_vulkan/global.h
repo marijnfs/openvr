@@ -15,14 +15,30 @@ struct Global {
 	}
 
 	static VulkanSystem &vk() {
-	  return *(inst().vk_ptr);
+		if (!inst().vk_ptr) {
+		  inst().vk_ptr = new VulkanSystem();
+		  inst().vk_ptr->init();
+		}
+
+
+		return *(inst().vk_ptr);
 	}
 
 	static VRSystem &vr() {
+		if (!inst().vr_ptr) {
+			inst().vr_ptr = new VRSystem();
+			inst().vr_ptr->init();
+		}
+
 	  return *(inst().vr_ptr);
 	}
 
 	static WindowSystem &ws() {
+		if (!inst().ws_ptr) {
+		  inst().ws_ptr = new WindowSystem();
+		  inst().ws_ptr->init();
+		}
+
 	  return *(inst().ws_ptr);
 	}
 

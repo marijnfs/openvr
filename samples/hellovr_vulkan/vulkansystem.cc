@@ -346,8 +346,6 @@ void Swapchain::init() {
 
 
 VulkanSystem::VulkanSystem() {
-	init();
-
 }
 
 void VulkanSystem::submit(FencedCommandBuffer fcb) {
@@ -362,8 +360,6 @@ void VulkanSystem::wait_queue() {
 }
 
 void VulkanSystem::init_instance() {
-
-
 	VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	app_info.pApplicationName = "hellovr_vulkan";
 	app_info.applicationVersion = 1;
@@ -371,6 +367,7 @@ void VulkanSystem::init_instance() {
 	app_info.engineVersion = 1;
 	app_info.apiVersion = VK_MAKE_VERSION( 1, 0, 0 );
 
+	cout << "getting ext" << endl;
 
 	int layer_count(0);
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
@@ -387,6 +384,7 @@ void VulkanSystem::init_instance() {
 	ici.enabledLayerCount = layer_count;
 	ici.ppEnabledLayerNames = 0; //might need validation layers later
 
+	cout << "creating instance" << endl;
 	check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
 }
 

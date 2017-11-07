@@ -22,7 +22,7 @@ using namespace std;
 
 
 int main() {
-  Global::inst();
+  Global::init();
 
   auto vr = Global::vr();
 
