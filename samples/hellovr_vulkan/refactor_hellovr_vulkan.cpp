@@ -23,7 +23,7 @@ using namespace std;
 
 int main() {
   Global::init();
-
+  /*
   auto vr = Global::vr();
 
   auto &ob = vr.create_object();
@@ -36,4 +36,10 @@ int main() {
   while (true) {
   	vr.render_frame();
   }
+
+  */ 
+
+  Global::vk();
+  Global::ws();
+  while (true) ;
 }
