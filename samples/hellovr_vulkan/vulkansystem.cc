@@ -131,6 +131,7 @@ void GraphicsObject::add_vertex(float fl0, float fl1, float fl2, float fl3, floa
 
 // ===== SwapChain =======
 void Swapchain::init() {
+	cout << "initialising swapchain" << endl;
 	auto window = Global::ws();
 	auto vk = Global::vk();
 
@@ -180,7 +181,6 @@ void Swapchain::init() {
 	swap_format = swap_formats[format_index].format;
 	color_space = swap_formats[format_index].colorSpace;
 
-
 //check capabilities
 	VkSurfaceCapabilitiesKHR surface_caps = {};
 	check( vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk.phys_dev, surface, &surface_caps ), "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
@@ -214,6 +214,7 @@ void Swapchain::init() {
 		if (mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR && mode != VK_PRESENT_MODE_MAILBOX_KHR)
 			present_mode = mode;	
 	}
+
 
 	n_swap = surface_caps.minImageCount;
 	if (n_swap < 2) n_swap = 2;
@@ -264,6 +265,8 @@ void Swapchain::init() {
 	images.resize(n_swap);
 	check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, &images[0]), "vkGetSwapchainImagesKHR");
 
+
+	return ;
 
 // Create a renderpass
 	uint32_t n_att = 1;
@@ -340,12 +343,16 @@ void Swapchain::init() {
 		vkCreateSemaphore( vk.dev, &semci, nullptr, &semaphore );
 		semaphores.push_back( semaphore );
 	}
+
+	cout << "done initialising swapchain" << endl;
+
 }
 
 // ==== Vulkan System====
 
 
 VulkanSystem::VulkanSystem() {
+
 }
 
 void VulkanSystem::submit(FencedCommandBuffer fcb) {

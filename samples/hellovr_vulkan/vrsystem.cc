@@ -14,7 +14,8 @@ VRSystem::VRSystem() {
 }
 
 void VRSystem::init() {
-	
+	cout << "initialising VRSystem" << endl;
+
 	render_width = 0;
 	render_height = 0;
 
@@ -45,6 +46,8 @@ void VRSystem::init() {
 
 	setup_render_targets();
 	setup_render_models();
+
+	cout << "done initialising VRSystem" << endl;
 }
 
 void VRSystem::setup_render_targets() {

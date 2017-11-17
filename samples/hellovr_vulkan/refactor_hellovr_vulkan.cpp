@@ -41,5 +41,7 @@ int main() {
 
   Global::vk();
   Global::ws();
-  while (true) ;
+  while (true) {
+  	cout << "lala" << endl;
+  }
 }
