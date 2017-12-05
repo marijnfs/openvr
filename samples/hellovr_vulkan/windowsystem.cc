@@ -46,3 +46,7 @@ void WindowSystem::setup_window() {
 	vertex_buf.init(sizeof(Pos2Tex2) * verts.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
 	index_buf.init(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
 }
+
+void WindowSystem::show_message(string str) {
+	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "VR_Init Failed", str.c_str(), NULL );
+}
