@@ -39,8 +39,9 @@ int main() {
 
   */ 
 
-  Global::vk();
-  Global::ws();
+  //Global::vk();
+  Global::vr();
+  //Global::ws();
   while (true) {
   	cout << "lala" << endl;
   }

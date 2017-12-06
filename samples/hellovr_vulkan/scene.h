@@ -4,6 +4,9 @@
 #include "vrsystem.h"
 #include "vulkansystem.h"
 
+// place to create buffers for scene and store objects
+// instead of bloating the vulkan system class
+
 struct Scene {
 	std::vector<GraphicsObject> objects;
 	
