@@ -155,12 +155,13 @@ struct VulkanSystem {
   VkDebugReportCallbackEXT debug_callback;
 
   VulkanSystem() ;
+  void init(); //general init
+
 
   void submit(FencedCommandBuffer fcb);
 
   void wait_queue();
 
-  void init(); //general init
 
   void init_instance();
 

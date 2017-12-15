@@ -26,6 +26,7 @@ int main() {
   Global::ws();
   Global::vr();
 
+  /*
   auto vr = Global::vr();
 
   //setup environment
@@ -50,5 +51,10 @@ int main() {
 
   	// step simulation
   	vr.step(action);
+  }
+
+  */ 
+  while (true) {
+  	cout << "lala" << endl;
   }
 }
