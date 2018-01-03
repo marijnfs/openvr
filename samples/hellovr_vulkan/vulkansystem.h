@@ -158,7 +158,7 @@ struct VulkanSystem {
   void init(); //general init
 
 
-  void submit(FencedCommandBuffer fcb);
+  void submit(FencedCommandBuffer &fcb);
 
   void wait_queue();
 

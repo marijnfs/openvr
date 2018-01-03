@@ -5,7 +5,7 @@
 #include "vulkansystem.h"
 
 struct Scene {
-	std::vector<GraphicsObject> objects;
+	std::vector<GraphicsObject*> objects;
 	
 
 };

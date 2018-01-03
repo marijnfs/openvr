@@ -355,7 +355,7 @@ VulkanSystem::VulkanSystem() {
 
 }
 
-void VulkanSystem::submit(FencedCommandBuffer fcb) {
+void VulkanSystem::submit(FencedCommandBuffer &fcb) {
 	VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submiti.commandBufferCount = 1;
 	submiti.pCommandBuffers = &fcb.cmd_buffer;
