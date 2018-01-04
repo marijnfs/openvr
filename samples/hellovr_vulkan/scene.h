@@ -8,14 +8,12 @@
 // instead of bloating the vulkan system class
 
 //Scene Object
-struct Object {
-
-};
-
 
 
 struct Scene {
-	std::vector<Object*> objects;
+	std::vector<GraphicsObject*> objects;
+
+
 };
 
 #endif

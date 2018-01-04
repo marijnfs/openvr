@@ -56,3 +56,7 @@ void WindowSystem::setup_window() {
 
 	cout << " done with buffers" << endl;
 }
+
+void WindowSystem::show_message(string str) {
+	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "VR_Init Failed", str.c_str(), NULL );
+}

@@ -128,11 +128,11 @@ struct VulkanSystem {
   VkDescriptorSetLayout desc_set_layout;
   std::vector<VkDescriptorSet> desc_sets;
 
-  Buffer scene_constant_buffer[2]; //for both eyes
+  //Buffer scene_constant_buffer[2]; //for both eyes
 
-	VkImage scene_img;
-	VkDeviceMemory scene_img_mem;
-	VkImageView scene_img_view;
+	//VkImage scene_img;
+	//VkDeviceMemory scene_img_mem;
+	//VkImageView scene_img_view;
 
 	// Buffer scene_staging;
 	// VkBuffer scene_staging_buffer;
@@ -158,7 +158,7 @@ struct VulkanSystem {
   void init(); //general init
 
 
-  void submit(FencedCommandBuffer fcb);
+  void submit(FencedCommandBuffer &fcb);
 
   void wait_queue();
 
