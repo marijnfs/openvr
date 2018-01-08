@@ -4,7 +4,7 @@
 #include "vulkansystem.h"
 #include "vrsystem.h"
 #include "windowsystem.h"
-
+#include "scene.h"
 
 struct Global {
 	Global();
@@ -45,13 +45,25 @@ struct Global {
 	  return *(inst().ws_ptr);
 	}
 
+
+	static Scene &scene() {
+		if (!inst().scene_ptr) {
+			inst().scene_ptr = new Scene();
+			inst().scene_ptr->init();
+		}
+
+		return *(inst().scene_ptr);
+	}
+
 	static void init() {
 		inst();
 	}
 
-	VulkanSystem *vk_ptr;
-	VRSystem *vr_ptr;
-	WindowSystem *ws_ptr;
+	VulkanSystem *vk_ptr = 0;
+	VRSystem *vr_ptr = 0;
+	WindowSystem *ws_ptr = 0;
+	Scene *scene_ptr = 0;
 };
+
 
 #endif
