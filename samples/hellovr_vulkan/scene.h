@@ -8,15 +8,26 @@
 #include "vrsystem.h"
 #include "vulkansystem.h"
 
-// place to create buffers for scene and store objects
-// instead of bloating the vulkan system class
-
-//Scene Object
-
+//triggers to set up events
+struct Trigger {
+  
+  Object *obj;
+  Controller *con;
+  
+  void check() {
+    auto pos = obj->get_pos();
+    auto con_pos = con->get_pos();
+    float d = dist(pos, con_pos);
+    if (d < .1) {
+      triggered();
+    }
+  }
+};
 
 struct Scene {
 	std::map<std::string, GraphicsObject*> objects;
-
+  std::vector<Trigger*> triggers;
+  
 	void init();
 
 	void add_plane(std::string name);
@@ -25,6 +36,13 @@ struct Scene {
 
 	
 
+  
+
+  void set_rotation(vector<float> &rot);
+
+  void process_triggers(); //step through triggers
+  
+  
 };
 
 #endif
