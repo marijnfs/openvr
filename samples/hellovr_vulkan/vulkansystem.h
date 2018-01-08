@@ -179,7 +179,7 @@ struct VulkanSystem {
 
   void swapchain_to_present(int i);
 
-  void init_vulkan();
+ //void init_vulkan();
 
   void start_cmd_buffer();
 

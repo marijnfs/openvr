@@ -130,8 +130,10 @@ void GraphicsObject::add_vertex(float fl0, float fl1, float fl2, float fl3, floa
 }
 
 // ===== SwapChain =======
+
 void Swapchain::init() {
 	cout << "initialising swapchain" << endl;
+
 	auto window = Global::ws();
 	auto vk = Global::vk();
 
@@ -266,7 +268,6 @@ void Swapchain::init() {
 	check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, &images[0]), "vkGetSwapchainImagesKHR");
 
 
-	return ;
 
 // Create a renderpass
 	uint32_t n_att = 1;
@@ -397,7 +398,7 @@ void VulkanSystem::init_instance() {
 
 void VulkanSystem::init_device() {
 	auto vr = Global::vr();
-
+	
 	uint32_t n_dev(0);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
 	vector<VkPhysicalDevice> devices(n_dev);
@@ -554,7 +555,7 @@ void Descriptor::bind() {
 void VulkanSystem::init() {
 	init_instance();
 	init_device();
-	
+
 	init_descriptor_sets();
 	init_shaders();
 }
@@ -930,19 +931,19 @@ void Swapchain::get_image() {
 
 }
 
-void VulkanSystem::init_vulkan() {
-	init_instance();
-	init_device();
-	swapchain.init();
+// void VulkanSystem::init_vulkan() {
+// 	init_instance();
+// 	init_device();
+// 	swapchain.init();
 	
-	// Create the command pool
-	{
-		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-		cmdpoolci.queueFamilyIndex = graphics_queue;
-		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
-	}
-}
+// 	// Create the command pool
+// 	{
+// 		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+// 		cmdpoolci.queueFamilyIndex = graphics_queue;
+// 		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+// 		check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+// 	}
+// }
 
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {

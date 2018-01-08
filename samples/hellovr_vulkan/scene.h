@@ -28,7 +28,6 @@ struct Scene {
   void set_rotation(vector<float> &rot);
 
   void process_triggers(); //step through triggers
-
   
   
 };
