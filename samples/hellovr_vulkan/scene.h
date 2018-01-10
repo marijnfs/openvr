@@ -18,22 +18,22 @@ struct Trigger {
     auto pos = obj->get_pos();
     auto con_pos = con->get_pos();
     float d = dist(pos, con_pos);
-    if (d < .1) {
-      triggered();
-    }
+    return d < .1;
   }
+
+  void triggered() {}
 };
 
 struct Scene {
-	std::map<std::string, GraphicsObject*> objects;
+  std::map<std::string, GraphicsObject*> objects;
   std::vector<Trigger*> triggers;
   
-	void init();
-
-	void add_plane(std::string name);
-
-	void set_pos(std::string, std::vector<float> pos);
-
+  void init();
+  
+  void add_plane(std::string name);
+  
+  void set_pos(std::string, std::vector<float> pos);
+  
 	
 
   
