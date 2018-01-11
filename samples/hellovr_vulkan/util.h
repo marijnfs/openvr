@@ -137,6 +137,13 @@ inline void gen_mipmap_rgba( const uint8_t *src, uint8_t *dst, int width, int he
 	}
 }
 
+inline float dist(std::vector<float> &v1, std::vector<float> &v2) {
+  float d(0);
+  std::vector<float>::const_iterator it1(v1.begin()), end1(v1.end()), it2(v2.begin());
+  for (; it1 != end1; ++it1, ++it2)
+    d += (*it1 - *it2) * (*it1 - *it2);
+  return sqrt(d);
+}
 
 inline Matrix4 vrmat_to_mat4( const vr::HmdMatrix34_t &matPose )
 {

@@ -7,14 +7,22 @@
 
 #include "vrsystem.h"
 #include "vulkansystem.h"
+#include "util.h"
+
+
+struct Object {
+  GraphicsObject go;
+
+  std::vector<float> get_pos();
+
+};
 
 //triggers to set up events
 struct Trigger {
-  
   Object *obj;
   Controller *con;
   
-  void check() {
+  bool check() {
     auto pos = obj->get_pos();
     auto con_pos = con->get_pos();
     float d = dist(pos, con_pos);
@@ -25,7 +33,7 @@ struct Trigger {
 };
 
 struct Scene {
-  std::map<std::string, GraphicsObject*> objects;
+  std::map<std::string, Object*> objects;
   std::vector<Trigger*> triggers;
   
   void init();
@@ -33,16 +41,9 @@ struct Scene {
   void add_plane(std::string name);
   
   void set_pos(std::string, std::vector<float> pos);
-  
-	
-
-  
-
-  void set_rotation(vector<float> &rot);
+  void set_rotation(std::vector<float> &rot);
 
   void process_triggers(); //step through triggers
-  
-  
 };
 
 #endif

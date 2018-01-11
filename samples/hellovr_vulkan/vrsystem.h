@@ -9,6 +9,11 @@
 #include "buffer.h"
 #include "vulkansystem.h"
 
+struct Controller {
+  
+    std::vector<float> get_pos();
+};
+
 struct VRSystem {
   vr::IVRSystem *hmd;
   vr::IVRRenderModels *render_models;
