@@ -56,7 +56,8 @@ void GraphicsObject::draw() {
 	auto vk = Global::vk();
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
-		// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
+	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
+	//TODO set eye matrix
 	//memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
 	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc.desc, 0, nullptr );

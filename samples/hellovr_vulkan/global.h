@@ -5,6 +5,7 @@
 #include "vrsystem.h"
 #include "windowsystem.h"
 #include "scene.h"
+#include "script.h"
 
 struct Global {
 	Global();
@@ -55,6 +56,15 @@ struct Global {
 		return *(inst().scene_ptr);
 	}
 
+  static Script &script() {
+    if (!inst().script_ptr) {
+      inst().script_ptr = new Script();
+    }
+    
+    return *(inst().script_ptr);
+    
+  }
+  
 	static void init() {
 		inst();
 	}
@@ -63,6 +73,7 @@ struct Global {
 	VRSystem *vr_ptr = 0;
 	WindowSystem *ws_ptr = 0;
 	Scene *scene_ptr = 0;
+  Script *script_ptr;
 };
 
 

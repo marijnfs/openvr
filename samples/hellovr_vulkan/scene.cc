@@ -10,3 +10,7 @@ void Scene::process_triggers() {
       t->triggered();
   }
 }
+
+void Scene::draw() {
+  
+}

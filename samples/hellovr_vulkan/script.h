@@ -16,9 +16,14 @@ struct Script {
   ~Script();
 
   void run();
+  void init();
   
   lua_State *L;
 
+  
+
+  //regular commands
+  
 };
 
 

@@ -5,6 +5,8 @@ set(TARGET_NAME hellovr_vulkan)
 #  hellovr_vulkan.cpp
 #)
 
+
+
 add_executable(${TARGET_NAME}
   ${SHARED_SRC_FILES}
   buffer.cc
@@ -12,6 +14,9 @@ add_executable(${TARGET_NAME}
   vulkansystem.cc
   windowsystem.cc
   global.cc
+  script.cc
+  flywheel.cc
+  scene.cc
   refactor_hellovr_vulkan.cpp
 )
 
@@ -21,6 +26,7 @@ target_link_libraries(${TARGET_NAME}
   ${OPENVR_LIBRARIES}
   ${CMAKE_DL_LIBS}
   ${EXTRA_LIBS}
+  -llua5.3
 )
 
 setTargetOutputDirectory(${TARGET_NAME})

@@ -44,6 +44,8 @@ struct Scene {
   void set_rotation(std::vector<float> &rot);
 
   void process_triggers(); //step through triggers
+
+  void draw();
 };
 
 #endif

@@ -57,7 +57,8 @@ int main() {
 
   //Global::vk();
   Global::vr();
-
+  auto sc = Global::script();
+  
   //Global::ws();
   while (true) {
   	cout << "lala" << endl;
