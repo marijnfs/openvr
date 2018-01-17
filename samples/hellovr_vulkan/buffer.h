@@ -45,8 +45,8 @@ struct Image {
     int mip_levels = 1;
 
     Image();
-    Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
-  Image(std::string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
+    Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
+  Image(std::string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 
     void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_ = 1);
     void init_from_img(std::string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
