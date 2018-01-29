@@ -11,9 +11,13 @@
 
 
 struct Object {
+  Matrix4 t;
   GraphicsObject go;
 
+
+
   std::vector<float> get_pos();
+  void render();
 
 };
 
@@ -45,7 +49,7 @@ struct Scene {
 
   void process_triggers(); //step through triggers
 
-  void draw();
+  void render();
 };
 
 #endif

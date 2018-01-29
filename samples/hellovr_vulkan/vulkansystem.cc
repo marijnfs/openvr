@@ -51,7 +51,7 @@ void RenderModel::init() {
 
 
 // ==== Graphics Object ====
-void GraphicsObject::draw() {
+void GraphicsObject::render(Matrix4 &mvp) {
 		//TODO fix
 	auto vk = Global::vk();
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );

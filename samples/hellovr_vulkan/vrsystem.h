@@ -35,9 +35,6 @@ struct VRSystem {
   //buffers
   std::vector<Buffer> eye_pos_buffer;
 
-  //graphics objects
-  std::vector<GraphicsObject> objects;
-
   uint32_t render_width, render_height;
   float near_clip, far_clip;
 
@@ -50,9 +47,7 @@ struct VRSystem {
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
   void update_track_pose();
 
-  GraphicsObject &create_object();
-
-  void render_frame();
+  void render();
   void render_stereo_targets() ;
   void render_scene();
   void render_companion_window();

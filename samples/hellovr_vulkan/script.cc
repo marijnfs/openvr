@@ -47,12 +47,3 @@ void Script::run() {
     }
   }
 }
-
-
-
-int main() {
-  
-  Script script;
-
-    script.run();
-}

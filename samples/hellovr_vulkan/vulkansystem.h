@@ -71,12 +71,9 @@ struct GraphicsObject {
 	std::vector<float> v;
 
 
-	void draw();
+	void render(Matrix4 &mvp);
 	void init_cube(Matrix4 pos);
   void init_screen();
-  void set_pos(std::vector<float>);
-
-
 
 	void add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4);
 
@@ -128,6 +125,8 @@ struct VulkanSystem {
   VkDescriptorSetLayout desc_set_layout;
   std::vector<VkDescriptorSet> desc_sets;
 
+  Buffer mvp_buffer; //buffer to put mvp in before drawing
+  
   //Buffer scene_constant_buffer[2]; //for both eyes
 
 	//VkImage scene_img;

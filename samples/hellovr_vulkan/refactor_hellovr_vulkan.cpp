@@ -56,11 +56,13 @@ int main() {
   */ 
 
   //Global::vk();
-  Global::vr();
+  auto &vr = Global::vr();
   auto sc = Global::script();
   
   //Global::ws();
   while (true) {
-  	cout << "lala" << endl;
+    vr.update_track_pose();
+    vr.render();
+    cout << "lala" << endl;
   }
 }

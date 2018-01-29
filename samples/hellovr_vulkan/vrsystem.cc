@@ -10,6 +10,10 @@
 
 using namespace std;
 
+std::vector<float> Controller::get_pos() {
+  //todo
+}
+
 VRSystem::VRSystem() {
 }
 
@@ -61,7 +65,7 @@ void VRSystem::render_companion_window() {
 	auto ws = Global::ws();
 }
 
-void VRSystem::render_frame() {
+void VRSystem::render() {
 	auto vk = Global::vk();
 
 	auto cmd_buf = vk.cmd_buffer();
@@ -115,7 +119,9 @@ void VRSystem::render_frame() {
 }
 
 void VRSystem::render_stereo_targets() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
+	auto &scene = Global::scene();
+
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
 	vkCmdSetViewport( vk.cur_cmd_buffer, 0, 1, &viewport );
 	VkRect2D scissor = { 0, 0, render_width, render_height};
@@ -125,7 +131,12 @@ void VRSystem::render_stereo_targets() {
 	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		left_eye_fb.depth_stencil.to_depth_optimal();
 	left_eye_fb.start_render_pass();
+	
+	//TODO:  have to set eye position
+
+  	scene.render();
   	//render stuff
+	
 	left_eye_fb.end_render_pass();
 	left_eye_fb.img.to_read_optimal();
 
@@ -134,6 +145,7 @@ void VRSystem::render_stereo_targets() {
 	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		right_eye_fb.depth_stencil.to_depth_optimal();
 	right_eye_fb.start_render_pass();
+	scene.render();
   	//render stuff
 	right_eye_fb.end_render_pass();
 	right_eye_fb.img.to_read_optimal();
@@ -174,8 +186,8 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 }
 
 void VRSystem::render_scene() {
-	for (auto ob : objects)
-		ob.draw();
+  auto &sc = Global::scene();
+  sc.render();
 }
 
 void VRSystem::setup_render_models()
@@ -214,12 +226,6 @@ void VRSystem::update_track_pose() {
 		hmd_pose.invert();
 	}
 }
-
-GraphicsObject &VRSystem::create_object() {
-	objects.push_back(GraphicsObject());
-	return last(objects);
-}
-
 
 string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
 	vr::TrackedPropertyError *err = NULL;

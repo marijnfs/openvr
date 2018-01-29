@@ -1,5 +1,13 @@
 #include "scene.h"
 
+std::vector<float> Object::get_pos() {
+  
+}
+
+void Object::render() {
+  go.render(t);
+}
+
 void Scene::init() {
 	
 }
@@ -11,6 +19,8 @@ void Scene::process_triggers() {
   }
 }
 
-void Scene::draw() {
-  
+void Scene::render() {
+  for (auto &o : objects)
+    o.second->render();
 }
+
