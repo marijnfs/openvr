@@ -11,7 +11,11 @@
 using namespace std;
 
 std::vector<float> Controller::get_pos() {
-  //todo
+  return std::vector<float>{t[12], t[13], t[14]};
+}
+
+void Controller::set_t(Matrix4 &t_) {
+  t = t_;
 }
 
 VRSystem::VRSystem() {
@@ -209,7 +213,9 @@ void VRSystem::setup_render_model_for_device(int d) {
 }
 
 void VRSystem::update_track_pose() {
-	vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  int controller_idx(0);
+  
+  vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
 
 	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d )
 	{
@@ -217,6 +223,13 @@ void VRSystem::update_track_pose() {
 		{
 			tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
 			device_class[d] = hmd->GetTrackedDeviceClass(d);
+			if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+			  if (controller_idx == 0)
+			    right_controller.set_t(tracked_pose_mat4[d]);
+			  else
+			    left_controller.set_t(tracked_pose_mat4[d]);
+			  ++controller_idx;
+			}
 		}
 	}
 

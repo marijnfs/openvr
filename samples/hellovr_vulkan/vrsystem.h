@@ -10,8 +10,10 @@
 #include "vulkansystem.h"
 
 struct Controller {
+  Matrix4 t;
   
     std::vector<float> get_pos();
+  void set_t(Matrix4 &t);
 };
 
 struct VRSystem {
@@ -29,6 +31,9 @@ struct VRSystem {
   Matrix4 eye_pos_left, eye_pos_right, eye_pose_center;
   Matrix4 projection_left, projection_right;
 
+  //controllers;
+  Controller left_controller, right_controller;
+  
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
 

@@ -14,9 +14,8 @@ struct Object {
   Matrix4 t;
   GraphicsObject go;
 
-
-
   std::vector<float> get_pos();
+  void set_pos(std::vector<float> p);
   void render();
 
 };
