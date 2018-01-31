@@ -126,6 +126,7 @@ struct VulkanSystem {
   std::vector<VkDescriptorSet> desc_sets;
 
   Buffer mvp_buffer; //buffer to put mvp in before drawing
+  Matrix4 mvp;
   
   //Buffer scene_constant_buffer[2]; //for both eyes
 

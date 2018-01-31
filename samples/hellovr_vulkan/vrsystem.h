@@ -37,8 +37,11 @@ struct VRSystem {
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
 
-  //buffers
-  std::vector<Buffer> eye_pos_buffer;
+  Buffer left_eye_buf, right_eye_buf;
+  Matrix4 left_eye_mvp, right_eye_mvp;
+  
+  ////buffers
+  //std::vector<Buffer> eye_pos_buffer;
 
   uint32_t render_width, render_height;
   float near_clip, far_clip;

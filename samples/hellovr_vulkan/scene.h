@@ -16,8 +16,9 @@ struct Object {
 
   std::vector<float> get_pos();
   void set_pos(std::vector<float> p);
+  void set_pos_orientation(std::vector<float> p, std::vector<float> o);
+  void set_t(Matrix4 t);
   void render();
-
 };
 
 //triggers to set up events

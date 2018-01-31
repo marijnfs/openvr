@@ -25,8 +25,7 @@ struct Buffer {
   void init(size_t size, VkBufferUsageFlags usage, Location loc);
 
   template <typename T>
-  void map(T **ptr);
-  
+  void map(T **ptr);  
 };
 
 struct ViewedBuffer {

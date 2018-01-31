@@ -460,6 +460,7 @@ void VulkanSystem::init_device() {
 	check( vkCreateDevice( chosen_dev, &dci, nullptr, &dev ), "vkCreateDevice");
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
+
 }
 
 

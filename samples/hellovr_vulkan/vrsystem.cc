@@ -47,14 +47,20 @@ void VRSystem::init() {
 	}
 
 	//setup eye pos buffer
-	eye_pos_buffer.resize(2);
-	eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//eye_pos_buffer.resize(2);
+	//eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	
 
 	setup_render_targets();
 	setup_render_models();
 
+	left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+
+	left_eye_buf.map((float**)&left_eye_mvp.m);
+	right_eye_buf.map((float**)&right_eye_mvp.m);
+	
 	cout << "done initialising VRSystem" << endl;
 }
 
