@@ -18,7 +18,7 @@ void Controller::set_t(Matrix4 &t_) {
   t = t_;
 }
 
-VRSystem::VRSystem() {
+VRSystem::VRSystem(){
 }
 
 void VRSystem::init() {
@@ -58,8 +58,15 @@ void VRSystem::init() {
 	left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 
-	left_eye_buf.map((float**)&left_eye_mvp.m);
-	right_eye_buf.map((float**)&right_eye_mvp.m);
+	left_eye_buf.map(&left_eye_mvp);
+	right_eye_buf.map(&right_eye_mvp);
+
+	//initialise the eye projection and translation matrices (these stay fixed)
+	eye_pos_left = get_eye_transform(vr::Eye_Left);
+	eye_pos_right = get_eye_transform(vr::Eye_Right);
+
+	projection_left = get_hmd_projection(vr::Eye_Left);
+	projection_right = get_hmd_projection(vr::Eye_Right);
 	
 	cout << "done initialising VRSystem" << endl;
 }
@@ -144,6 +151,9 @@ void VRSystem::render_stereo_targets() {
 	
 	//TODO:  have to set eye position
 
+	auto proj_left = get_view_projection(vr::Eye_Left);
+	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
+	
   	scene.render();
   	//render stuff
 	
@@ -155,6 +165,10 @@ void VRSystem::render_stereo_targets() {
 	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		right_eye_fb.depth_stencil.to_depth_optimal();
 	right_eye_fb.start_render_pass();
+
+	auto proj_right = get_view_projection(vr::Eye_Right);
+	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
+	
 	scene.render();
   	//render stuff
 	right_eye_fb.end_render_pass();
@@ -215,7 +229,7 @@ void VRSystem::setup_render_models()
 }
 
 void VRSystem::setup_render_model_for_device(int d) {
-
+  //todo, create graphics object or something for controllers
 }
 
 void VRSystem::update_track_pose() {

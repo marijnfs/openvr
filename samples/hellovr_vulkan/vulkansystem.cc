@@ -461,6 +461,7 @@ void VulkanSystem::init_device() {
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 
+	mvp_buffer.map((float**)&mvp.m);
 }
 
 

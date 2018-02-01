@@ -22,6 +22,7 @@ struct VRSystem {
   std::string driver_str, display_str;
 
   //tracking vars
+
   vr::TrackedDevicePose_t tracked_pose[ vr::k_unMaxTrackedDeviceCount ];
   Matrix4 tracked_pose_mat4[ vr::k_unMaxTrackedDeviceCount ];
   vr::TrackedDeviceClass device_class[ vr::k_unMaxTrackedDeviceCount ];
@@ -36,9 +37,9 @@ struct VRSystem {
   
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
-
+  
   Buffer left_eye_buf, right_eye_buf;
-  Matrix4 left_eye_mvp, right_eye_mvp;
+  void *left_eye_mvp, *right_eye_mvp;
   
   ////buffers
   //std::vector<Buffer> eye_pos_buffer;

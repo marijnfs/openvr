@@ -64,6 +64,7 @@ void Buffer::map(T **ptr) {
 template void Buffer::map<int>(int **ptr);
 template void Buffer::map<float>(float **ptr);
 template void Buffer::map<double>(double **ptr);
+template void Buffer::map<void>(void **ptr);
 
 
 Image::Image() {}
