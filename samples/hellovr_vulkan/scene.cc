@@ -1,15 +1,17 @@
 #include "scene.h"
 #include "vrsystem.h"
-
+#include "global.h"
 
 using namespace std;
 
 void Controller::update() {
   
   if (tracked) {
+    auto &vr = Global::vr();
     if (right) {
-      
+      from_mat4(vr.right_controller.t);
     } else {
+      from_mat4(vr.left_controller.t);
     }
     //auto vr = Global::vr();
     

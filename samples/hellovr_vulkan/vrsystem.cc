@@ -31,7 +31,7 @@ void VRSystem::init() {
 	far_clip = 30.0f;
 
 	vr::EVRInitError err = vr::VRInitError_None;
-	hmd = vr::VR_Init( &err, vr::VRApplication_Scene );
+	ivrsystem = vr::VR_Init( &err, vr::VRApplication_Scene );
 	check(err);
 
 	render_models = (vr::IVRRenderModels *)vr::VR_GetGenericInterface( vr::IVRRenderModels_Version, &err );
@@ -72,7 +72,7 @@ void VRSystem::init() {
 }
 
 void VRSystem::setup_render_targets() {
-	hmd->GetRecommendedRenderTargetSize( &render_width, &render_height );
+	ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
 	left_eye_fb.init(render_width, render_height);
 	right_eye_fb.init(render_width, render_height);
 	
@@ -177,7 +177,7 @@ void VRSystem::render_stereo_targets() {
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )
 {
-	vr::HmdMatrix34_t mat_eye = hmd->GetEyeToHeadTransform( eye );
+	vr::HmdMatrix34_t mat_eye = ivrsystem->GetEyeToHeadTransform( eye );
 	Matrix4 mat(
 		mat_eye.m[0][0], mat_eye.m[1][0], mat_eye.m[2][0], 0.0, 
 		mat_eye.m[0][1], mat_eye.m[1][1], mat_eye.m[2][1], 0.0,
@@ -190,7 +190,7 @@ Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )
 
 Matrix4 VRSystem::get_hmd_projection( vr::Hmd_Eye eye )
 {
-	vr::HmdMatrix44_t mat = hmd->GetProjectionMatrix( eye, near_clip, far_clip );
+	vr::HmdMatrix44_t mat = ivrsystem->GetProjectionMatrix( eye, near_clip, far_clip );
 
 	return Matrix4(
 		mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
@@ -218,7 +218,7 @@ void VRSystem::setup_render_models()
 {
 	for( uint32_t d = vr::k_unTrackedDeviceIndex_Hmd + 1; d < vr::k_unMaxTrackedDeviceCount; d++ )
 	{
-		if( !hmd->IsTrackedDeviceConnected( d ) )
+		if( !ivrsystem->IsTrackedDeviceConnected( d ) )
 			continue;
 
 		//TODO: Setup render model
@@ -242,7 +242,11 @@ void VRSystem::update_track_pose() {
 		if ( tracked_pose[d].bPoseIsValid )
 		{
 			tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
-			device_class[d] = hmd->GetTrackedDeviceClass(d);
+			device_class[d] = ivrsystem->GetTrackedDeviceClass(d);
+            vr::VRControllerState_t cstate;
+            ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, sizeof(vr::TrackedDeviceIndex_t));
+            //todo
+              
 			if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
 			  if (controller_idx == 0)
 			    right_controller.set_t(tracked_pose_mat4[d]);
@@ -262,12 +266,12 @@ void VRSystem::update_track_pose() {
 
 string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
 	vr::TrackedPropertyError *err = NULL;
-	uint32_t buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );
+	uint32_t buflen = ivrsystem->GetStringTrackedDeviceProperty( devidx, prop, NULL, 0, err );
 	if( buflen == 0)
 		return "";
 
 	string buf(' ', buflen);
-	buflen = hmd->GetStringTrackedDeviceProperty( devidx, prop, &buf[0], buflen, err );
+	buflen = ivrsystem->GetStringTrackedDeviceProperty( devidx, prop, &buf[0], buflen, err );
 	return buf;      
 }
 
