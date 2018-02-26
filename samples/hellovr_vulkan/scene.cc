@@ -1,60 +1,89 @@
 #include "scene.h"
 
+using namespace std;
 
-Object::Object() : p(0), o(0) {
+void Controller::update() {
+  
+  if (tracked) {
+    if (right) {
+    } else {
+    }
+    //auto vr = Global::vr();
+    
+    //grab position from vrsystem if tracked
+  }
+
+  //if (acted) { //somehow get it from actions
+  // }
 }
 
-std::vector<float> Object::get_pos() {
-  return std::vector<float>{t[12], t[13], t[14]};
-}
 
-void Object::set_pos(std::vector<float> p_) {
-  p = p_;
-  t[12] = p[0];
-  t[13] = p[1];
-  t[14] = p[2];
-}
+void Scene::step() {
+  ++time;
 
-void Object::set_pos_orientation(std::vector<float> p_, std::vector<float> o_) {
-  p = p_;
-  o = o_;
-  t.identity();
-  t.translate(p[0], p[1], p[2]);
-  t.rotateX(o[0]);
-  t.rotateY(o[1]);
-  t.rotateZ(o[2]);
-}
-
-void Object::set_t(Matrix4 t_) {
-  t = t_;
-}
-
-void Object::render() {
-  go.render(t);
-}
-
-void Scene::init() {
+  for (auto &kv : objects) {
+    kv.second->update();
+  }
+  
+  for (auto &kv : variables) {
+    kv.second->update(*this);
+  }
+  
+  for (auto &t : triggers) {
+    if (t->check())
+      function_map[names[t->function_nameid]]();
+  }
+  
+  if (record) {
+  }
   
 }
 
-void Scene::process_triggers() {
-  for (auto t : triggers) {
-    if (t->check())
-      t->triggered();
+
+
+void Scene::snap(Recording *rec) {
+  Snap *snap_ptr = new Snap();
+  Snap &snap(*snap_ptr);
+  snap.t = time;
+  snap.reward = reward;
+    
+  for (auto &kv : objects) {
+    auto &object(*kv.second);
+    if (object.changed) { //store a copy
+      uint idx = rec->objects.size(); //will be the index of newly added object
+      rec->objects.push_back(object.copy());
+      snap.object_ids.push_back(idx);
+      rec->index_map[(void*)&object] = idx; //to find the index to object later for referals
+    } else { //refer to stored copy
+      snap.object_ids.push_back(rec->index_map[(void*)&object]);
+    }
   }
-}
 
-void Scene::render() {
-  for (auto &o : objects)
-    o.second->render();
-}
+  for (auto &kv : variables) {
+    auto &variable = kv.second;
+    if (variable->changed) {
+      uint idx = rec->variables.size(); //will be the index of newly added variable
+      rec->variables.push_back(variable->copy());
+      snap.variable_ids.push_back(idx);
+      rec->index_map[(void*)&variable] = idx; //to find the index to variable later for referals
+    } else {
+      snap.variable_ids.push_back(rec->index_map[(void*)&variable]);
+    }
+  }
 
 
-void Scene::add_plane(std::string name) {
-}
+  for (auto &trigger : triggers) {
+    if (trigger->changed) {
+      uint idx = rec->triggers.size(); //will be the index of newly added trigger
+      rec->triggers.push_back(trigger->copy());
+      snap.trigger_ids.push_back(idx);
+      rec->index_map[(void*)&trigger] = idx; //to find the index to trigger later for referals
+    } else {
+      snap.trigger_ids.push_back(rec->index_map[(void*)&trigger]);
+    }
+  }
 
-void Scene::set_pos(std::string, std::vector<float> pos) {
-}
-
-void Scene::set_rotation(std::vector<float> &rot) {
+  rec->snaps.push_back(snap_ptr);
+  
+  //store snap in recording
 }
