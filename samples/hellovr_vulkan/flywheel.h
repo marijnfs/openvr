@@ -10,13 +10,13 @@
 
 struct ImageFlywheel {
 
-  std::map<std::string, Image*> wheel;
+  static std::map<std::string, Image*> wheel;
   
   ImageFlywheel();
 
 
   static Image* image(std::string name) {
-    if (!wheel.exists(name)) {
+    if (!wheel.count(name)) {
       std::string path("/home/marijnfs/img/");
       path += name;
       

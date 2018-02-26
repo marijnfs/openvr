@@ -11,9 +11,14 @@
 
 
 struct Object {
-  GraphicsObject go;
+  //Buffer pos; 
+
+  GraphicsObject *go;
 
   std::vector<float> get_pos();
+  void set_pos(std::vector<float> pos);
+
+  void draw();
 
 };
 

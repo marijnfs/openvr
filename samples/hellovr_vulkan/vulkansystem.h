@@ -62,11 +62,13 @@ struct Descriptor {
 
 struct GraphicsObject {
 	Descriptor desc;
-	Buffer vertex_buf;
+ 
+  int n_vertex, n_index;
+ 	Buffer vertex_buf;
 	Buffer index_buf;
 
-	int n_vertex, n_index;
-	Image texture;
+  std::string texture; //flywheel is responsible for keeping image resources
+	//Image texture;
 
 	std::vector<float> v;
 
@@ -74,7 +76,6 @@ struct GraphicsObject {
 	void draw();
 	void init_cube(Matrix4 pos);
   void init_screen();
-  void set_pos(std::vector<float>);
 
 
 

@@ -57,10 +57,16 @@ int main() {
 
   //Global::vk();
   Global::vr();
-  auto sc = Global::script();
+  auto &script = Global::script();
   
+  auto &scene = Global::scene();
+
+  scene.add_plane("test");
+  scene.set_pos("test", vector<float>{1, 1, 1});
+
   //Global::ws();
   while (true) {
   	cout << "lala" << endl;
+  	scene.draw();
   }
 }
