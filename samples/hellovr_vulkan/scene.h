@@ -11,14 +11,18 @@
 
 
 struct Object {
+  std::vector<float> p, o;
   Matrix4 t;
   GraphicsObject go;
 
-  std::vector<float> get_pos();
+  Object();
   void set_pos(std::vector<float> p);
   void set_pos_orientation(std::vector<float> p, std::vector<float> o);
   void set_t(Matrix4 t);
+
   void render();
+
+  std::vector<float> get_pos();
 };
 
 //triggers to set up events

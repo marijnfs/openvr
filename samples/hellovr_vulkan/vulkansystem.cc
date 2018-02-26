@@ -38,7 +38,7 @@ void FencedCommandBuffer::init() {
 }
 
 // ==== Render Model ====
-
+/*
 void RenderModel::init() {
 	int vert_count(0);
 	int idx_count(0);
@@ -46,8 +46,27 @@ void RenderModel::init() {
 	vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * vert_count, HOST);
 	index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * idx_count, HOST);
 
-}
+	}*/
 
+
+void GraphicsObject::init_buffers() {
+  vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * n_vertex, HOST);
+  index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * n_index, HOST);
+  
+  mvp_left = new Matrix4();
+  mvp_right = new Matrix4();
+
+  mvp_buffer_left.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+  mvp_buffer_right.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+  
+  mvp_buffer_left.map((void**)&mvp_left);
+  mvp_buffer_right.map((void**)&mvp_right);
+
+  mvp_left->identity();
+  mvp_right->identity();
+
+  //image.init_from_img("", VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+}
 
 
 // ==== Graphics Object ====
@@ -58,6 +77,8 @@ void GraphicsObject::render(Matrix4 &mvp) {
 
 	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
 	//TODO set eye matrix
+	
+	
 	//memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
 	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc.desc, 0, nullptr );
@@ -460,8 +481,6 @@ void VulkanSystem::init_device() {
 	check( vkCreateDevice( chosen_dev, &dci, nullptr, &dev ), "vkCreateDevice");
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
-
-	mvp_buffer.map((float**)&mvp.m);
 }
 
 
