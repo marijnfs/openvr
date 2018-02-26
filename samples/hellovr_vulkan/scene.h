@@ -113,15 +113,15 @@ struct Point : public Object {
   }
 };
 
-struct Screen : public Object {
+struct Canvas : public Object {
   std::string tex_name;
 
-  Screen(){}
- Screen(std::string tex_name_) : tex_name(tex_name_) {}
+  Canvas(){}
+ Canvas(std::string tex_name_) : tex_name(tex_name_) {}
   
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
-    builder.setScreen(tex_name);
+    builder.setCanvas(tex_name);
   }
 
   void set_texture(std::string name) {
@@ -315,8 +315,8 @@ struct Scene {
     objects[name] = o;
   }
   
-  void add_screen(std::string name) {
-    add_object(name, new Screen());
+  void add_canvas(std::string name) {
+    add_object(name, new Canvas());
   }
   
   void add_point(std::string name) {
@@ -340,7 +340,7 @@ struct Scene {
   }
 
   void set_texture(std::string name, std::string tex) {
-    reinterpret_cast<Screen&>(find(name)).set_texture(tex);
+    reinterpret_cast<Canvas&>(find(name)).set_texture(tex);
   }
 
   int register_name(std::string name) {

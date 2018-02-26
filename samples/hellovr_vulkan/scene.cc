@@ -1,4 +1,6 @@
 #include "scene.h"
+#include "vrsystem.h"
+
 
 using namespace std;
 
@@ -6,6 +8,7 @@ void Controller::update() {
   
   if (tracked) {
     if (right) {
+      
     } else {
     }
     //auto vr = Global::vr();

@@ -27,6 +27,7 @@ target_link_libraries(${TARGET_NAME}
   ${CMAKE_DL_LIBS}
   ${EXTRA_LIBS}
   -llua5.3
+  -lcapnp
 )
 
 setTargetOutputDirectory(${TARGET_NAME})

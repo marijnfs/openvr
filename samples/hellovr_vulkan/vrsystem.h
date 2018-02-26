@@ -9,7 +9,7 @@
 #include "buffer.h"
 #include "vulkansystem.h"
 
-struct Controller {
+struct TrackedController {
   Matrix4 t;
   
     std::vector<float> get_pos();
@@ -33,7 +33,7 @@ struct VRSystem {
   Matrix4 projection_left, projection_right;
 
   //controllers;
-  Controller left_controller, right_controller;
+  TrackedController left_controller, right_controller;
   
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;

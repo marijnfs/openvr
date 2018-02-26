@@ -10,11 +10,11 @@
 
 using namespace std;
 
-std::vector<float> Controller::get_pos() {
+std::vector<float> TrackedController::get_pos() {
   return std::vector<float>{t[12], t[13], t[14]};
 }
 
-void Controller::set_t(Matrix4 &t_) {
+void TrackedController::set_t(Matrix4 &t_) {
   t = t_;
 }
 
@@ -154,7 +154,7 @@ void VRSystem::render_stereo_targets() {
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
 	
-  	scene.render();
+  	//scene.render();
   	//render stuff
 	
 	left_eye_fb.end_render_pass();
@@ -169,7 +169,7 @@ void VRSystem::render_stereo_targets() {
 	auto proj_right = get_view_projection(vr::Eye_Right);
 	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
 	
-	scene.render();
+	//scene.render();
   	//render stuff
 	right_eye_fb.end_render_pass();
 	right_eye_fb.img.to_read_optimal();
@@ -211,7 +211,7 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 
 void VRSystem::render_scene() {
   auto &sc = Global::scene();
-  sc.render();
+  //sc.render();
 }
 
 void VRSystem::setup_render_models()

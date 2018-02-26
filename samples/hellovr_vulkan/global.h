@@ -50,8 +50,7 @@ struct Global {
 	static Scene &scene() {
 		if (!inst().scene_ptr) {
 			inst().scene_ptr = new Scene();
-			inst().scene_ptr->init();
-		}
+        }
 
 		return *(inst().scene_ptr);
 	}

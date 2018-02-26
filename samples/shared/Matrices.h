@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <glm/gtc/quaternion.hpp>
 #include "Vectors.h"
 
 ///////////////////////////////////////////////////////////////////////////
@@ -194,6 +195,8 @@ public:
     float       operator[](int index) const;            // subscript operator v[0], v[1]
     float&      operator[](int index);                  // subscript operator v[0], v[1]
 
+    operator glm::mat4() const {return glm::mat4(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15]);}
+      
     friend Matrix4 operator-(const Matrix4& m);                     // unary operator (-)
     friend Matrix4 operator*(float scalar, const Matrix4& m);       // pre-multiplication
     friend Vector3 operator*(const Vector3& vec, const Matrix4& m); // pre-multiplication
