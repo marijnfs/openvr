@@ -434,7 +434,7 @@ void VulkanSystem::init_device() {
 
 
 	uint32_t n_queue(0);
-	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, 0);
+	vkGetPhysicalDeviceQueueFamilyProperties(  chosen_dev, &n_queue, 0);
 	vector<VkQueueFamilyProperties> queue_family(n_queue);
 	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
 	if (n_queue == 0) {

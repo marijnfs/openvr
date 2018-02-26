@@ -56,9 +56,15 @@ int main() {
   */ 
 
   //Global::vk();
+
   auto &vr = Global::vr();
   auto sc = Global::script();
   
+  auto &scene = Global::scene();
+
+  scene.add_plane("test");
+  scene.set_pos("test", vector<float>{1, 1, 1});
+
   //Global::ws();
   while (true) {
     vr.update_track_pose();

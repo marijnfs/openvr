@@ -90,6 +90,7 @@ void VRSystem::render() {
 
 	vk.swapchain.get_image();
 
+	// RENDERING
 	render_stereo_targets();
 	render_companion_window();
 

@@ -52,6 +52,10 @@ inline std::vector<char> read_all_bytes(std::string filename)
 }
 
 struct Object {
+  //Buffer pos; 
+
+  void draw();
+
   bool changed = true;
   int nameid = -1;
   
@@ -157,7 +161,6 @@ struct Controller : public Object {
     c.setRight(right);
     c.setClicked(clicked);
   }
-
 };
 
 struct Trigger {
