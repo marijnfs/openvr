@@ -56,8 +56,9 @@ int main() {
   */ 
 
   //Global::vk();
-  Global::vr();
-  auto &script = Global::script();
+
+  auto &vr = Global::vr();
+  auto sc = Global::script();
   
   auto &scene = Global::scene();
 
@@ -66,7 +67,8 @@ int main() {
 
   //Global::ws();
   while (true) {
-  	cout << "lala" << endl;
-  	scene.draw();
+    vr.update_track_pose();
+    vr.render();
+    cout << "lala" << endl;
   }
 }

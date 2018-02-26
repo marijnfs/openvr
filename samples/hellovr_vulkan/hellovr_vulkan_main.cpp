@@ -2448,6 +2448,7 @@ void CMainApplication::SetupScene()
 		vkBindBufferMemory( m_pDevice, m_pSceneConstantBuffer[ nEye ], m_pSceneConstantBufferMemory[ nEye ], 0 );
 
 		// Map and keep mapped persistently
+
 		vkMapMemory( m_pDevice, m_pSceneConstantBufferMemory[ nEye ], 0, VK_WHOLE_SIZE, 0, &m_pSceneConstantBufferData[ nEye ] );
 	}
 }
@@ -2949,7 +2950,6 @@ void CMainApplication::SetupCompanionWindow()
 //-----------------------------------------------------------------------------
 void CMainApplication::RenderStereoTargets()
 {
-
 	// Set viewport and scissor
 	VkViewport viewport = { 0.0f, 0.0f, (float ) m_nRenderWidth, ( float ) m_nRenderHeight, 0.0f, 1.0f };
 	vkCmdSetViewport( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &viewport );

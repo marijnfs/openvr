@@ -10,7 +10,15 @@
 
 using namespace std;
 
-VRSystem::VRSystem() {
+std::vector<float> Controller::get_pos() {
+  return std::vector<float>{t[12], t[13], t[14]};
+}
+
+void Controller::set_t(Matrix4 &t_) {
+  t = t_;
+}
+
+VRSystem::VRSystem(){
 }
 
 void VRSystem::init() {
@@ -39,14 +47,27 @@ void VRSystem::init() {
 	}
 
 	//setup eye pos buffer
-	eye_pos_buffer.resize(2);
-	eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//eye_pos_buffer.resize(2);
+	//eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	
 
 	setup_render_targets();
 	setup_render_models();
 
+	left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+
+	left_eye_buf.map(&left_eye_mvp);
+	right_eye_buf.map(&right_eye_mvp);
+
+	//initialise the eye projection and translation matrices (these stay fixed)
+	eye_pos_left = get_eye_transform(vr::Eye_Left);
+	eye_pos_right = get_eye_transform(vr::Eye_Right);
+
+	projection_left = get_hmd_projection(vr::Eye_Left);
+	projection_right = get_hmd_projection(vr::Eye_Right);
+	
 	cout << "done initialising VRSystem" << endl;
 }
 
@@ -61,7 +82,7 @@ void VRSystem::render_companion_window() {
 	auto ws = Global::ws();
 }
 
-void VRSystem::render_frame() {
+void VRSystem::render() {
 	auto vk = Global::vk();
 
 	auto cmd_buf = vk.cmd_buffer();
@@ -116,7 +137,9 @@ void VRSystem::render_frame() {
 }
 
 void VRSystem::render_stereo_targets() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
+	auto &scene = Global::scene();
+
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
 	vkCmdSetViewport( vk.cur_cmd_buffer, 0, 1, &viewport );
 	VkRect2D scissor = { 0, 0, render_width, render_height};
@@ -126,7 +149,15 @@ void VRSystem::render_stereo_targets() {
 	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		left_eye_fb.depth_stencil.to_depth_optimal();
 	left_eye_fb.start_render_pass();
+	
+	//TODO:  have to set eye position
+
+	auto proj_left = get_view_projection(vr::Eye_Left);
+	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
+	
+  	scene.render();
   	//render stuff
+	
 	left_eye_fb.end_render_pass();
 	left_eye_fb.img.to_read_optimal();
 
@@ -135,6 +166,11 @@ void VRSystem::render_stereo_targets() {
 	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		right_eye_fb.depth_stencil.to_depth_optimal();
 	right_eye_fb.start_render_pass();
+
+	auto proj_right = get_view_projection(vr::Eye_Right);
+	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
+	
+	scene.render();
   	//render stuff
 	right_eye_fb.end_render_pass();
 	right_eye_fb.img.to_read_optimal();
@@ -175,8 +211,8 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 }
 
 void VRSystem::render_scene() {
-	for (auto ob : objects)
-		ob.draw();
+  auto &sc = Global::scene();
+  sc.render();
 }
 
 void VRSystem::setup_render_models()
@@ -194,11 +230,13 @@ void VRSystem::setup_render_models()
 }
 
 void VRSystem::setup_render_model_for_device(int d) {
-
+  //todo, create graphics object or something for controllers
 }
 
 void VRSystem::update_track_pose() {
-	vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  int controller_idx(0);
+  
+  vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
 
 	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d )
 	{
@@ -206,6 +244,13 @@ void VRSystem::update_track_pose() {
 		{
 			tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
 			device_class[d] = hmd->GetTrackedDeviceClass(d);
+			if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+			  if (controller_idx == 0)
+			    right_controller.set_t(tracked_pose_mat4[d]);
+			  else
+			    left_controller.set_t(tracked_pose_mat4[d]);
+			  ++controller_idx;
+			}
 		}
 	}
 
@@ -215,12 +260,6 @@ void VRSystem::update_track_pose() {
 		hmd_pose.invert();
 	}
 }
-
-GraphicsObject &VRSystem::create_object() {
-	objects.push_back(GraphicsObject());
-	return last(objects);
-}
-
 
 string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {
 	vr::TrackedPropertyError *err = NULL;

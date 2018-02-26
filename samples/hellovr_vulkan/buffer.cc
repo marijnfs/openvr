@@ -57,8 +57,14 @@ void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {
 
 template <typename T>
 void Buffer::map(T **ptr) {
-  vkMapMemory( Global::vk().dev, memory, 0, VK_WHOLE_SIZE, 0, ptr );
+  vkMapMemory( Global::vk().dev, memory, 0, VK_WHOLE_SIZE, 0, (void**)ptr );
 }
+
+//nasty forward declarations
+template void Buffer::map<int>(int **ptr);
+template void Buffer::map<float>(float **ptr);
+template void Buffer::map<double>(double **ptr);
+template void Buffer::map<void>(void **ptr);
 
 
 Image::Image() {}

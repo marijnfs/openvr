@@ -10,8 +10,10 @@
 #include "vulkansystem.h"
 
 struct Controller {
+  Matrix4 t;
   
     std::vector<float> get_pos();
+  void set_t(Matrix4 &t);
 };
 
 struct VRSystem {
@@ -20,6 +22,7 @@ struct VRSystem {
   std::string driver_str, display_str;
 
   //tracking vars
+
   vr::TrackedDevicePose_t tracked_pose[ vr::k_unMaxTrackedDeviceCount ];
   Matrix4 tracked_pose_mat4[ vr::k_unMaxTrackedDeviceCount ];
   vr::TrackedDeviceClass device_class[ vr::k_unMaxTrackedDeviceCount ];
@@ -29,14 +32,17 @@ struct VRSystem {
   Matrix4 eye_pos_left, eye_pos_right, eye_pose_center;
   Matrix4 projection_left, projection_right;
 
+  //controllers;
+  Controller left_controller, right_controller;
+  
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
-
-  //buffers
-  std::vector<Buffer> eye_pos_buffer;
-
-  //graphics objects
-  std::vector<GraphicsObject> objects;
+  
+  Buffer left_eye_buf, right_eye_buf;
+  void *left_eye_mvp, *right_eye_mvp;
+  
+  ////buffers
+  //std::vector<Buffer> eye_pos_buffer;
 
   uint32_t render_width, render_height;
   float near_clip, far_clip;
@@ -50,9 +56,7 @@ struct VRSystem {
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
   void update_track_pose();
 
-  GraphicsObject &create_object();
-
-  void render_frame();
+  void render();
   void render_stereo_targets() ;
   void render_scene();
   void render_companion_window();

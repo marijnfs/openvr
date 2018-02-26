@@ -36,6 +36,7 @@ struct FencedCommandBuffer {
 };
 
 
+/*
 struct RenderModel {
 	Buffer mat_buffer;
 	Buffer vertex_buf, index_buf;
@@ -43,7 +44,7 @@ struct RenderModel {
 	VkDescriptorSet desc_set;
 
 	void init();
-};
+	};*/
 
 struct Descriptor {
 	int idx = 0;
@@ -73,11 +74,9 @@ struct GraphicsObject {
 	std::vector<float> v;
 
 
-	void draw();
+	void render(Matrix4 &mvp);
 	void init_cube(Matrix4 pos);
   void init_screen();
-
-
 
 	void add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4);
 
@@ -128,7 +127,7 @@ struct VulkanSystem {
   VkDescriptorPool desc_pool;
   VkDescriptorSetLayout desc_set_layout;
   std::vector<VkDescriptorSet> desc_sets;
-
+  
   //Buffer scene_constant_buffer[2]; //for both eyes
 
 	//VkImage scene_img;
