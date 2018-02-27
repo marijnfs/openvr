@@ -9,6 +9,9 @@
 #include <openvr.h>
 #include <iostream>
 #include <SDL.h>
+#include <chrono>
+#include <thread>
+
 #include "shared/Matrices.h"
 
 #if defined(POSIX)
@@ -18,6 +21,23 @@
 #ifndef _countof
 #define _countof(x) (sizeof(x)/sizeof((x)[0]))
 #endif
+
+struct Timer {
+  std::chrono::high_resolution_clock::time_point timepoint;
+  double interval;
+
+Timer(float interval_) : interval(interval_) {
+    start();
+  }
+
+  void start() { timepoint = std::chrono::high_resolution_clock::now(); }
+
+  void wait() {
+    while (std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - timepoint) < std::chrono::duration<double>(interval))
+      std::this_thread::sleep_for(std::chrono::duration<int, std::micro>(1));
+    start();
+  }
+};
 
 inline void ThreadSleep( unsigned long nMilliseconds )
 {

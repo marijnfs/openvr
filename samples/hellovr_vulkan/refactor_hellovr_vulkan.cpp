@@ -20,55 +20,19 @@
 
 using namespace std;
 
-
 int main() {
   Global::inst();
   Global::ws();
   Global::vr();
-
-  /*
-  auto vr = Global::vr();
-
-  //setup environment
-  auto &ob = vr.create_object();
-  Matrix4 pos;
-  pos.translate(1, 1, 1);
-
-  ob.init_cube(pos);
-
-
-  while (true) {
-  	// render and present
-
-  	vr.render_frame();
-  	
-  	// grab action
-  	auto action = vr.get_action();
-
-  	// grab observation
-  	auto observation = vr.get_observation();
-  	// store action and observation
-
-  	// step simulation
-  	vr.step(action);
-  }
-
-  */ 
-
-  //Global::vk();
-
-  auto &vr = Global::vr();
-  auto sc = Global::script();
-  
   auto &scene = Global::scene();
 
   scene.add_canvas("test");
   scene.set_pos("test", vector<float>{1, 1, 1});
 
-  //Global::ws();
-  while (true) {
-    vr.update_track_pose();
-    vr.render();
-    cout << "lala" << endl;
+  Timer a_timer(1./60);
+  uint i(0);
+  while (i++ < 60) {
+    //cout << i << endl;
+    a_timer.wait();
   }
 }
