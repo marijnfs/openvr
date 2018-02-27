@@ -2,14 +2,6 @@
 #include "vrsystem.h"
 #include "global.h"
 
-std::vector<float> Object::get_pos() {
-
-}
-
-
-void Scene::init() {
-}	
-
 using namespace std;
 
 void Controller::update() {
@@ -52,18 +44,6 @@ void Scene::step() {
   
 }
 
-
-void Scene::draw() {
-  for (auto o : objects)
-  	o->draw();
-}
-
-void Scene::add_plane(std::string name) {
-	auto go = new GraphicsObject();
-	go->init_screen();
-
-	objects.push_back(new Object{go});
-}
 
 
 

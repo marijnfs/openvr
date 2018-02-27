@@ -62,7 +62,7 @@ int main() {
   
   auto &scene = Global::scene();
 
-  scene.add_plane("test");
+  scene.add_canvas("test");
   scene.set_pos("test", vector<float>{1, 1, 1});
 
   //Global::ws();

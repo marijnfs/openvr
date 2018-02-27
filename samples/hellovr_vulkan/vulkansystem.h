@@ -68,6 +68,9 @@ struct GraphicsObject {
  	Buffer vertex_buf;
 	Buffer index_buf;
 
+  Matrix4 *mvp_left, *mvp_right;
+  Buffer mvp_buffer_left, mvp_buffer_right;
+  
   std::string texture; //flywheel is responsible for keeping image resources
 	//Image texture;
 
@@ -77,7 +80,8 @@ struct GraphicsObject {
 	void render(Matrix4 &mvp);
 	void init_cube(Matrix4 pos);
   void init_screen();
-
+  void init_buffers();
+  
 	void add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4);
 
 };
