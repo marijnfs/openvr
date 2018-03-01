@@ -134,8 +134,9 @@ struct Canvas : public Object {
 };
 
 struct HMD : public Object {
-  void update() {
-  }
+  bool tracked = false;
+  
+  void update();
 
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
@@ -231,8 +232,8 @@ struct Recording {
 
   void write(Bytes *b, Scene &scene);
   void write(std::string filename);
-
   
+  void update();
 };
 
 //struct Scene;
@@ -248,6 +249,7 @@ struct Variable {
   virtual void serialise(cap::Variable::Builder builder) {
     builder.setNameId(nameid);
   }
+
 };
 
 struct FreeVariable : public Variable {
@@ -306,7 +308,8 @@ struct Scene {
       delete t;
     triggers.clear();
   }
-  
+
+  void draw();
   void step();
   void snap(Recording *rec);
 

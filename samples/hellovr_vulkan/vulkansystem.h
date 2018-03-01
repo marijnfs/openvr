@@ -77,7 +77,7 @@ struct GraphicsObject {
 	std::vector<float> v;
 
 
-	void render(Matrix4 &mvp);
+  void render(Matrix4 &mvp, bool right);
 	void init_cube(Matrix4 pos);
   void init_screen();
   void init_buffers();
@@ -165,7 +165,6 @@ struct VulkanSystem {
   void submit(FencedCommandBuffer &fcb);
 
   void wait_queue();
-
 
   void init_instance();
 

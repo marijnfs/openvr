@@ -22,10 +22,16 @@ void Controller::update() {
   // }
 }
 
+void HMD::update() {
+  if (tracked) {
+      auto &vr = Global::vr();
+      from_mat4(vr.hmd_pose);
+  }
+}
 
 void Scene::step() {
   ++time;
-
+  
   for (auto &kv : objects) {
     kv.second->update();
   }
@@ -37,15 +43,8 @@ void Scene::step() {
   for (auto &t : triggers) {
     if (t->check())
       function_map[names[t->function_nameid]]();
-  }
-  
-  if (record) {
-  }
-  
+  }  
 }
-
-
-
 
 void Scene::snap(Recording *rec) {
   Snap *snap_ptr = new Snap();
@@ -92,4 +91,12 @@ void Scene::snap(Recording *rec) {
   rec->snaps.push_back(snap_ptr);
   
   //store snap in recording
+}
+
+void Scene::draw() {
+  auto &vk = Global::vk();
+
+  vk.start_cmd_buffer();
+  vk.end_cmd_buffer();
+  vk.submit_cmd_buffer():
 }

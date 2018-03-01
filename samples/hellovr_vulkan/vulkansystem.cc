@@ -70,15 +70,18 @@ void GraphicsObject::init_buffers() {
 
 
 // ==== Graphics Object ====
-void GraphicsObject::render(Matrix4 &mvp) {
+void GraphicsObject::render(Matrix4 &mvp, bool right) {
 		//TODO fix
 	auto vk = Global::vk();
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
 	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
 	//TODO set eye matrix
-	
-	
+
+    if (right)
+      memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
+    else
+      memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
 	//memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
 	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc.desc, 0, nullptr );
@@ -1023,7 +1026,7 @@ void VulkanSystem::submit_cmd_buffer() {
 	si.commandBufferCount = 1;
 	si.pCommandBuffers = &cur_cmd_buffer;
 	si.waitSemaphoreCount = 1;
-	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
+	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx++ ];
 	si.pWaitDstStageMask = &mask;
 
 	vkQueueSubmit( queue, 1, &si, cur_fence );
