@@ -8,6 +8,7 @@
 #include "shared/Matrices.h"
 #include "buffer.h"
 #include "vulkansystem.h"
+#include "scene.h"
 
 struct TrackedController {
   Matrix4 t;
@@ -57,9 +58,8 @@ struct VRSystem {
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
   void update_track_pose();
 
-  void render();
-  void render_stereo_targets() ;
-  void render_scene();
+  void render(Scene &scene);
+  void render_stereo_targets(Scene &scene);
   void render_companion_window();
 
   void setup_render_models();

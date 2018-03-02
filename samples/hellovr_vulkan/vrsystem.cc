@@ -7,6 +7,7 @@
 #include "global.h"
 #include "vulkansystem.h"
 #include "shared/Matrices.h"
+#include "scene.h"
 
 using namespace std;
 
@@ -82,7 +83,7 @@ void VRSystem::render_companion_window() {
 	auto ws = Global::ws();
 }
 
-void VRSystem::render() {
+void VRSystem::render(Scene &scene) {
 	auto vk = Global::vk();
 
 	auto cmd_buf = vk.cmd_buffer();
@@ -91,7 +92,7 @@ void VRSystem::render() {
 	vk.swapchain.get_image();
 
 	// RENDERING
-	render_stereo_targets();
+	render_stereo_targets(scene);
 	render_companion_window();
 
 	vk.end_cmd_buffer();
@@ -136,15 +137,16 @@ void VRSystem::render() {
 	vk.swapchain.frame_idx = ( vk.swapchain.frame_idx + 1 ) % vk.swapchain.images.size();
 }
 
-void VRSystem::render_stereo_targets() {
+void VRSystem::render_stereo_targets(Scene &scene) {
 	auto &vk = Global::vk();
-	auto &scene = Global::scene();
+	//auto &scene = Global::scene();
 
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
 	vkCmdSetViewport( vk.cur_cmd_buffer, 0, 1, &viewport );
 	VkRect2D scissor = { 0, 0, render_width, render_height};
 	vkCmdSetScissor( vk.cur_cmd_buffer, 0, 1, &scissor );
 
+    
 	left_eye_fb.img.to_colour_optimal();
 	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		left_eye_fb.depth_stencil.to_depth_optimal();
@@ -155,7 +157,8 @@ void VRSystem::render_stereo_targets() {
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
 	
-  	//scene.render();
+    Global::right = false;
+  	scene.draw();
   	//render stuff
 	
 	left_eye_fb.end_render_pass();
@@ -170,7 +173,9 @@ void VRSystem::render_stereo_targets() {
 	auto proj_right = get_view_projection(vr::Eye_Right);
 	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
 	
-	//scene.render();
+    Global::right = true;
+	scene.draw();
+    
   	//render stuff
 	right_eye_fb.end_render_pass();
 	right_eye_fb.img.to_read_optimal();
@@ -210,10 +215,6 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 	throw StringException("not valid eye");
 }
 
-void VRSystem::render_scene() {
-  auto &sc = Global::scene();
-  //sc.render();
-}
 
 void VRSystem::setup_render_models()
 {
