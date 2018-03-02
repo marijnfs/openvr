@@ -95,4 +95,6 @@ void Scene::snap(Recording *rec) {
 
 void Scene::draw() {
   Global::right;
+
+  
 }

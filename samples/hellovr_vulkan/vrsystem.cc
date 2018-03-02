@@ -227,7 +227,6 @@ void VRSystem::setup_render_models()
 
 		//SetupRenderModelForTrackedDevice( d );
 	}
-
 }
 
 void VRSystem::setup_render_model_for_device(int d) {
@@ -250,10 +249,13 @@ void VRSystem::update_track_pose() {
             //todo
               
 			if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
-			  if (controller_idx == 0)
+			  if (controller_idx == 0) {
 			    right_controller.set_t(tracked_pose_mat4[d]);
-			  else
+                right_controller.clicked = false; //todo
+              } else {
 			    left_controller.set_t(tracked_pose_mat4[d]);
+                left_controller.clicked = false;
+              }
 			  ++controller_idx;
 			}
 		}

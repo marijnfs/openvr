@@ -1,3 +1,4 @@
+
 #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
@@ -92,7 +93,7 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
 	vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
 }
 
-void GraphicsObject::init_cube(Matrix4 pos) {
+GraphicsCube::GraphicsCube(Matrix4 pos) {
 	Vector4 A = pos * Vector4( 0, 0, 0, 1 );
 	Vector4 B = pos * Vector4( 1, 0, 0, 1 );
 	Vector4 C = pos * Vector4( 1, 1, 0, 1 );
@@ -146,12 +147,12 @@ void GraphicsObject::init_cube(Matrix4 pos) {
 	add_vertex( F.x, F.y, F.z, 0, 1);
 }
 
-void GraphicsObject::add_vertex(float fl0, float fl1, float fl2, float fl3, float fl4) {
-	v.push_back( fl0 );
-	v.push_back( fl1 );
-	v.push_back( fl2 );
-	v.push_back( fl3 );
-	v.push_back( fl4 );
+void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
+	v.push_back( x );
+	v.push_back( y );
+	v.push_back( z );
+	v.push_back( tx );
+	v.push_back( ty );
 }
 
 // ===== SwapChain =======
