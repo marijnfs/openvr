@@ -94,14 +94,7 @@ void Scene::snap(Recording *rec) {
 }
 
 void Scene::draw() {
-  auto &vk = Global::vk();
-
-  vk.start_cmd_buffer();
-
-  //draw shizzle
-  
-  vk.end_cmd_buffer();
-  vk.submit_cmd_buffer();
+  Global::right;
 
   
 }

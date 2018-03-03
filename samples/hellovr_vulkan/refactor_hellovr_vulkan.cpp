@@ -86,7 +86,7 @@ struct World {
 int main() {
   Global::inst();
   Global::ws();
-  Global::vr();
+  auto &vr = Global::vr();
   auto &scene = Global::scene();
 
   scene.add_canvas("test");
@@ -97,6 +97,7 @@ int main() {
   while (i++ < 60) {
     //cout << i << endl;
     scene.step();
+    vr.render(scene);
     a_timer.wait();
   }
 }
