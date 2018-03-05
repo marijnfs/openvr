@@ -50,9 +50,15 @@ void RenderModel::init() {
 	}*/
 
 
+GraphicsObject::GraphicsObject() {
+  
+}
+
 void GraphicsObject::init_buffers() {
-  vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * n_vertex, HOST);
-  index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * n_index, HOST);
+  if (n_vertex)
+    vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * n_vertex, HOST);
+  if (n_index)
+    index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * n_index, HOST);
   
   mvp_left = new Matrix4();
   mvp_right = new Matrix4();
@@ -83,14 +89,24 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
       memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
     else
       memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-	//memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
 
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc.desc, 0, nullptr );
+    if (right)
+      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
+    else
+      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
 
 		// Draw
-	VkDeviceSize nOffsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &nOffsets[ 0 ] );
+	VkDeviceSize offsets[ 1 ] = { 0 };
+	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
 	vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+}
+
+void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
+	v.push_back( x );
+	v.push_back( y );
+	v.push_back( z );
+	v.push_back( tx );
+	v.push_back( ty );
 }
 
 GraphicsCube::GraphicsCube(Matrix4 pos) {
@@ -147,12 +163,19 @@ GraphicsCube::GraphicsCube(Matrix4 pos) {
 	add_vertex( F.x, F.y, F.z, 0, 1);
 }
 
-void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
-	v.push_back( x );
-	v.push_back( y );
-	v.push_back( z );
-	v.push_back( tx );
-	v.push_back( ty );
+void GraphicsCube::render(Matrix4 &mvp, bool right) {
+  auto &vk = Global::vk();
+  vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.scene_pipeline());
+  
+  // Update the persistently mapped pointer to the CB data with the latest matrix
+  memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+  
+  vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+  
+  // Draw
+  VkDeviceSize nOffsets[ 1 ] = { 0 };
+  vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+  vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
 }
 
 // ===== SwapChain =======
@@ -487,6 +510,9 @@ void VulkanSystem::init_device() {
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 }
 
+Descriptor::Descriptor() {
+  init();
+}
 
 void Descriptor::init() {
 	auto vk = Global::vk();
@@ -500,7 +526,7 @@ void Descriptor::init() {
 	vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
 }
 
-void Descriptor::register_texture(VkImageView view) {
+void Descriptor::register_texture(VkImageView &view) {
 	auto vk = Global::vk();
 
 	VkDescriptorImageInfo img_i = {};
@@ -521,7 +547,7 @@ void Descriptor::register_texture(VkImageView view) {
 	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
 }
 
-void Descriptor::register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler) {
+void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
 	auto vk = Global::vk();
 
 	VkDescriptorBufferInfo buf_inf = {};

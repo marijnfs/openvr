@@ -53,18 +53,20 @@ struct Descriptor {
   VkSampler *sampler_ptr = 0;
   VkBuffer *buffer_ptr = 0;
 
+
+  Descriptor();
 	void init();
-	void register_texture(VkImageView view);
-	void register_model_texture(VkBuffer buf, VkImageView view, VkSampler sampler);
+	void register_texture(VkImageView &view);
+	void register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler);
 
   void bind();
 };
 
 
 struct GraphicsObject {
-  Descriptor desc;
+  Descriptor desc_left, desc_right;
  
-  int n_vertex, n_index;
+  int n_vertex = 0, n_index = 0;
   Buffer vertex_buf;
   Buffer index_buf;
   
@@ -75,7 +77,7 @@ struct GraphicsObject {
 
 	std::vector<float> v;
 
-
+  GraphicsObject();
   virtual void render(Matrix4 &mvp, bool right);
     void init_buffers();
   void add_vertex(float x, float y, float z, float tx, float ty);  
@@ -87,14 +89,16 @@ struct GraphicsCanvas : public GraphicsObject {
   std::string texture; //flywheel is responsible for keeping image resources
 
   GraphicsCanvas() {}
-  virtual void render(Matrix4 &mvp, bool right) {}
+  virtual void render(Matrix4 &mvp, bool right) {
+
+  }
   
 };
 
 struct GraphicsCube : public GraphicsObject {
   GraphicsCube(Matrix4 pos);
   
-  virtual void render(Matrix4 &mvp, bool right) {}
+  virtual void render(Matrix4 &mvp, bool right);
 
 };
 
