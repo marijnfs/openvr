@@ -51,10 +51,23 @@ inline std::vector<char> read_all_bytes(std::string filename)
   return result;
 }
 
+struct Canvas;
+struct Controller;
+struct Point;
+struct HMD;
+
+struct ObjectVisitor {
+  virtual void visit(Canvas &canvas) = 0;
+  virtual void visit(Controller &controller) = 0;
+  virtual void visit(Point &point) = 0;
+  virtual void visit(HMD &hmd) = 0;
+};
+
 struct Object {
   //Buffer pos; 
 
-  void draw();
+  virtual void draw() {
+  }
 
   bool changed = true;
   int nameid = -1;
@@ -64,10 +77,7 @@ struct Object {
   
   Object() : p(3) {}
   
-  virtual Object *copy() { //return null if no update needed, otherwise create copy
-    if (!changed) return 0;
-    return new Object(*this);
-  }
+  virtual Object *copy() {return new Object(*this); }
   
   void set_pos(Pos pos) { p = pos; }
   void from_axis(float x, float y, float z, float angle) { //angle in degrees
@@ -93,6 +103,9 @@ struct Object {
   virtual void update() {
   }
 
+  virtual void visit(ObjectVisitor &visitor) {
+  }
+  
   virtual void serialise(cap::Object::Builder builder) {
     auto q = builder.initQuat();
     q.setA(quat[0]);
@@ -115,6 +128,18 @@ struct Point : public Object {
     Object::serialise(builder);
     builder.setPoint();
   }
+
+  Object *copy() {
+    return new Point(*this);
+  }
+  
+  void draw() {
+  }
+
+  void visit(ObjectVisitor &visitor) {
+    visitor.visit(*this);
+  }
+
 };
 
 struct Canvas : public Object {
@@ -122,7 +147,11 @@ struct Canvas : public Object {
 
   Canvas(){}
  Canvas(std::string tex_name_) : tex_name(tex_name_) {}
-  
+
+  Object *copy() {
+    return new Canvas(*this);
+  }
+
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
     builder.setCanvas(tex_name);
@@ -131,6 +160,11 @@ struct Canvas : public Object {
   void set_texture(std::string name) {
     tex_name = name;
   }
+
+  void visit(ObjectVisitor &visitor) {
+    visitor.visit(*this);
+  }
+
 };
 
 struct HMD : public Object {
@@ -143,6 +177,14 @@ struct HMD : public Object {
     builder.setHmd();
   }
 
+  Object *copy() {
+    return new HMD(*this);
+  }
+
+  void visit(ObjectVisitor &visitor) {
+    visitor.visit(*this);
+  }
+
 };
 
 struct Controller : public Object {
@@ -152,15 +194,41 @@ struct Controller : public Object {
 
   Controller(){}
  Controller(bool right_) : right(right_) {
-      }
-  
+  }
+
+  Object *copy() {
+    return new Controller(*this);
+  }
+
   void update();
-  
+
+  void visit(ObjectVisitor &visitor) {
+    visitor.visit(*this);
+  }
+
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
     auto c = builder.initController();
     c.setRight(right);
     c.setClicked(clicked);
+  }
+};
+
+struct PrintVisitor : public ObjectVisitor {
+  void visit(Canvas &canvas) {
+    std::cout << "a canvas" << std::endl;
+  }
+
+  void visit(Controller &controller) {
+    std::cout << "a controller" << std::endl;
+  }
+
+  void visit(Point &point) {
+    std::cout << "a point" << std::endl;
+  }
+
+  void visit(HMD &hmd) {
+    std::cout << "an HMD" << std::endl;
   }
 };
 
@@ -272,7 +340,7 @@ struct Scene {
 
   std::map<std::string, int> name_map;
   std::vector<std::string> names;
-
+  
   int operator()(std::string name) {
     return register_name(name);
   }
@@ -379,7 +447,11 @@ struct Scene {
     return sqrt(d);
   }
 
-
+  void visit(ObjectVisitor &visitor) {
+    for (auto &kv : objects)
+      kv.second->visit(visitor);
+  }
+  
   void start_recording() {
     //create unique id
     //grab current time
