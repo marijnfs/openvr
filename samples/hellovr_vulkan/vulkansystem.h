@@ -14,6 +14,14 @@
 #include "buffer.h"
 #include "shared/Matrices.h"
 
+Matrix4 glm_to_mat4(glm::mat4 mat) {
+  auto m = &mat[0];
+  return Matrix4(m[0][0], m[1][0], m[2][0], m[3][0],
+		m[0][1], m[1][1], m[2][1], m[3][1], 
+		m[0][2], m[1][2], m[2][2], m[3][2], 
+          m[0][3], m[1][3], m[2][3], m[3][3]);
+}
+
 enum PSO //shader files
 {
   PSO_SCENE = 0,
@@ -83,7 +91,6 @@ struct GraphicsObject {
 };
 
 struct GraphicsCanvas : public GraphicsObject {
-
   std::string texture; //flywheel is responsible for keeping image resources
 
   GraphicsCanvas() {}
@@ -202,6 +209,28 @@ struct VulkanSystem {
   void submit_cmd_buffer();
 
   VkCommandBuffer cmd_buffer();
+};
+
+#include "scene.h"
+struct DrawVisitor : public ObjectVisitor {
+  GraphicsCube gcube;
+  GraphicsCanvas gcanvas;
+  Matrix4 mvp;
+  
+  void visit(Canvas &canvas) {
+    auto mat = mvp * glm_to_mat4(canvas.to_mat4());
+    gcanvas.draw(mat, canvas.tex_name);
+  }
+  
+  void visit(Controller &controller) {
+  }
+  
+  void visit(Point &point) {
+  }
+  
+  void visit(HMD &hmd) {
+  }
+                              
 };
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop );
