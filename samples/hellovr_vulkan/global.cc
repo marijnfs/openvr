@@ -4,6 +4,4 @@
 
 using namespace std;
 
-bool Global::right = false;
-
 Global::Global() {}

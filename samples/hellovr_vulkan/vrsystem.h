@@ -49,6 +49,7 @@ struct VRSystem {
   uint32_t render_width, render_height;
   float near_clip, far_clip;
 
+  DrawVisitor draw_visitor; //visitor pattern to draw the scene
 
   VRSystem();
   void init();

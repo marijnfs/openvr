@@ -92,9 +92,3 @@ void Scene::snap(Recording *rec) {
   
   //store snap in recording
 }
-
-void Scene::draw() {
-  Global::right;
-
-  
-}

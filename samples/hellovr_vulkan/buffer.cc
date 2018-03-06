@@ -10,12 +10,13 @@ using namespace std;
 
 Buffer::Buffer() {}
 
-Buffer::Buffer(size_t size, VkBufferUsageFlags usage) {
+Buffer::Buffer(size_t size, VkBufferUsageFlags usage) : n(size) {
 	init(size, usage, DEVICE);
 }
 
 template <typename T>
 void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data) {
+  n = size;
 	init(size, usage, loc);
 
 	auto vk = Global::vk();
@@ -33,6 +34,7 @@ void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc, std::vect
 }
 
 void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {
+  n = size;
 	auto vk = Global::vk();
 // Create the vertex buffer and fill with data
 	VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };

@@ -19,7 +19,7 @@ void TrackedController::set_t(Matrix4 &t_) {
   t = t_;
 }
 
-VRSystem::VRSystem(){
+VRSystem::VRSystem() {
 }
 
 void VRSystem::init() {
@@ -157,8 +157,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
 	
-    Global::right = false;
-  	scene.draw();
+    draw_visitor.right = false;
+    scene.visit(draw_visitor);
   	//render stuff
 	
 	left_eye_fb.end_render_pass();
@@ -173,8 +173,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	auto proj_right = get_view_projection(vr::Eye_Right);
 	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
 	
-    Global::right = true;
-	scene.draw();
+    draw_visitor.right = true;
+    scene.visit(draw_visitor);
     
   	//render stuff
 	right_eye_fb.end_render_pass();

@@ -97,18 +97,24 @@ struct GraphicsObject {
 struct GraphicsCanvas : public GraphicsObject {
   std::string texture; //flywheel is responsible for keeping image resources
 
+  GraphicsCanvas();
   GraphicsCanvas(std::string texture_);
 
-  virtual void render() {
+  void init();
+  
+  void render(Matrix4 &mvp, bool right);
+  
+  void change_texture(std::string texture_) {
+    texture = texture_;
     auto *img = ImageFlywheel::image(texture);
-
-    
+    desc_left.register_texture(img->view);
+    desc_right.register_texture(img->view);
   }
   
 };
 
 struct GraphicsCube : public GraphicsObject {
-  GraphicsCube(Matrix4 pos);
+  GraphicsCube();
   
   virtual void render(Matrix4 &mvp, bool right);
 
@@ -207,7 +213,7 @@ struct VulkanSystem {
 
   void add_desc_set();
 
-  void swapchain_to_present(int i);
+   void swapchain_to_present(int i);
 
  //void init_vulkan();
 
@@ -225,11 +231,12 @@ struct DrawVisitor : public ObjectVisitor {
   GraphicsCube gcube;
   GraphicsCanvas gcanvas;
   Matrix4 mvp;
+  bool right = false;
   
   void visit(Canvas &canvas) {
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
     
-    gcanvas.render();
+    gcanvas.render(mat, right);
   }
   
   void visit(Controller &controller) {

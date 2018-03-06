@@ -73,7 +73,6 @@ struct Global {
 	WindowSystem *ws_ptr = 0;
 	Scene *scene_ptr = 0;
   Script *script_ptr;
-  static bool right;
 };
 
 

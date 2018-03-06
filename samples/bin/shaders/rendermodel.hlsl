@@ -13,13 +13,13 @@ struct PS_INPUT
 	float2 vUVCoords : TEXCOORD0;
 };
 
-cbuffer SceneConstantBuffer : register(b0)
+cbuffer SceneConstantBuffer [[vk::binding(0, 0)]] //: register(b0)
 {
 	float4x4 g_MVPMatrix;
 };
 
-SamplerState g_SamplerState : register(s0);
-Texture2D g_Texture : register(t0);
+SamplerState g_SamplerState [[vk::binding(0, 0)]];//: register(s0);
+Texture2D g_Texture [[vk::binding(0, 0)]];//: register(t0);
 
 
 PS_INPUT VSMain( VS_INPUT i )

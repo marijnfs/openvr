@@ -66,8 +66,6 @@ struct ObjectVisitor {
 struct Object {
   //Buffer pos; 
 
-  virtual void draw() {
-  }
 
   bool changed = true;
   int nameid = -1;
@@ -133,9 +131,6 @@ struct Point : public Object {
     return new Point(*this);
   }
   
-  void draw() {
-  }
-
   void visit(ObjectVisitor &visitor) {
     visitor.visit(*this);
   }
@@ -377,7 +372,6 @@ struct Scene {
     triggers.clear();
   }
 
-  void draw();
   void step();
   void snap(Recording *rec);
 

@@ -98,7 +98,12 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
 		// Draw
 	VkDeviceSize offsets[ 1 ] = { 0 };
 	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
-	vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+    if (!index_buf.size())
+      vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+    else {
+      	vkCmdBindIndexBuffer( vk.cur_cmd_buffer, index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
+        vkCmdDrawIndexed( vk.cur_cmd_buffer, vertex_buf.size(), 1, 0, 0, 0 );
+    }
 }
 
 void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
@@ -109,7 +114,16 @@ void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
 	v.push_back( ty );
 }
 
+
+GraphicsCanvas::GraphicsCanvas() : texture("stub.png") {
+  init();
+}
+
 GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
+  init();
+}
+
+void GraphicsCanvas::init() {
   add_vertex( 0, 1, 0, 0, 1); //Front
   add_vertex( 1, 1, 0, 1, 1);
   add_vertex( 1, 0, 0, 1, 0);
@@ -117,21 +131,31 @@ GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
   add_vertex( 0, 0, 0, 0, 0);
   add_vertex( 0, 1, 0, 0, 1);
 
+  init_buffers();
   auto *img = ImageFlywheel::image(texture);
 
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
 }
 
-GraphicsCube::GraphicsCube(Matrix4 pos) {
-	Vector4 A = pos * Vector4( 0, 0, 0, 1 );
-	Vector4 B = pos * Vector4( 1, 0, 0, 1 );
-	Vector4 C = pos * Vector4( 1, 1, 0, 1 );
-	Vector4 D = pos * Vector4( 0, 1, 0, 1 );
-	Vector4 E = pos * Vector4( 0, 0, 1, 1 );
-	Vector4 F = pos * Vector4( 1, 0, 1, 1 );
-	Vector4 G = pos * Vector4( 1, 1, 1, 1 );
-	Vector4 H = pos * Vector4( 0, 1, 1, 1 );
+void GraphicsCanvas::render(Matrix4 &mvp, bool right) {
+  if (right)
+    desc_right.bind();
+  else
+    desc_left.bind();
+
+  
+}
+
+GraphicsCube::GraphicsCube() {
+	Vector4 A = Vector4( 0, 0, 0, 1 );
+	Vector4 B = Vector4( 1, 0, 0, 1 );
+	Vector4 C = Vector4( 1, 1, 0, 1 );
+	Vector4 D = Vector4( 0, 1, 0, 1 );
+	Vector4 E = Vector4( 0, 0, 1, 1 );
+	Vector4 F = Vector4( 1, 0, 1, 1 );
+	Vector4 G = Vector4( 1, 1, 1, 1 );
+	Vector4 H = Vector4( 0, 1, 1, 1 );
 
 	// triangles instead of quads
 	add_vertex( E.x, E.y, E.z, 0, 1); //Front

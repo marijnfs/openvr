@@ -14,7 +14,8 @@ enum Location {
 struct Buffer {
   VkBuffer buffer;
   VkDeviceMemory memory;
-
+  size_t n = 0;
+  
   Buffer();
 
   Buffer(size_t size, VkBufferUsageFlags usage);
@@ -25,7 +26,9 @@ struct Buffer {
   void init(size_t size, VkBufferUsageFlags usage, Location loc);
 
   template <typename T>
-  void map(T **ptr);  
+  void map(T **ptr);
+
+  size_t size() { return n; }
 };
 
 struct ViewedBuffer {
