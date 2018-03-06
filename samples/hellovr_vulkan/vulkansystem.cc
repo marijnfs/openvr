@@ -165,17 +165,23 @@ GraphicsCube::GraphicsCube(Matrix4 pos) {
 
 void GraphicsCube::render(Matrix4 &mvp, bool right) {
   auto &vk = Global::vk();
-  vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.scene_pipeline());
+  vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[PSO_SCENE]);
+
+  if (right)
+    memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
+  else
+    memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
+
   
-  // Update the persistently mapped pointer to the CB data with the latest matrix
-  memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
-  
-  vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
-  
-  // Draw
-  VkDeviceSize nOffsets[ 1 ] = { 0 };
-  vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
-  vkCmdDraw( m_currentCommandBuffer.m_pCommandBuffer, m_uiVertcount, 1, 0, 0 );
+    if (right)
+      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
+    else
+      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
+    
+    // Draw
+	VkDeviceSize offsets[ 1 ] = { 0 };
+	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
+	vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
 }
 
 // ===== SwapChain =======
@@ -540,10 +546,10 @@ void Descriptor::register_texture(VkImageView &view) {
 	write_desc[ 0 ].descriptorCount = 1;
 	write_desc[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	write_desc[ 0 ].pImageInfo = &img_i;
-	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
+	//vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
 
 	img_i.imageView = view;
-	write_desc[ 0 ].dstSet = desc;
+	//write_desc[ 0 ].dstSet = desc;
 	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
 }
 

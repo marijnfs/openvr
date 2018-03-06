@@ -13,8 +13,10 @@
 #include <queue>
 #include "buffer.h"
 #include "shared/Matrices.h"
+#include "flywheel.h"
 
-Matrix4 glm_to_mat4(glm::mat4 mat) {
+
+inline Matrix4 glm_to_mat4(glm::mat4 mat) {
   auto m = &mat[0];
   return Matrix4(m[0][0], m[1][0], m[2][0], m[3][0],
 		m[0][1], m[1][1], m[2][1], m[3][1], 
@@ -96,8 +98,9 @@ struct GraphicsCanvas : public GraphicsObject {
   std::string texture; //flywheel is responsible for keeping image resources
 
   GraphicsCanvas() {}
-  virtual void render(Matrix4 &mvp, bool right) {
-
+  virtual void render() {
+    auto *img = ImageFlywheel::image(texture);
+    
   }
   
 };
@@ -223,7 +226,8 @@ struct DrawVisitor : public ObjectVisitor {
   
   void visit(Canvas &canvas) {
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
-    gcanvas.draw(mat, canvas.tex_name);
+    
+    gcanvas.render();
   }
   
   void visit(Controller &controller) {
