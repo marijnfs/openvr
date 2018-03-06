@@ -96,7 +96,10 @@ int main() {
   uint i(0);
   while (i++ < 60) {
     //cout << i << endl;
+    vr.update_track_pose();
     scene.step();
+
+    
     vr.render(scene);
     a_timer.wait();
   }

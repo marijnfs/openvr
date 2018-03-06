@@ -102,7 +102,7 @@ struct GraphicsCanvas : public GraphicsObject {
 
   void init();
   
-  void render(Matrix4 &mvp, bool right);
+  //void render(Matrix4 &mvp, bool right);
   
   void change_texture(std::string texture_) {
     texture = texture_;
@@ -116,7 +116,7 @@ struct GraphicsCanvas : public GraphicsObject {
 struct GraphicsCube : public GraphicsObject {
   GraphicsCube();
   
-  virtual void render(Matrix4 &mvp, bool right);
+  //virtual void render(Matrix4 &mvp, bool right);
 
 };
 
@@ -191,7 +191,7 @@ struct VulkanSystem {
 
   VkDebugReportCallbackEXT debug_callback;
 
-  VulkanSystem() ;
+  VulkanSystem();
   void init(); //general init
 
 

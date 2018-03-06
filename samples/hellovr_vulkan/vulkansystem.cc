@@ -138,15 +138,6 @@ void GraphicsCanvas::init() {
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
 }
 
-void GraphicsCanvas::render(Matrix4 &mvp, bool right) {
-  if (right)
-    desc_right.bind();
-  else
-    desc_left.bind();
-
-  
-}
-
 GraphicsCube::GraphicsCube() {
 	Vector4 A = Vector4( 0, 0, 0, 1 );
 	Vector4 B = Vector4( 1, 0, 0, 1 );
@@ -200,7 +191,7 @@ GraphicsCube::GraphicsCube() {
 	add_vertex( G.x, G.y, G.z, 0, 0);
 	add_vertex( F.x, F.y, F.z, 0, 1);
 }
-
+/*
 void GraphicsCube::render(Matrix4 &mvp, bool right) {
   auto &vk = Global::vk();
   vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[PSO_SCENE]);
@@ -221,6 +212,7 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
   vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
   vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
 }
+*/
 
 // ===== SwapChain =======
 
