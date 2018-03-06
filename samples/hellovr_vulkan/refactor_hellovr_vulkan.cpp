@@ -90,7 +90,7 @@ int main() {
   auto &scene = Global::scene();
 
   scene.add_canvas("test");
-  scene.set_pos("test", vector<float>{1, 1, 1});
+  scene.set_pos("test", Pos(1, 1, 1));
 
   Timer a_timer(1./60);
   uint i(0);
@@ -103,4 +103,8 @@ int main() {
     vr.render(scene);
     a_timer.wait();
   }
+
+  glm::fvec3 v;
+  glm::fquat q;
+  q * v;
 }

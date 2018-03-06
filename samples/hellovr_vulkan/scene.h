@@ -15,7 +15,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 typedef glm::fquat fquat;
-typedef typename std::vector<float> Pos;
+//typedef typename std::vector<float> Pos;
+typedef typename glm::fvec3 Pos;
 
 #include "bytes.h"
 #include "snap.capnp.h"
@@ -436,7 +437,7 @@ struct Scene {
     float d(0);
     //Object &o = find(name);
 
-    for (int i(0); i < p1.size(); ++i)
+    for (int i(0); i < 3; ++i)
       d += (p1[i] - p2[i]) * (p1[i] - p2[i]);
     return sqrt(d);
   }
