@@ -73,6 +73,10 @@ Image::Image(int width_, int height_, VkFormat format, VkImageUsageFlags usage, 
 	init(width, height, format, usage, aspect);
 }
 
+Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+  init_from_img(path, format, usage, aspect);  
+}
+
 void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_) {
 	width = width_;
 	height = height_;

@@ -83,10 +83,10 @@ struct GraphicsObject {
   Matrix4 *mvp_left, *mvp_right;
   Buffer mvp_buffer_left, mvp_buffer_right;
   
-	//Image texture;
-
-	std::vector<float> v;
-
+  //Image texture;
+  
+  std::vector<float> v;
+  
   GraphicsObject();
   virtual void render(Matrix4 &mvp, bool right);
     void init_buffers();
@@ -97,9 +97,11 @@ struct GraphicsObject {
 struct GraphicsCanvas : public GraphicsObject {
   std::string texture; //flywheel is responsible for keeping image resources
 
-  GraphicsCanvas() {}
+  GraphicsCanvas(std::string texture_);
+
   virtual void render() {
     auto *img = ImageFlywheel::image(texture);
+
     
   }
   

@@ -1,4 +1,4 @@
-
+ 
 #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
@@ -109,6 +109,20 @@ void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
 	v.push_back( ty );
 }
 
+GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
+  add_vertex( 0, 1, 0, 0, 1); //Front
+  add_vertex( 1, 1, 0, 1, 1);
+  add_vertex( 1, 0, 0, 1, 0);
+  add_vertex( 1, 0, 0, 1, 0);
+  add_vertex( 0, 0, 0, 0, 0);
+  add_vertex( 0, 1, 0, 0, 1);
+
+  auto *img = ImageFlywheel::image(texture);
+
+  desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
+  desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
+}
+
 GraphicsCube::GraphicsCube(Matrix4 pos) {
 	Vector4 A = pos * Vector4( 0, 0, 0, 1 );
 	Vector4 B = pos * Vector4( 1, 0, 0, 1 );
@@ -171,17 +185,17 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
     memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
   else
     memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-
   
-    if (right)
-      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
-    else
-      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
-    
-    // Draw
-	VkDeviceSize offsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
-	vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+  
+  if (right)
+    vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
+  else
+    vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
+  
+  // Draw
+  VkDeviceSize offsets[ 1 ] = { 0 };
+  vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
+  vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
 }
 
 // ===== SwapChain =======
