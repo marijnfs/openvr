@@ -10,7 +10,8 @@
 struct WindowSystem {
   SDL_Window *window;
   uint32_t width, height;
-  //Buffer vertex_buf, index_buf;
+
+  Buffer vertex_buf, index_buf;
 
   WindowSystem();
   void init();

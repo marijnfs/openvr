@@ -91,8 +91,11 @@ struct Swapchain {
 
   void init();
   void to_present(int i);
+  void to_colour_optimal(int i);
 
   void get_image();  
+
+  
 };
 
 struct VulkanSystem {
@@ -178,6 +181,8 @@ struct VulkanSystem {
   void submit_cmd_buffer();
 
   VkCommandBuffer cmd_buffer();
+
+  void img_to_colour_optimal(VkImage &img);
 };
 
 #include "scene.h"

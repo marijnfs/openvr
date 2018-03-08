@@ -18,6 +18,7 @@ struct TrackedController {
   void set_t(Matrix4 &t);
 };
 
+
 struct VRSystem {
   vr::IVRSystem *ivrsystem;
   vr::IVRRenderModels *render_models;

@@ -438,7 +438,7 @@ void Swapchain::init() {
 
 
 VulkanSystem::VulkanSystem() {
-
+  
 }
 
 void VulkanSystem::submit(FencedCommandBuffer &fcb) {
@@ -1012,11 +1012,34 @@ void Swapchain::to_present(int i) {
 	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
+void Swapchain::to_colour_optimal(int i) {
+	auto vk = Global::vk();
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;;
+	barier.image = images[i];
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+}
+
 void Swapchain::get_image() {
 	auto vk = Global::vk();
 	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
 
+    auto &swap_img = images[current_swapchain_image];
+    
+    //vk.img_khr_to_colour_optimal(swap_img);
 
+    auto &fb = framebuffers[current_swapchain_image];
+    
 }
 
 // void VulkanSystem::init_vulkan() {
@@ -1093,5 +1116,5 @@ void VulkanSystem::submit_cmd_buffer() {
 	si.pWaitDstStageMask = &mask;
 
 	vkQueueSubmit( queue, 1, &si, cur_fence );
-
 }
+

@@ -81,6 +81,8 @@ void VRSystem::setup_render_targets() {
 
 void VRSystem::render_companion_window() {
 	auto ws = Global::ws();
+
+    
 }
 
 void VRSystem::render(Scene &scene) {
