@@ -73,52 +73,6 @@ struct Descriptor {
 };
 
 
-struct GraphicsObject {
-  Descriptor desc_left, desc_right;
- 
-  int n_vertex = 0, n_index = 0;
-  Buffer vertex_buf;
-  Buffer index_buf;
-  
-  Matrix4 *mvp_left, *mvp_right;
-  Buffer mvp_buffer_left, mvp_buffer_right;
-  
-  //Image texture;
-  
-  std::vector<float> v;
-  
-  GraphicsObject();
-  virtual void render(Matrix4 &mvp, bool right);
-    void init_buffers();
-  void add_vertex(float x, float y, float z, float tx, float ty);  
-  
-};
-
-struct GraphicsCanvas : public GraphicsObject {
-  std::string texture; //flywheel is responsible for keeping image resources
-
-  GraphicsCanvas();
-  GraphicsCanvas(std::string texture_);
-
-  void init();
-  
-  //void render(Matrix4 &mvp, bool right);
-  
-  void change_texture(std::string texture_) {
-    texture = texture_;
-    auto *img = ImageFlywheel::image(texture);
-    desc_left.register_texture(img->view);
-    desc_right.register_texture(img->view);
-  }
-  
-};
-
-struct GraphicsCube : public GraphicsObject {
-  GraphicsCube();
-  
-  //virtual void render(Matrix4 &mvp, bool right);
-
-};
 
 struct Swapchain {
   VkSurfaceKHR surface;
@@ -227,16 +181,88 @@ struct VulkanSystem {
 };
 
 #include "scene.h"
+struct GraphicsObject {
+  Descriptor desc_left, desc_right;
+ 
+  int n_vertex = 0, n_index = 0;
+  Buffer vertex_buf;
+  Buffer index_buf;
+  
+  Matrix4 *mvp_left, *mvp_right;
+  Buffer mvp_buffer_left, mvp_buffer_right;
+  
+  //Image texture;
+  
+  std::vector<float> v;
+  
+  GraphicsObject();
+  virtual void render(Matrix4 &mvp, bool right);
+    void init_buffers();
+  void add_vertex(float x, float y, float z, float tx, float ty);  
+  
+};
+
+struct GraphicsCanvas : public GraphicsObject {
+  std::string texture; //flywheel is responsible for keeping image resources
+
+  GraphicsCanvas();
+  GraphicsCanvas(std::string texture_);
+
+  void init();
+  
+  //void render(Matrix4 &mvp, bool right);
+  
+  void change_texture(std::string texture_) {
+    texture = texture_;
+    auto *img = ImageFlywheel::image(texture);
+    desc_left.register_texture(img->view);
+    desc_right.register_texture(img->view);
+  }
+  
+};
+
+struct GraphicsCube : public GraphicsObject {
+  GraphicsCube();
+  
+  //virtual void render(Matrix4 &mvp, bool right);
+
+};
+
 struct DrawVisitor : public ObjectVisitor {
-  GraphicsCube gcube;
-  GraphicsCanvas gcanvas;
+  std::vector<GraphicsObject*> gobs;
+
   Matrix4 mvp;
   bool right = false;
+
+  template <typename T>
+    void check_size_and_type(int i) {
+    if (i >= gobs.size()) {
+      gobs.resize(i+1);
+      gobs[i] = new T();
+      return;
+    }
+    try {
+      dynamic_cast<T*>(gobs[i]);
+    } catch (...) {
+      delete gobs[i];
+      gobs[i] = new T();
+    }
+        
+      
+  }
+
+  template <typename T>
+    T& gob(int i) {
+    return *dynamic_cast<T*>(gobs[i]);
+  }
   
   void visit(Canvas &canvas) {
+    check_size_and_type<GraphicsCanvas>(i);
+    auto & gcanvas = gob<GraphicsCanvas>(i);
+
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
     
-    gcanvas.render(mat, right);
+    //gcanvas.render(mat, right);
   }
   
   void visit(Controller &controller) {

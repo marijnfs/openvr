@@ -58,6 +58,8 @@ struct Point;
 struct HMD;
 
 struct ObjectVisitor {
+  int i = 0;
+
   virtual void visit(Canvas &canvas) = 0;
   virtual void visit(Controller &controller) = 0;
   virtual void visit(Point &point) = 0;
@@ -443,8 +445,11 @@ struct Scene {
   }
 
   void visit(ObjectVisitor &visitor) {
-    for (auto &kv : objects)
+    visitor.i = 0;
+    for (auto &kv : objects) {
       kv.second->visit(visitor);
+      ++visitor.i;
+    }
   }
   
   void start_recording() {
