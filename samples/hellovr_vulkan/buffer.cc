@@ -10,27 +10,31 @@ using namespace std;
 
 Buffer::Buffer() {}
 
-Buffer::Buffer(size_t size, VkBufferUsageFlags usage) : n(size) {
-	init(size, usage, DEVICE);
+template <typename T>
+Buffer::Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  init(init_data, usage, log);
+}
+Buffer::Buffer(size_t size, VkBufferUsageFlags usage, Location loc) : n(size) {
+	init(size, usage, loc);
 }
 
 template <typename T>
-void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data) {
-  n = size;
-	init(size, usage, loc);
-
-	auto vk = Global::vk();
-	void *data(0);
-	check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
-
-	memcpy( data, &init_data[0], sizeof(T) * init_data.size() );
-
-	vkUnmapMemory(vk.dev , memory);
-
-	VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-	mem_range.memory = memory;
-	mem_range.size = VK_WHOLE_SIZE;
-	vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  n = init_data.size() * sizeof(T);
+  init(n, usage, loc);
+  
+  auto vk = Global::vk();
+  void *data(0);
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], sizeof(T) * init_data.size() );
+  
+  vkUnmapMemory(vk.dev , memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
 }
 
 void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {

@@ -17,11 +17,12 @@ struct Buffer {
   size_t n = 0;
   
   Buffer();
-
-  Buffer(size_t size, VkBufferUsageFlags usage);
+  template <typename T>
+  Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc = DEVICE);
+  Buffer(size_t size, VkBufferUsageFlags usage, Location loc = DEVICE);
 
   template <typename T>
-  void init(size_t size, VkBufferUsageFlags usage, Location loc, std::vector<T> &init_data);
+  void init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc);
 
   void init(size_t size, VkBufferUsageFlags usage, Location loc);
 
