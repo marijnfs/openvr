@@ -40,8 +40,8 @@ struct VRSystem {
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
   
-  Buffer left_eye_buf, right_eye_buf;
-  void *left_eye_mvp, *right_eye_mvp;
+  //Buffer left_eye_buf, right_eye_buf;
+  //void *left_eye_mvp, *right_eye_mvp;
   
   ////buffers
   //std::vector<Buffer> eye_pos_buffer;

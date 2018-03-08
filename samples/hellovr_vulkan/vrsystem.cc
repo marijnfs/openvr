@@ -56,11 +56,11 @@ void VRSystem::init() {
 	setup_render_targets();
 	setup_render_models();
 
-	left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+	//right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 
-	left_eye_buf.map(&left_eye_mvp);
-	right_eye_buf.map(&right_eye_mvp);
+	//left_eye_buf.map(&left_eye_mvp);
+	//right_eye_buf.map(&right_eye_mvp);
 
 	//initialise the eye projection and translation matrices (these stay fixed)
 	eye_pos_left = get_eye_transform(vr::Eye_Left);
@@ -155,7 +155,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	//TODO:  have to set eye position
 
 	auto proj_left = get_view_projection(vr::Eye_Left);
-	memcpy(left_eye_mvp, &proj_left, sizeof(Matrix4));
+	memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
 	
     draw_visitor.right = false;
     scene.visit(draw_visitor);
@@ -171,7 +171,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	right_eye_fb.start_render_pass();
 
 	auto proj_right = get_view_projection(vr::Eye_Right);
-	memcpy(right_eye_mvp, &proj_right, sizeof(Matrix4));
+    memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
 	
     draw_visitor.right = true;
     scene.visit(draw_visitor);

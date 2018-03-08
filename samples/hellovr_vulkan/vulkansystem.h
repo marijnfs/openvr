@@ -213,6 +213,7 @@ struct GraphicsCanvas : public GraphicsObject {
   //void render(Matrix4 &mvp, bool right);
   
   void change_texture(std::string texture_) {
+    if (texture == texture_) return;
     texture = texture_;
     auto *img = ImageFlywheel::image(texture);
     desc_left.register_texture(img->view);
@@ -258,11 +259,11 @@ struct DrawVisitor : public ObjectVisitor {
   
   void visit(Canvas &canvas) {
     check_size_and_type<GraphicsCanvas>(i);
-    auto & gcanvas = gob<GraphicsCanvas>(i);
-
+    auto &gcanvas = gob<GraphicsCanvas>(i);
+    
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
     
-    //gcanvas.render(mat, right);
+    gcanvas.render(mat, right);
   }
   
   void visit(Controller &controller) {
