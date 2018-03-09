@@ -10,39 +10,18 @@ using namespace std;
 
 Buffer::Buffer() {}
 
-template <typename T>
-Buffer::Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
-  init(init_data, usage, log);
-}
-Buffer::Buffer(size_t size, VkBufferUsageFlags usage, Location loc) : n(size) {
-	init(size, usage, loc);
+
+Buffer::Buffer(size_t n_, VkBufferUsageFlags usage, Location loc) : n(n_) {
+	init(n, usage, loc);
 }
 
-template <typename T>
-void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
-  n = init_data.size() * sizeof(T);
-  init(n, usage, loc);
-  
-  auto vk = Global::vk();
-  void *data(0);
-  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
-  
-  memcpy( data, &init_data[0], sizeof(T) * init_data.size() );
-  
-  vkUnmapMemory(vk.dev , memory);
-  
-  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-  mem_range.memory = memory;
-  mem_range.size = VK_WHOLE_SIZE;
-  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
-}
 
-void Buffer::init(size_t size, VkBufferUsageFlags usage, Location loc) {
-  n = size;
+void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
+  n = n_;
 	auto vk = Global::vk();
 // Create the vertex buffer and fill with data
 	VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	bci.size = size;
+	bci.size = n;
 	bci.usage = usage;
 	check( vkCreateBuffer( vk.dev, &bci, nullptr, &buffer ), "vkCreateBuffer");
 
@@ -384,3 +363,77 @@ void FrameRenderBuffer::start_render_pass() {
 void FrameRenderBuffer::end_render_pass() {
 	vkCmdEndRenderPass( Global::vk().cur_cmd_buffer );
 }
+
+
+
+template <typename T>
+Buffer::Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  init(init_data, usage, loc);
+}
+
+template <typename T>
+Buffer::Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc) {
+  init(init_data, n_, usage, loc);
+}
+
+template <typename T>
+void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  n = init_data.size() * sizeof(T);
+  init(n, usage, loc);
+  
+  auto vk = Global::vk();
+  void *data(0);
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], n );
+  
+  vkUnmapMemory(vk.dev , memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+}
+
+template <typename T>
+void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location loc) {
+  n = size * sizeof(T); //size in bytes
+  init(n, usage, loc);
+  
+  auto vk = Global::vk();
+  void *data(0);
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], size );
+  
+  vkUnmapMemory(vk.dev , memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+}
+
+template
+Buffer::Buffer<Pos2Tex2>(std::vector<Pos2Tex2> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+Buffer::Buffer<Pos2Tex2>(Pos2Tex2 init_data[], int n_, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<Pos2Tex2>(std::vector<Pos2Tex2> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<Pos2Tex2>(Pos2Tex2 init_data[], int size, VkBufferUsageFlags usage, Location loc);
+
+template
+Buffer::Buffer<unsigned short>(std::vector<unsigned short> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+Buffer::Buffer<unsigned short>(unsigned short init_data[], int n_, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<unsigned short>(std::vector<unsigned short> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<unsigned short>(unsigned short init_data[], int size, VkBufferUsageFlags usage, Location loc);

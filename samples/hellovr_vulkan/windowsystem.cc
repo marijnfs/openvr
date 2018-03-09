@@ -51,8 +51,8 @@ void WindowSystem::setup_window() {
 	cout << "setting up buffers" << endl;
 
 //aTODO: add initialisation
-	//vertex_buf.init(sizeof(Pos2Tex2) * verts.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
-	//index_buf.init(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
+	vertex_buf.init(verts, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
+	index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
 
 	cout << " done with buffers" << endl;
 }
