@@ -65,9 +65,9 @@ struct Descriptor {
 
 
   Descriptor();
-	void init();
-	void register_texture(VkImageView &view);
-	void register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler);
+  void init();
+  void register_texture(VkImageView &view);
+  void register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler);
 
   void bind();
 };
@@ -86,14 +86,14 @@ struct Swapchain {
   uint32_t n_swap;
   uint32_t frame_idx = 0;
   uint32_t current_swapchain_image = 0;
-
-  VkRenderPass renderpass, companion_renderpass;
+  
+  //VkRenderPass renderpass, companion_renderpass;
 
   void init();
   void to_present(int i);
   void to_colour_optimal(int i);
 
-  void get_image();  
+  void acquire_image();  
 
   
 };

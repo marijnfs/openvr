@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "vulkansystem.h"
 #include "scene.h"
+#include "framerenderbuffer.h"
 
 struct TrackedController {
   Matrix4 t;
@@ -40,7 +41,7 @@ struct VRSystem {
   
   //render targets
   FrameRenderBuffer left_eye_fb, right_eye_fb;
-  
+
   //Buffer left_eye_buf, right_eye_buf;
   //void *left_eye_mvp, *right_eye_mvp;
   

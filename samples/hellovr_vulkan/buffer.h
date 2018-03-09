@@ -68,21 +68,6 @@ struct Image {
 
 };
 
-struct FrameRenderBuffer {
-    Image img, depth_stencil;
-    VkRenderPass render_pass;
-    VkFramebuffer framebuffer;
-    int width, height;
-
-    void init(int width_, int height_);
-
-
-
-	void start_render_pass();
-	void end_render_pass();
-};
-
-
 
 
 #endif

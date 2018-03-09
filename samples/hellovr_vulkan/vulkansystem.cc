@@ -219,12 +219,12 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
 void Swapchain::init() {
 	cout << "initialising swapchain" << endl;
 
-	auto window = Global::ws();
+	auto ws = Global::ws();
 	auto vk = Global::vk();
 
 	SDL_SysWMinfo wm_info;
 	SDL_VERSION( &wm_info.version );
-	SDL_GetWindowWMInfo( window.window, &wm_info );
+	SDL_GetWindowWMInfo( ws.window, &wm_info );
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 	VkWin32SurfaceCreateInfoKHR win32SurfaceCreateInfo = {};
@@ -281,8 +281,8 @@ void Swapchain::init() {
 	VkExtent2D swapchain_extent;
 	if ( surface_caps.currentExtent.width == -1 ) {
 	// If the surface size is undefined, the size is set to the size of the images requested.
-		swapchain_extent.width = window.width;
-		swapchain_extent.height = window.height;
+		swapchain_extent.width = ws.width;
+		swapchain_extent.height = ws.height;
 	} else {
 	// If the surface size is defined, the swap chain size must match
 		swapchain_extent = surface_caps.currentExtent;
@@ -393,7 +393,7 @@ void Swapchain::init() {
 	renderpassci.dependencyCount = 0;
 	renderpassci.pDependencies = NULL;
 
-	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &renderpass), "vkCreateRenderPass");
+	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer.render_pass), "vkCreateRenderPass");
 
 	for (int i(0); i < images.size(); ++i) {
 		VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -414,11 +414,11 @@ void Swapchain::init() {
 
 		VkImageView attachments[ 1 ] = { image_view };
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-		fbci.renderPass = renderpass;
+		fbci.renderPass = ws.framebuffer.render_pass;
 		fbci.attachmentCount = 1;
 		fbci.pAttachments = &attachments[ 0 ];
-		fbci.width = window.width;
-		fbci.height = window.height;
+		fbci.width = ws.width;
+		fbci.height = ws.height;
 		fbci.layers = 1;
 		VkFramebuffer framebuffer;
 		check( vkCreateFramebuffer( vk.dev, &fbci, NULL, &framebuffer ), "vkCreateFramebuffer");
@@ -696,7 +696,9 @@ void VulkanSystem::init_descriptor_sets() {
 
 
 void VulkanSystem::init_shaders() {
-	//Create Shaders, probably most involved part
+  auto &vr = Global::vr();
+  auto &ws = Global::ws();
+  //Create Shaders, probably most involved part
 	//Init desc sets first
 	vector<string> shader_names = {
 		"scene",
@@ -739,10 +741,10 @@ void VulkanSystem::init_shaders() {
 
 	VkRenderPass render_passes[ PSO_COUNT ] =
 	{
-		swapchain.renderpass,
-		swapchain.renderpass,
-		swapchain.renderpass,
-	 	swapchain.companion_renderpass
+      vr.left_eye_fb.render_pass,
+      vr.left_eye_fb.render_pass,
+      vr.left_eye_fb.render_pass,
+      ws.framebuffer.render_pass
 	};
 
 //define strides for data used in shaders
@@ -1030,15 +1032,10 @@ void Swapchain::to_colour_optimal(int i) {
 	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
-void Swapchain::get_image() {
+void Swapchain::acquire_image() {
 	auto vk = Global::vk();
 	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
 
-    auto &swap_img = images[current_swapchain_image];
-    
-    //vk.img_khr_to_colour_optimal(swap_img);
-
-    auto &fb = framebuffers[current_swapchain_image];
     
 }
 

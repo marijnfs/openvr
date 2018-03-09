@@ -4,12 +4,11 @@
 using namespace std;
 
 WindowSystem::WindowSystem() : width(800), height(800) {
-
+  
 }
 
 void WindowSystem::init() {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
-
 
 	setup_window();
 }

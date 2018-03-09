@@ -80,9 +80,60 @@ void VRSystem::setup_render_targets() {
 }
 
 void VRSystem::render_companion_window() {
-	auto ws = Global::ws();
+	auto &ws = Global::ws();
+    auto &vk = Global::vk();
+    
+    auto &sc = vk.swapchain;
+    
+    auto &swap_img = sc.images[sc.current_swapchain_image];
+    sc.to_colour_optimal(sc.current_swapchain_image);
+    auto &fb = sc.framebuffers[sc.current_swapchain_image];
+
+
+
+    // Start the renderpass
+	VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+	renderPassBeginInfo.renderPass = ws.framebuffer.render_pass;
+	renderPassBeginInfo.framebuffer = sc.framebuffers[sc.current_swapchain_image];
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = ws.width;
+	renderPassBeginInfo.renderArea.extent.height = ws.height;
+	VkClearValue clearValues[ 1 ];
+	clearValues[ 0 ].color.float32[ 0 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 1 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 2 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 3 ] = 1.0f;
+	renderPassBeginInfo.clearValueCount = _countof( clearValues );
+	renderPassBeginInfo.pClearValues = &clearValues[ 0 ];
+	vkCmdBeginRenderPass( vk.cur_cmd_buffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+	// Set viewport/scissor
+	VkViewport viewport = { 0.0f, 0.0f, (float ) ws.width, ( float ) ws.height, 0.0f, 1.0f };
+	vkCmdSetViewport( vk.cur_cmd_buffer, 0, 1, &viewport );
+	VkRect2D scissor = { 0, 0, ws.width, ws.height };
+	vkCmdSetScissor( vk.cur_cmd_buffer, 0, 1, &scissor );
+
+	// Bind the pipeline and descriptor set
+	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_COMPANION ] );
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb.desc.desc, 0, nullptr );
+
+	// Draw left eye texture to companion window
+	VkDeviceSize nOffsets[ 1 ] = { 0 };
+	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &ws.vertex_buf.buffer, &nOffsets[ 0 ] );
+	vkCmdBindIndexBuffer( vk.cur_cmd_buffer, ws.index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
+	vkCmdDrawIndexed( vk.cur_cmd_buffer, ws.index_buf.size() / 2, 1, 0, 0, 0 );
+
+	// Draw right eye texture to companion window
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &right_eye_fb.desc.desc, 0, nullptr );
+	vkCmdDrawIndexed( vk.cur_cmd_buffer, ws.index_buf.size() / 2, 1, ws.index_buf.size() / 2, 0, 0 );
+
+	// End the renderpass
+	vkCmdEndRenderPass( vk.cur_cmd_buffer );
+
 
     
+
 }
 
 void VRSystem::render(Scene &scene) {
@@ -91,7 +142,7 @@ void VRSystem::render(Scene &scene) {
 	auto cmd_buf = vk.cmd_buffer();
 	vk.start_cmd_buffer();
 
-	vk.swapchain.get_image();
+	vk.swapchain.acquire_image();
 
 	// RENDERING
 	render_stereo_targets(scene);

@@ -85,10 +85,12 @@ struct World {
 
 int main() {
   Global::inst();
-  Global::ws();
+  auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &scene = Global::scene();
+  ws.init(); //needs explicit init
 
+  
   scene.add_canvas("test");
   scene.set_pos("test", Pos(1, 1, 1));
 

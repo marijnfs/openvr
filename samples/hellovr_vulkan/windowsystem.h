@@ -6,13 +6,15 @@
 #include <stdio.h>
 
 #include "buffer.h"
+#include "framerenderbuffer.h"
 
 struct WindowSystem {
   SDL_Window *window;
   uint32_t width, height;
 
   Buffer vertex_buf, index_buf;
-
+  FrameRenderBuffer framebuffer;
+  
   WindowSystem();
   void init();
 

@@ -17,6 +17,7 @@ add_executable(${TARGET_NAME}
   script.cc
   flywheel.cc
   scene.cc
+  framerenderbuffer.cc
   refactor_hellovr_vulkan.cpp
 )
 
