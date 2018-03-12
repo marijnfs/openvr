@@ -217,7 +217,7 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
 // ===== SwapChain =======
 
 void Swapchain::init() {
-	cout << "initialising swapchain" << endl;
+  cout << "initialising swapchain" << endl;
 
 	auto ws = Global::ws();
 	auto vk = Global::vk();
@@ -463,8 +463,10 @@ void VulkanSystem::init_instance() {
 	cout << "getting ext" << endl;
 
 	int layer_count(0);
+
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
-	char *inst_req_charp[inst_req.size()];
+    cout << "asdf" << endl;
+    char *inst_req_charp[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
 
@@ -641,11 +643,14 @@ void Descriptor::bind() {
 
 
 void VulkanSystem::init() {
-	init_instance();
+  cout << "initialising Vulkan System" << endl;
+  init_instance();
+      cout << "============" << endl;
 	init_device();
-
+    cout << "============" << endl;
 	init_descriptor_sets();
 	init_shaders();
+    cout << "Done initialising Vulkan System" << endl;
 }
 
 void VulkanSystem::init_descriptor_sets() {

@@ -15,20 +15,21 @@ struct Global {
 	  return *g;
 	}
 
-	static VulkanSystem &vk() {
-		std::cout << "initializing Vulkan System" << std::endl;
-		if (!inst().vk_ptr) {
-		  inst().vk_ptr = new VulkanSystem();
-		  inst().vk_ptr->init();
-		}
-
-
-		return *(inst().vk_ptr);
+  static VulkanSystem &vk() {
+    std::cout << "getting vk ptr" << std::endl;
+      //std::cout << "initializing Vulkan System" << std::endl;
+      if (!inst().vk_ptr) {
+        inst().vk_ptr = new VulkanSystem();
+        inst().vk_ptr->init();
+      }
+      
+      
+      return *(inst().vk_ptr);
 	}
 
 	static VRSystem &vr() {
-		std::cout << "initializing VR System" << std::endl;
-		if (!inst().vr_ptr) {
+      std::cout << "getting vr ptr" << std::endl;
+      if (!inst().vr_ptr) {
 			inst().vr_ptr = new VRSystem();
 			inst().vr_ptr->init();
 		}
@@ -37,7 +38,7 @@ struct Global {
 	}
 
 	static WindowSystem &ws() {
-		std::cout << "initializing Window System" << std::endl;
+      //std::cout << "initializing Window System" << std::endl;
 		if (!inst().ws_ptr) {
 		  inst().ws_ptr = new WindowSystem();
 		  inst().ws_ptr->init();
