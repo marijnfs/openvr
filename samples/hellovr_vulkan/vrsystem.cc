@@ -22,6 +22,11 @@ void TrackedController::set_t(Matrix4 &t_) {
 VRSystem::VRSystem() {
 }
 
+void VRSystem::setup() {
+  setup_render_targets();
+  setup_render_models();  
+}
+
 void VRSystem::init() {
 	cout << "initialising VRSystem" << endl;
 
@@ -53,9 +58,7 @@ void VRSystem::init() {
 	//eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	
 
-	setup_render_targets();
-	setup_render_models();
-
+	
 	//left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 	//right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
 
@@ -74,8 +77,8 @@ void VRSystem::init() {
 
 void VRSystem::setup_render_targets() {
 	ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
-	left_eye_fb.init(render_width, render_height);
-	right_eye_fb.init(render_width, render_height);
+	left_eye_fb->init(render_width, render_height);
+	right_eye_fb->init(render_width, render_height);
 	
 }
 
@@ -116,7 +119,7 @@ void VRSystem::render_companion_window() {
 
 	// Bind the pipeline and descriptor set
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_COMPANION ] );
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb.desc.desc, 0, nullptr );
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb->desc.desc, 0, nullptr );
 
 	// Draw left eye texture to companion window
 	VkDeviceSize nOffsets[ 1 ] = { 0 };
@@ -125,7 +128,7 @@ void VRSystem::render_companion_window() {
 	vkCmdDrawIndexed( vk.cur_cmd_buffer, ws.index_buf.size() / 2, 1, 0, 0, 0 );
 
 	// Draw right eye texture to companion window
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &right_eye_fb.desc.desc, 0, nullptr );
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &right_eye_fb->desc.desc, 0, nullptr );
 	vkCmdDrawIndexed( vk.cur_cmd_buffer, ws.index_buf.size() / 2, 1, ws.index_buf.size() / 2, 0, 0 );
 
 	// End the renderpass
@@ -159,7 +162,7 @@ void VRSystem::render(Scene &scene) {
 	bounds.vMax = 1.0f;
 
 	vr::VRVulkanTextureData_t vulkanData;
-	vulkanData.m_nImage = ( uint64_t ) left_eye_fb.img.img;
+	vulkanData.m_nImage = ( uint64_t ) left_eye_fb->img.img;
 	vulkanData.m_pDevice = ( VkDevice_T * ) vk.dev;
 	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) vk.phys_dev;
 	vulkanData.m_pInstance = ( VkInstance_T *) vk.inst;
@@ -175,7 +178,7 @@ void VRSystem::render(Scene &scene) {
 	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
 	vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
 
-	vulkanData.m_nImage = ( uint64_t ) right_eye_fb.img.img;
+	vulkanData.m_nImage = ( uint64_t ) right_eye_fb->img.img;
 	vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
 
 	//present (for companion window)
@@ -200,10 +203,10 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	vkCmdSetScissor( vk.cur_cmd_buffer, 0, 1, &scissor );
 
     
-	left_eye_fb.img.to_colour_optimal();
-	if (left_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		left_eye_fb.depth_stencil.to_depth_optimal();
-	left_eye_fb.start_render_pass();
+	left_eye_fb->img.to_colour_optimal();
+	if (left_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+		left_eye_fb->depth_stencil.to_depth_optimal();
+	left_eye_fb->start_render_pass();
 	
 	//TODO:  have to set eye position
 
@@ -214,14 +217,14 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     scene.visit(draw_visitor);
   	//render stuff
 	
-	left_eye_fb.end_render_pass();
-	left_eye_fb.img.to_read_optimal();
+	left_eye_fb->end_render_pass();
+	left_eye_fb->img.to_read_optimal();
 
 
-	right_eye_fb.img.to_colour_optimal();
-	if (right_eye_fb.depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		right_eye_fb.depth_stencil.to_depth_optimal();
-	right_eye_fb.start_render_pass();
+	right_eye_fb->img.to_colour_optimal();
+	if (right_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+		right_eye_fb->depth_stencil.to_depth_optimal();
+	right_eye_fb->start_render_pass();
 
 	auto proj_right = get_view_projection(vr::Eye_Right);
     memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
@@ -230,8 +233,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     scene.visit(draw_visitor);
     
   	//render stuff
-	right_eye_fb.end_render_pass();
-	right_eye_fb.img.to_read_optimal();
+	right_eye_fb->end_render_pass();
+	right_eye_fb->img.to_read_optimal();
 }
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )

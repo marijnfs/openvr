@@ -741,9 +741,9 @@ void VulkanSystem::init_shaders() {
 
 	VkRenderPass render_passes[ PSO_COUNT ] =
 	{
-      vr.left_eye_fb.render_pass,
-      vr.left_eye_fb.render_pass,
-      vr.left_eye_fb.render_pass,
+      vr.left_eye_fb->render_pass,
+      vr.left_eye_fb->render_pass,
+      vr.left_eye_fb->render_pass,
       ws.framebuffer.render_pass
 	};
 

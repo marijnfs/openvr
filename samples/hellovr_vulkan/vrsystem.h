@@ -40,7 +40,7 @@ struct VRSystem {
   TrackedController left_controller, right_controller;
   
   //render targets
-  FrameRenderBuffer left_eye_fb, right_eye_fb;
+  FrameRenderBuffer *left_eye_fb = 0, *right_eye_fb = 0;
 
   //Buffer left_eye_buf, right_eye_buf;
   //void *left_eye_mvp, *right_eye_mvp;
@@ -55,7 +55,8 @@ struct VRSystem {
 
   VRSystem();
   void init();
-
+  void setup();
+  
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
   Matrix4 get_hmd_projection( vr::Hmd_Eye eye );
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
