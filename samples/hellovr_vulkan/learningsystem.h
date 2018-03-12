@@ -14,8 +14,10 @@ struct Learner {
   void learn() {
     auto files = walk(path, "*.rec");
 
+    Recording recording;
     Scene scene;
-    scene.read(files[0]);
+
+    recording.read(files[0], &scene);
 
     
   }
