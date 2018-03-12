@@ -2,10 +2,23 @@
 #define __LEARNING_SYSTEM__
 
 #include <string>
+#include "walk.h"
+#include "scene.h"
 
 struct Learner {
   std::string path = "/home/marijnfs/data/";
 
+  
+  Learner() {}
+
+  void learn() {
+    auto files = walk(path, "*.rec");
+
+    Scene scene;
+    scene.read(files[0]);
+
+    
+  }
   
 };
 

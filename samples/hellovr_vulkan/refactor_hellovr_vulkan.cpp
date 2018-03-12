@@ -18,6 +18,8 @@
 #include "vrsystem.h"
 #include "windowsystem.h"
 
+#include "learningsystem.h"
+
 using namespace std;
 
 struct World {
