@@ -1,9 +1,9 @@
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
-#include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
+#include "lvulkan.h"
 
 enum Location {
 	HOST,

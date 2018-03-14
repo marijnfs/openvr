@@ -5,7 +5,7 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
-#include <vulkan/vulkan.h>
+#include "lvulkan.h"
 #include <openvr.h>
 #include <iostream>
 #include <SDL.h>

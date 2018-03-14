@@ -6,7 +6,6 @@ set(TARGET_NAME hellovr_vulkan)
 #)
 
 
-
 add_executable(${TARGET_NAME}
   ${SHARED_SRC_FILES}
   buffer.cc
@@ -19,7 +18,10 @@ add_executable(${TARGET_NAME}
   scene.cc
   framerenderbuffer.cc
   refactor_hellovr_vulkan.cpp
+  learningsystem.cc
 )
+
+
 
 target_link_libraries(${TARGET_NAME}
   ${SDL2_LIBRARIES}
@@ -30,5 +32,9 @@ target_link_libraries(${TARGET_NAME}
   -llua5.3
   -lcapnp
 )
+
+target_include_directories(${TARGET_NAME} PRIVATE /home/marijnfs/dev/vlstm/inc)
+target_include_directories(${TARGET_NAME} PRIVATE /home/marijnfs/dev/mcdnn/inc)
+
 
 setTargetOutputDirectory(${TARGET_NAME})

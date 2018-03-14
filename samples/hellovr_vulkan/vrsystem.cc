@@ -173,8 +173,8 @@ void VRSystem::render(Scene &scene) {
 	vulkanData.m_nHeight = render_height;
 	vulkanData.m_nFormat = VK_FORMAT_R8G8B8A8_SRGB;
 	vulkanData.m_nSampleCount = vk.msaa;
-
-
+    
+    //submitting to HMD
 	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };
 	vr::VRCompositor()->Submit( vr::Eye_Left, &texture, &bounds );
 
@@ -399,7 +399,7 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 #if defined ( _WIN32 )
 	instance_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
 #else
-	//instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+	instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
 #endif
 
 
@@ -432,7 +432,7 @@ vector<string> VRSystem::get_dev_ext_required_verified() {
 	#if defined ( _WIN32 )
 	dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
 	#else
-	//dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
+	dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
 	#endif
 
 

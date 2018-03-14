@@ -1114,7 +1114,7 @@ void VulkanSystem::submit_cmd_buffer() {
 	si.commandBufferCount = 1;
 	si.pCommandBuffers = &cur_cmd_buffer;
 	si.waitSemaphoreCount = 1;
-	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx++ ];
+	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
 	si.pWaitDstStageMask = &mask;
 
 	vkQueueSubmit( queue, 1, &si, cur_fence );
