@@ -8,7 +8,7 @@ struct FrameRenderBuffer {
     Image img, depth_stencil;
     VkRenderPass render_pass;
     VkFramebuffer framebuffer;
-    int width, height;
+    int width = 0, height = 0;
   Descriptor desc;
   
     void init(int width_, int height_);

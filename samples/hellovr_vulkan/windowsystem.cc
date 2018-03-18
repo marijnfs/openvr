@@ -29,8 +29,9 @@ void WindowSystem::setup_window() {
 
 	string title("Window Title");
 	SDL_SetWindowTitle( window, title.c_str() );
-	
+}
 
+void WindowSystem::setup_buffers() {
 	vector<Pos2Tex2> verts;
 
 	//left eye verts
@@ -53,6 +54,8 @@ void WindowSystem::setup_window() {
 	vertex_buf.init(verts, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
 	index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
 
+    framebuffer = new FrameRenderBuffer();
+    framebuffer->init(width, height);
 	cout << " done with buffers" << endl;
 }
 

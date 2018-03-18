@@ -21,8 +21,8 @@ struct TrackedController {
 
 
 struct VRSystem {
-  vr::IVRSystem *ivrsystem;
-  vr::IVRRenderModels *render_models;
+  vr::IVRSystem *ivrsystem = 0;
+  vr::IVRRenderModels *render_models = 0;
   std::string driver_str, display_str;
 
   //tracking vars
@@ -48,8 +48,8 @@ struct VRSystem {
   ////buffers
   //std::vector<Buffer> eye_pos_buffer;
 
-  uint32_t render_width, render_height;
-  float near_clip, far_clip;
+  uint32_t render_width = 0, render_height = 0;
+  float near_clip = 0, far_clip = 0;
 
   DrawVisitor draw_visitor; //visitor pattern to draw the scene
 

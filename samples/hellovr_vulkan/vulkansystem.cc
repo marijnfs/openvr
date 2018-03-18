@@ -393,7 +393,7 @@ void Swapchain::init() {
 	renderpassci.dependencyCount = 0;
 	renderpassci.pDependencies = NULL;
 
-	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer.render_pass), "vkCreateRenderPass");
+	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer->render_pass), "vkCreateRenderPass");
 
 	for (int i(0); i < images.size(); ++i) {
 		VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -414,7 +414,7 @@ void Swapchain::init() {
 
 		VkImageView attachments[ 1 ] = { image_view };
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-		fbci.renderPass = ws.framebuffer.render_pass;
+		fbci.renderPass = ws.framebuffer->render_pass;
 		fbci.attachmentCount = 1;
 		fbci.pAttachments = &attachments[ 0 ];
 		fbci.width = ws.width;
@@ -452,6 +452,18 @@ void VulkanSystem::wait_queue() {
 	vkQueueWaitIdle( queue );
 }
 
+
+void VulkanSystem::init() {
+  cout << "initialising Vulkan System" << endl;
+  init_instance();
+      cout << "============" << endl;
+	init_device();
+    cout << "============" << endl;
+	init_descriptor_sets();
+	init_shaders();
+    cout << "Done initialising Vulkan System" << endl;
+}
+
 void VulkanSystem::init_instance() {
 	VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	app_info.pApplicationName = "hellovr_vulkan";
@@ -461,11 +473,14 @@ void VulkanSystem::init_instance() {
 	app_info.apiVersion = VK_MAKE_VERSION( 1, 0, 0 );
 
 	cout << "getting ext" << endl;
-
+    cout << &Global::vr() << endl;
 	int layer_count(0);
 
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
-    cout << "asdf" << endl;
+    cout << "n_ext: " << inst_req.size() << endl;
+    for (auto i : inst_req)
+      cout << i << endl;
+    
     char *inst_req_charp[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
@@ -548,110 +563,6 @@ void VulkanSystem::init_device() {
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 }
 
-Descriptor::Descriptor() {
-  init();
-}
-
-void Descriptor::init() {
-	auto vk = Global::vk();
-	//idx = vk.desc_sets.size();
-	//vk.desc_sets.push_back(Descriptor());
-
-	VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-	desc_inf.descriptorPool = vk.desc_pool;
-	desc_inf.descriptorSetCount = 1;
-	desc_inf.pSetLayouts = &vk.desc_set_layout;
-	vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
-}
-
-void Descriptor::register_texture(VkImageView &view) {
-	auto vk = Global::vk();
-
-	VkDescriptorImageInfo img_i = {};
-	img_i.imageView = view;
-	img_i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkWriteDescriptorSet write_desc[ 1 ] = { };
-	write_desc[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc[ 0 ].dstSet = desc;
-	write_desc[ 0 ].dstBinding = 1;
-	write_desc[ 0 ].descriptorCount = 1;
-	write_desc[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	write_desc[ 0 ].pImageInfo = &img_i;
-	//vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
-
-	img_i.imageView = view;
-	//write_desc[ 0 ].dstSet = desc;
-	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
-}
-
-void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
-	auto vk = Global::vk();
-
-	VkDescriptorBufferInfo buf_inf = {};
-	buf_inf.buffer = buf;
-	buf_inf.offset = 0;
-	buf_inf.range = VK_WHOLE_SIZE;
-
-	VkDescriptorImageInfo img_inf = {};
-	img_inf.imageView = view;
-	img_inf.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkDescriptorImageInfo sample_info = {};
-	sample_info.sampler = sampler;
-
-	VkWriteDescriptorSet write_desc_set[ 3 ] = { };
-	write_desc_set[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 0 ].dstSet = desc;
-	write_desc_set[ 0 ].dstBinding = 0;
-	write_desc_set[ 0 ].descriptorCount = 1;
-	write_desc_set[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write_desc_set[ 0 ].pBufferInfo = &buf_inf;
-	write_desc_set[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 1 ].dstSet = desc;
-	write_desc_set[ 1 ].dstBinding = 1;
-	write_desc_set[ 1 ].descriptorCount = 1;
-	write_desc_set[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	write_desc_set[ 1 ].pImageInfo = &img_inf;
-	write_desc_set[ 2 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 2 ].dstSet = desc;
-	write_desc_set[ 2 ].dstBinding = 2;
-	write_desc_set[ 2 ].descriptorCount = 1;
-	write_desc_set[ 2 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	write_desc_set[ 2 ].pImageInfo = &sample_info;
-
-	vkUpdateDescriptorSets( vk.dev, _countof( write_desc_set ), write_desc_set, 0, nullptr );
-}
-
-void Descriptor::bind() {	
-	auto vk = Global::vk();
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
-
-
-
-	// vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
-	
-	// // Update the persistently mapped pointer to the CB data with the latest matrix
-	// memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
-
-	// vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
-
-	// // Draw
-	// VkDeviceSize nOffsets[ 1 ] = { 0 };
-	// vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
-}
-
-
-void VulkanSystem::init() {
-  cout << "initialising Vulkan System" << endl;
-  init_instance();
-      cout << "============" << endl;
-	init_device();
-    cout << "============" << endl;
-	init_descriptor_sets();
-	init_shaders();
-    cout << "Done initialising Vulkan System" << endl;
-}
 
 void VulkanSystem::init_descriptor_sets() {
 	//Create pool
@@ -749,7 +660,7 @@ void VulkanSystem::init_shaders() {
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
-      ws.framebuffer.render_pass
+      ws.framebuffer->render_pass
 	};
 
 //define strides for data used in shaders
@@ -892,6 +803,102 @@ void VulkanSystem::init_shaders() {
 		check( vkCreateGraphicsPipelines( dev, pipeline_cache, 1, &pipeline_ci, NULL, &pipelines[ pso ] ), "vkCreateGraphicsPipelines");
 	}
 }
+
+// =========== Descriptors ==============
+Descriptor::Descriptor() {
+  init();
+}
+
+void Descriptor::init() {
+	auto vk = Global::vk();
+	//idx = vk.desc_sets.size();
+	//vk.desc_sets.push_back(Descriptor());
+
+	VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	desc_inf.descriptorPool = vk.desc_pool;
+	desc_inf.descriptorSetCount = 1;
+	desc_inf.pSetLayouts = &vk.desc_set_layout;
+	vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
+}
+
+void Descriptor::register_texture(VkImageView &view) {
+	auto vk = Global::vk();
+
+	VkDescriptorImageInfo img_i = {};
+	img_i.imageView = view;
+	img_i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkWriteDescriptorSet write_desc[ 1 ] = { };
+	write_desc[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc[ 0 ].dstSet = desc;
+	write_desc[ 0 ].dstBinding = 1;
+	write_desc[ 0 ].descriptorCount = 1;
+	write_desc[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	write_desc[ 0 ].pImageInfo = &img_i;
+	//vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
+
+	img_i.imageView = view;
+	//write_desc[ 0 ].dstSet = desc;
+	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
+}
+
+void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
+	auto vk = Global::vk();
+
+	VkDescriptorBufferInfo buf_inf = {};
+	buf_inf.buffer = buf;
+	buf_inf.offset = 0;
+	buf_inf.range = VK_WHOLE_SIZE;
+
+	VkDescriptorImageInfo img_inf = {};
+	img_inf.imageView = view;
+	img_inf.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkDescriptorImageInfo sample_info = {};
+	sample_info.sampler = sampler;
+
+	VkWriteDescriptorSet write_desc_set[ 3 ] = { };
+	write_desc_set[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 0 ].dstSet = desc;
+	write_desc_set[ 0 ].dstBinding = 0;
+	write_desc_set[ 0 ].descriptorCount = 1;
+	write_desc_set[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write_desc_set[ 0 ].pBufferInfo = &buf_inf;
+	write_desc_set[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 1 ].dstSet = desc;
+	write_desc_set[ 1 ].dstBinding = 1;
+	write_desc_set[ 1 ].descriptorCount = 1;
+	write_desc_set[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	write_desc_set[ 1 ].pImageInfo = &img_inf;
+	write_desc_set[ 2 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 2 ].dstSet = desc;
+	write_desc_set[ 2 ].dstBinding = 2;
+	write_desc_set[ 2 ].descriptorCount = 1;
+	write_desc_set[ 2 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	write_desc_set[ 2 ].pImageInfo = &sample_info;
+
+	vkUpdateDescriptorSets( vk.dev, _countof( write_desc_set ), write_desc_set, 0, nullptr );
+}
+
+void Descriptor::bind() {	
+	auto vk = Global::vk();
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
+
+
+
+	// vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	
+	// // Update the persistently mapped pointer to the CB data with the latest matrix
+	// memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+
+	// vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+
+	// // Draw
+	// VkDeviceSize nOffsets[ 1 ] = { 0 };
+	// vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+}
+
+
 /*
 void VulkanSystem::init_texture_maps() {
 	string tex_path = "../cube_texture.png";

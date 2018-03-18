@@ -49,7 +49,7 @@ void VRSystem::init() {
 
 	if ( !vr::VRCompositor() ) {
 		cerr << "Couldn't create VRCompositor" << endl;
-		throw "";
+		throw StringException("Couldn't create VRCompositor");
 	}
 
 	//setup eye pos buffer
@@ -96,7 +96,7 @@ void VRSystem::render_companion_window() {
 
     // Start the renderpass
 	VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderPassBeginInfo.renderPass = ws.framebuffer.render_pass;
+	renderPassBeginInfo.renderPass = ws.framebuffer->render_pass;
 	renderPassBeginInfo.framebuffer = sc.framebuffers[sc.current_swapchain_image];
 	renderPassBeginInfo.renderArea.offset.x = 0;
 	renderPassBeginInfo.renderArea.offset.y = 0;
@@ -342,7 +342,7 @@ vector<string> VRSystem::get_inst_ext_required() {
 
 	string buf(' ', buf_size);
 	vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( &buf[0], buf_size );
-
+    cout << "ext required: " << buf << endl;
     // Break up the space separated list into entries on the CUtlStringList
 	vector<string> ext_list;
 	string cur_ext;
@@ -394,6 +394,9 @@ vector<string> VRSystem::get_dev_ext_required() {
 
 vector<string> VRSystem::get_inst_ext_required_verified() {
 	auto instance_ext_req = get_inst_ext_required();
+    cout << "extension size:" << instance_ext_req.size() << endl;
+    for (auto ext : instance_ext_req)
+      cout << ext << endl;
 	instance_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
 
 #if defined ( _WIN32 )
@@ -402,7 +405,9 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 	instance_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
 #endif
 
-
+    //todo remove return	
+	return instance_ext_req;
+    
 	uint32_t n_instance_ext(0);
 	check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, NULL ), "vkEnumerateInstanceExtensionProperties");
 
