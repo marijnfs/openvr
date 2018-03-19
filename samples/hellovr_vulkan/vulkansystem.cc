@@ -462,8 +462,8 @@ void VulkanSystem::init() {
     swapchain.init();
 
     start_cmd();
-	init_shaders();
 	init_descriptor_sets();
+	init_shaders();
     end_submit_cmd();
     
     cout << "Done initialising Vulkan System" << endl;
@@ -570,25 +570,6 @@ void VulkanSystem::init_device() {
 
 
 void VulkanSystem::init_descriptor_sets() {
-	//Create pool
-	size_t NUM_DESCRIPTOR_SETS(256);
-
-	VkDescriptorPoolSize pool_sizes[ 3 ];
-	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_sizes[ 1 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 1 ].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	pool_sizes[ 2 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 2 ].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-
-	VkDescriptorPoolCreateInfo descpool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-	descpool_ci.flags = 0;
-	descpool_ci.maxSets = NUM_DESCRIPTOR_SETS;
-	descpool_ci.poolSizeCount = _countof( pool_sizes );
-	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
-	vkCreateDescriptorPool( dev, &descpool_ci, nullptr, &desc_pool );
-
-
 	//Create Layout
 	VkDescriptorSetLayoutBinding lb[3] = {};
 	lb[0].binding = 0;
@@ -612,6 +593,23 @@ void VulkanSystem::init_descriptor_sets() {
 	check( vkCreateDescriptorSetLayout( dev, &desc_set_ci, nullptr, &desc_set_layout ), "vkCreateDescriptorSetLayout");
 
 
+  //Create pool
+	size_t NUM_DESCRIPTOR_SETS(256);
+
+	VkDescriptorPoolSize pool_sizes[ 3 ];
+	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sizes[ 1 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 1 ].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	pool_sizes[ 2 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 2 ].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+	VkDescriptorPoolCreateInfo descpool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	descpool_ci.flags = 0;
+	descpool_ci.maxSets = NUM_DESCRIPTOR_SETS;
+	descpool_ci.poolSizeCount = _countof( pool_sizes );
+	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
+	vkCreateDescriptorPool( dev, &descpool_ci, nullptr, &desc_pool );
 }
 
 
