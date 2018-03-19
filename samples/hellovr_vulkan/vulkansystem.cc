@@ -510,18 +510,18 @@ void VulkanSystem::init_device() {
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
 	vector<VkPhysicalDevice> devices(n_dev);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
-    VkPhysicalDevice output_dev = (VkPhysicalDevice) vr.get_output_device(inst);
-	//VkPhysicalDevice output_dev = devices[0]; //select first, could be altered
+    phys_dev = (VkPhysicalDevice) vr.get_output_device(inst);
+	//VkPhysicalDevice phys_dev = devices[0]; //select first, could be altered
 
-	vkGetPhysicalDeviceProperties( output_dev, &prop);
-	vkGetPhysicalDeviceMemoryProperties( output_dev, &mem_prop );
-	vkGetPhysicalDeviceFeatures( output_dev, &features );
+	vkGetPhysicalDeviceProperties( phys_dev, &prop);
+	vkGetPhysicalDeviceMemoryProperties( phys_dev, &mem_prop );
+	vkGetPhysicalDeviceFeatures( phys_dev, &features );
 
 
 	uint32_t n_queue(0);
-	vkGetPhysicalDeviceQueueFamilyProperties(  output_dev, &n_queue, 0);
+	vkGetPhysicalDeviceQueueFamilyProperties(  phys_dev, &n_queue, 0);
 	vector<VkQueueFamilyProperties> queue_family(n_queue);
-	vkGetPhysicalDeviceQueueFamilyProperties( output_dev, &n_queue, &queue_family[0]);
+	vkGetPhysicalDeviceQueueFamilyProperties( phys_dev, &n_queue, &queue_family[0]);
 	if (n_queue == 0) {
 		cerr << "Failed to get queue properties.\n" << endl;
 		throw "";
@@ -563,7 +563,7 @@ void VulkanSystem::init_device() {
 	dci.ppEnabledExtensionNames = &pp_dev_ext[0];
 	dci.pEnabledFeatures = &features;
 
-	check( vkCreateDevice( output_dev, &dci, nullptr, &dev ), "vkCreateDevice");
+	check( vkCreateDevice( phys_dev, &dci, nullptr, &dev ), "vkCreateDevice");
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 }
