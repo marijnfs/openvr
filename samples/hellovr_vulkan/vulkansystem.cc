@@ -250,7 +250,7 @@ void Swapchain::init() {
 	}
 
 //query supported formats
-	VkFormat swap_format;
+	VkFormat swap_format = VK_FORMAT_B8G8R8A8_UNORM;
 	uint32_t format_index(0);
 	uint32_t n_swap_format(0);
 	VkColorSpaceKHR color_space;
@@ -459,8 +459,13 @@ void VulkanSystem::init() {
       cout << "============" << endl;
 	init_device();
     cout << "============" << endl;
-	init_descriptor_sets();
+    swapchain.init();
+
+    start_cmd();
 	init_shaders();
+	init_descriptor_sets();
+    end_submit_cmd();
+    
     cout << "Done initialising Vulkan System" << endl;
 }
 
@@ -505,18 +510,18 @@ void VulkanSystem::init_device() {
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
 	vector<VkPhysicalDevice> devices(n_dev);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
+    VkPhysicalDevice output_dev = (VkPhysicalDevice) vr.get_output_device(inst);
+	//VkPhysicalDevice output_dev = devices[0]; //select first, could be altered
 
-	VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
-
-	vkGetPhysicalDeviceProperties( chosen_dev, &prop);
-	vkGetPhysicalDeviceMemoryProperties( chosen_dev, &mem_prop );
-	vkGetPhysicalDeviceFeatures( chosen_dev, &features );
+	vkGetPhysicalDeviceProperties( output_dev, &prop);
+	vkGetPhysicalDeviceMemoryProperties( output_dev, &mem_prop );
+	vkGetPhysicalDeviceFeatures( output_dev, &features );
 
 
 	uint32_t n_queue(0);
-	vkGetPhysicalDeviceQueueFamilyProperties(  chosen_dev, &n_queue, 0);
+	vkGetPhysicalDeviceQueueFamilyProperties(  output_dev, &n_queue, 0);
 	vector<VkQueueFamilyProperties> queue_family(n_queue);
-	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
+	vkGetPhysicalDeviceQueueFamilyProperties( output_dev, &n_queue, &queue_family[0]);
 	if (n_queue == 0) {
 		cerr << "Failed to get queue properties.\n" << endl;
 		throw "";
@@ -558,7 +563,7 @@ void VulkanSystem::init_device() {
 	dci.ppEnabledExtensionNames = &pp_dev_ext[0];
 	dci.pEnabledFeatures = &features;
 
-	check( vkCreateDevice( chosen_dev, &dci, nullptr, &dev ), "vkCreateDevice");
+	check( vkCreateDevice( output_dev, &dci, nullptr, &dev ), "vkCreateDevice");
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 }
@@ -1051,19 +1056,14 @@ void Swapchain::acquire_image() {
     
 }
 
-// void VulkanSystem::init_vulkan() {
-// 	init_instance();
-// 	init_device();
-// 	swapchain.init();
-	
-// 	// Create the command pool
-// 	{
-// 		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-// 		cmdpoolci.queueFamilyIndex = graphics_queue;
-// 		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-// 		check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
-// 	}
-// }
+void VulkanSystem::init_cmd_pool() {
+  // Create the command pool
+  VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+  cmdpoolci.queueFamilyIndex = graphics_queue;
+  cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+  cmd_buffer();
+}
 
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
@@ -1102,18 +1102,18 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 }
 
 
-void VulkanSystem::start_cmd_buffer() {
+void VulkanSystem::start_cmd() {
 	// Start the command buffer
 	VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
 }
 
-void VulkanSystem::end_cmd_buffer() {
+void VulkanSystem::end_cmd() {
 	vkEndCommandBuffer( cur_cmd_buffer );
 }
 
-void VulkanSystem::submit_cmd_buffer() {
+void VulkanSystem::submit_cmd() {
 
 // Submit the command buffer
 	VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1124,6 +1124,11 @@ void VulkanSystem::submit_cmd_buffer() {
 	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
 	si.pWaitDstStageMask = &mask;
 
-	vkQueueSubmit( queue, 1, &si, cur_fence );
+	vkQueueSubmit( queue, 1, &si, cur_fence );    
 }
 
+
+void VulkanSystem::end_submit_cmd() {
+  end_cmd();
+  submit_cmd();
+}

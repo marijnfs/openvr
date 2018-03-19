@@ -143,7 +143,7 @@ void VRSystem::render(Scene &scene) {
 	auto vk = Global::vk();
 
 	auto cmd_buf = vk.cmd_buffer();
-	vk.start_cmd_buffer();
+	vk.start_cmd();
 
 	vk.swapchain.acquire_image();
 
@@ -151,8 +151,7 @@ void VRSystem::render(Scene &scene) {
 	render_stereo_targets(scene);
 	render_companion_window();
 
-	vk.end_cmd_buffer();
-	vk.submit_cmd_buffer();
+	vk.end_submit_cmd();
 
 	// Submit to SteamVR
 	vr::VRTextureBounds_t bounds;
@@ -461,6 +460,13 @@ vector<string> VRSystem::get_dev_ext_required_verified() {
 		
 	return dev_ext_req;
 }
+
+uint64_t VRSystem::get_output_device(VkInstance v_inst) {
+  uint64_t hmd_dev(0);
+  ivrsystem->GetOutputDevice(&hmd_dev, vr::TextureType_Vulkan, v_inst);
+  return hmd_dev;
+}
+
 
 VRSystem::~VRSystem() {
 	vr::VR_Shutdown();

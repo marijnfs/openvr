@@ -10,7 +10,7 @@
 #include "vulkansystem.h"
 #include "scene.h"
 #include "framerenderbuffer.h"
-
+#include <vulkan/vulkan.h>
 struct TrackedController {
   Matrix4 t;
   bool clicked = false;
@@ -69,7 +69,7 @@ struct VRSystem {
   void setup_render_models();
   void setup_render_model_for_device(int d);
   void setup_render_targets();
-
+  uint64_t get_output_device(VkInstance v_inst);
 
   std::string query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop);
 

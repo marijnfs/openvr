@@ -68,15 +68,15 @@ struct Descriptor {
 
 
 struct Swapchain {
-  VkSurfaceKHR surface;
-  VkSwapchainKHR swapchain;
+  VkSurfaceKHR surface = 0;
+  VkSwapchainKHR swapchain = 0;
 
   std::vector< VkImage > images;
   std::vector< VkImageView > views;
   std::vector< VkFramebuffer > framebuffers;
   std::vector< VkSemaphore > semaphores;
 
-  uint32_t n_swap;
+  uint32_t n_swap = 0;
   uint32_t frame_idx = 0;
   uint32_t current_swapchain_image = 0;
   
@@ -153,10 +153,12 @@ struct VulkanSystem {
 
   void init_device();
 
+  void init_cmd_pool();
+  
   void init_descriptor_sets();
 
   void init_swapchain();
-
+  
   void init_shaders();
 
   void init_texture_maps();
@@ -167,14 +169,16 @@ struct VulkanSystem {
 
  //void init_vulkan();
 
-  void start_cmd_buffer();
+  void start_cmd();
 
-  void end_cmd_buffer();
+  void end_cmd();
 
-  void submit_cmd_buffer();
+  void submit_cmd();
 
+  void end_submit_cmd();
+  
   VkCommandBuffer cmd_buffer();
-
+  
   void img_to_colour_optimal(VkImage &img);
 };
 
