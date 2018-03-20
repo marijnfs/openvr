@@ -90,11 +90,11 @@ int main() {
   auto &vr = Global::vr();
   auto &vk = Global::vk();
 
-  vk.start_cmd();
+  
   vr.setup();
-  ws.setup_buffers();
-  vk.end_submit_cmd();
-  vk.wait_queue();
+  ws.setup();
+  vk.setup();
+  
   
   auto &scene = Global::scene();
   scene.add_canvas("test");

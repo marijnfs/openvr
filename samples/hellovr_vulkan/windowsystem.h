@@ -17,9 +17,9 @@ struct WindowSystem {
   
   WindowSystem();
   void init();
-
-  void setup_window();
-  void setup_buffers();
+  void init_window();
+  
+  void setup();
   
   void show_message(std::string str);
 };

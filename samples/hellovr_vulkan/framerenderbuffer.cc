@@ -31,8 +31,8 @@ void FrameRenderBuffer::end_render_pass() {
 void FrameRenderBuffer::init(int width_, int height_) {
 	width = width_;
 	height = height_;
-	auto vk = Global::vk();
-
+	auto &vk = Global::vk();
+    
 	img.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 

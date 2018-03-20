@@ -76,7 +76,8 @@ void VRSystem::init() {
 }
 
 void VRSystem::setup_render_targets() {
-	ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
+  cout << "ptr: " << ivrsystem << endl;
+  ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
 	left_eye_fb->init(render_width, render_height);
 	right_eye_fb->init(render_width, render_height);
 	
@@ -140,7 +141,7 @@ void VRSystem::render_companion_window() {
 }
 
 void VRSystem::render(Scene &scene) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 
 	auto cmd_buf = vk.cmd_buffer();
 	vk.start_cmd();
@@ -363,7 +364,7 @@ vector<string> VRSystem::get_inst_ext_required() {
 }
 
 vector<string> VRSystem::get_dev_ext_required() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
     cout << "phys dev ptr:" << vk.phys_dev << endl;
 	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, nullptr, 0 );
 	if (!buf_size)
@@ -372,21 +373,24 @@ vector<string> VRSystem::get_dev_ext_required() {
 	string buf(buf_size, ' ');
 	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, &buf[0], buf_size );
 
+    cout << buf << endl;
     // Break up the space separated list into entries on the CUtlStringList
 	vector<string> ext_list;
 	string cur_ext;
 	uint32_t idx = 0;
 	while ( idx < buf_size ) {
-		if ( buf[ idx ] == ' ' ) {
-			ext_list.push_back( cur_ext );
-			cur_ext.clear();
-		} else {
-			cur_ext += buf[ idx ];
-		}
-		++idx;
+      if (buf[idx] == 0)
+        break;
+      if ( buf[ idx ] == ' ' ) {
+        ext_list.push_back( cur_ext );
+        cur_ext.clear();
+      } else {
+        cur_ext += buf[ idx ];
+      }
+      ++idx;
 	}
 	if ( cur_ext.size() > 0 ) {
-		ext_list.push_back( cur_ext );
+      ext_list.push_back( cur_ext );
 	}
 
 	return ext_list;
@@ -431,16 +435,8 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 }
 
 vector<string> VRSystem::get_dev_ext_required_verified() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	auto dev_ext_req = get_dev_ext_required();
-	dev_ext_req.push_back( VK_KHR_SURFACE_EXTENSION_NAME );
-
-	#if defined ( _WIN32 )
-	dev_ext_req.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
-	#else
-	dev_ext_req.push_back( VK_KHR_XLIB_SURFACE_EXTENSION_NAME );
-	#endif
-
 
 	uint32_t n_dev_ext(0);
 	check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, NULL ), "vkEnumerateDeviceExtensionProperties");
@@ -449,15 +445,18 @@ vector<string> VRSystem::get_dev_ext_required_verified() {
 
 	check( vkEnumerateDeviceExtensionProperties( vk.phys_dev, NULL, &n_dev_ext, &ext_prop[0]), "vkEnumerateDeviceExtensionProperties" );
 
+    int n(0);
+    
 	for (auto req_dev : dev_ext_req) {
 		bool found(false);
 		for (auto prop : ext_prop)
-			if (req_dev == string(prop.extensionName))
-				found = true;
-			if (!found) {
-              cerr << "couldn't find extension: " << req_dev << endl;
-				throw "";
-			}
+          if (req_dev == string(prop.extensionName))
+            found = true;
+        
+        if (!found) {
+          cerr << "couldn't find extension: :" << req_dev << ":" << endl;
+          throw "";
+        }
 	}
 		
 	return dev_ext_req;
@@ -471,6 +470,8 @@ uint64_t VRSystem::get_output_device(VkInstance v_inst) {
 
 
 VRSystem::~VRSystem() {
+  cout << "VR SHUTTING DOWN!" << endl;
 	vr::VR_Shutdown();
+    throw "what the";
 }
 

@@ -18,7 +18,7 @@ Buffer::Buffer(size_t n_, VkBufferUsageFlags usage, Location loc) : n(n_) {
 
 void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
   n = n_;
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 // Create the vertex buffer and fill with data
 	VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bci.size = n;
@@ -66,7 +66,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	width = width_;
 	height = height_;
 
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
 
 	int msaa_sample_count(1);
@@ -125,7 +125,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 }
 
 void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	std::vector< unsigned char > imageRGBA;
 	if (lodepng::decode( imageRGBA, width, height, img_path.c_str() ) != 0) {
 		throw StringException("failed to load texture lodepng");
@@ -187,7 +187,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 }
 
 void Image::to_colour_optimal() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
     //barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
@@ -240,7 +240,7 @@ void Image::to_read_optimal() {
 
 void Image::to_transfer_dst() {
 	// Transition the image to TRANSFER_DST to receive image
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
@@ -278,7 +278,7 @@ void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location 
   n = init_data.size() * sizeof(T);
   init(n, usage, loc);
   
-  auto vk = Global::vk();
+  auto &vk = Global::vk();
   void *data(0);
   check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
   
@@ -297,7 +297,7 @@ void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location lo
   n = size * sizeof(T); //size in bytes
   init(n, usage, loc);
   
-  auto vk = Global::vk();
+  auto &vk = Global::vk();
   void *data(0);
   check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
   

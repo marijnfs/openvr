@@ -78,7 +78,7 @@ void GraphicsObject::init_buffers() {
 // ==== Graphics Object ====
 void GraphicsObject::render(Matrix4 &mvp, bool right) {
 		//TODO fix
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
 	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
@@ -218,8 +218,8 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
 void Swapchain::init() {
   cout << "initialising swapchain" << endl;
 
-	auto ws = Global::ws();
-	auto vk = Global::vk();
+	auto &ws = Global::ws();
+	auto &vk = Global::vk();
 
 	SDL_SysWMinfo wm_info;
 	SDL_VERSION( &wm_info.version );
@@ -457,11 +457,14 @@ void VulkanSystem::init() {
   init_instance();
       cout << "============" << endl;
 	init_device();
+    init_descriptor_sets();
+}
+
+void VulkanSystem::setup() {
     cout << "============" << endl;
     swapchain.init();
 
     start_cmd();
-	init_descriptor_sets();
 	init_shaders();
     end_submit_cmd();
     
@@ -482,16 +485,12 @@ void VulkanSystem::init_instance() {
 
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
     cout << "n_ext: " << inst_req.size() << endl;
-    for (auto i : inst_req)
-      cout << i << endl;
-    
+        
     char **inst_req_charp = new char*[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
 
-    for (int i(0); i < inst_req.size(); ++i)
-      cout << "bla: " << inst_req_charp[i] << endl;
-    
+        
 	VkInstanceCreateInfo ici = {};
 	ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	ici.pNext = NULL;
@@ -507,7 +506,7 @@ void VulkanSystem::init_instance() {
 }
 
 void VulkanSystem::init_device() {
-	auto vr = Global::vr();
+	auto &vr = Global::vr();
 	
 	uint32_t n_dev(0);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
@@ -816,7 +815,7 @@ Descriptor::Descriptor() {
 }
 
 void Descriptor::init() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	//idx = vk.desc_sets.size();
 	//vk.desc_sets.push_back(Descriptor());
 
@@ -828,7 +827,7 @@ void Descriptor::init() {
 }
 
 void Descriptor::register_texture(VkImageView &view) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 
 	VkDescriptorImageInfo img_i = {};
 	img_i.imageView = view;
@@ -849,7 +848,7 @@ void Descriptor::register_texture(VkImageView &view) {
 }
 
 void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 
 	VkDescriptorBufferInfo buf_inf = {};
 	buf_inf.buffer = buf;
@@ -887,7 +886,7 @@ void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSamp
 }
 
 void Descriptor::bind() {	
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
 
 
@@ -1015,7 +1014,7 @@ void VulkanSystem::init_texture_maps() {
 */
 
 void Swapchain::to_present(int i) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -1033,7 +1032,7 @@ void Swapchain::to_present(int i) {
 }
 
 void Swapchain::to_colour_optimal(int i) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -1051,7 +1050,7 @@ void Swapchain::to_colour_optimal(int i) {
 }
 
 void Swapchain::acquire_image() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
 
     
@@ -1086,7 +1085,7 @@ VkCommandBuffer VulkanSystem::cmd_buffer() {
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 {
-  auto vk = Global::vk();
+  auto &vk = Global::vk();
   for ( uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++ )
     {
       if ( ( mem_bits & 1 ) == 1)

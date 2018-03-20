@@ -10,10 +10,10 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 void WindowSystem::init() {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
 
-	setup_window();
+	init_window();
 }
 
-void WindowSystem::setup_window() {
+void WindowSystem::init_window() {
 	cout << "in setup window" << endl;
 	int pos_x = 700;
 	int pos_y = 100;
@@ -31,7 +31,7 @@ void WindowSystem::setup_window() {
 	SDL_SetWindowTitle( window, title.c_str() );
 }
 
-void WindowSystem::setup_buffers() {
+void WindowSystem::setup() {
 	vector<Pos2Tex2> verts;
 
 	//left eye verts
