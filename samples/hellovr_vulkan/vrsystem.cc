@@ -78,8 +78,12 @@ void VRSystem::init() {
 void VRSystem::setup_render_targets() {
   cout << "ptr: " << ivrsystem << endl;
   ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
-	left_eye_fb->init(render_width, render_height);
-	right_eye_fb->init(render_width, render_height);
+
+  left_eye_fb = new FrameRenderBuffer();
+  right_eye_fb = new FrameRenderBuffer();
+  
+  left_eye_fb->init(render_width, render_height);
+  right_eye_fb->init(render_width, render_height);
 	
 }
 
@@ -472,6 +476,5 @@ uint64_t VRSystem::get_output_device(VkInstance v_inst) {
 VRSystem::~VRSystem() {
   cout << "VR SHUTTING DOWN!" << endl;
 	vr::VR_Shutdown();
-    throw "what the";
 }
 
