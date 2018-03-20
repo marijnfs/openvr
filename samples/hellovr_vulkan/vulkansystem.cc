@@ -1,5 +1,4 @@
- 
-#include "vulkansystem.h"
+ #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
 #include "shared/lodepng.h"
@@ -486,10 +485,13 @@ void VulkanSystem::init_instance() {
     for (auto i : inst_req)
       cout << i << endl;
     
-    char *inst_req_charp[inst_req.size()];
+    char **inst_req_charp = new char*[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
 
+    for (int i(0); i < inst_req.size(); ++i)
+      cout << "bla: " << inst_req_charp[i] << endl;
+    
 	VkInstanceCreateInfo ici = {};
 	ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	ici.pNext = NULL;
@@ -501,6 +503,7 @@ void VulkanSystem::init_instance() {
 
 	cout << "creating instance" << endl;
 	check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
+    delete[] inst_req_charp;
 }
 
 void VulkanSystem::init_device() {

@@ -329,7 +329,7 @@ string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDevicePro
 	if( buflen == 0)
 		return "";
 
-	string buf(' ', buflen);
+	string buf(buflen, ' ');
 	buflen = ivrsystem->GetStringTrackedDeviceProperty( devidx, prop, &buf[0], buflen, err );
 	return buf;      
 }
@@ -339,7 +339,7 @@ vector<string> VRSystem::get_inst_ext_required() {
 	if (!buf_size)
 		throw StringException("no such GetVulkanInstanceExtensionsRequired");
 
-	string buf(' ', buf_size);
+	string buf(buf_size, ' ');
 	vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( &buf[0], buf_size );
     cout << "ext required: " << buf << endl;
     // Break up the space separated list into entries on the CUtlStringList
@@ -364,11 +364,12 @@ vector<string> VRSystem::get_inst_ext_required() {
 
 vector<string> VRSystem::get_dev_ext_required() {
 	auto vk = Global::vk();
+    cout << "phys dev ptr:" << vk.phys_dev << endl;
 	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, nullptr, 0 );
 	if (!buf_size)
 		throw StringException("No such GetVulkanDeviceExtensionsRequired");
 
-	string buf(' ', buf_size);
+	string buf(buf_size, ' ');
 	vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, &buf[0], buf_size );
 
     // Break up the space separated list into entries on the CUtlStringList
@@ -415,12 +416,13 @@ vector<string> VRSystem::get_inst_ext_required_verified() {
 	check( vkEnumerateInstanceExtensionProperties( NULL, &n_instance_ext, &ext_prop[0]), "vkEnumerateInstanceExtensionProperties" );
 
 	for (auto req_inst : instance_ext_req) {
+      cout << ":" << req_inst << endl;
 		bool found(false);
 		for (auto prop : ext_prop) 
 			if (req_inst == string(prop.extensionName))
 				found = true;
 		if (!found) {
-			cerr << "couldn't find extension" << endl;
+          cerr << "couldn't find extension " << req_inst << endl;
 			throw "";
 		}
 	}
@@ -453,7 +455,7 @@ vector<string> VRSystem::get_dev_ext_required_verified() {
 			if (req_dev == string(prop.extensionName))
 				found = true;
 			if (!found) {
-				cerr << "couldn't find extension" << endl;
+              cerr << "couldn't find extension: " << req_dev << endl;
 				throw "";
 			}
 	}
