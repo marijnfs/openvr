@@ -519,6 +519,8 @@ void VulkanSystem::init_device() {
 	vkGetPhysicalDeviceMemoryProperties( phys_dev, &mem_prop );
 	vkGetPhysicalDeviceFeatures( phys_dev, &features );
 
+    cout << "Device: " << prop.deviceName << endl;
+    
 
 	uint32_t n_queue(0);
 	vkGetPhysicalDeviceQueueFamilyProperties(  phys_dev, &n_queue, 0);
@@ -1089,11 +1091,11 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
   for ( uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++ )
     {
       if ( ( mem_bits & 1 ) == 1)
-  {
-    // Type is available, does it match user properties?
-    if ( ( vk.mem_prop.memoryTypes[i].propertyFlags & mem_prop ) == mem_prop )
-      return i;
-  }
+        {
+          // Type is available, does it match user properties?
+          if ( ( vk.mem_prop.memoryTypes[i].propertyFlags & mem_prop ) == mem_prop )
+            return i;
+        }
       mem_bits >>= 1;
     }
 
