@@ -5,8 +5,14 @@ set(TARGET_NAME hellovr_vulkan)
 #  hellovr_vulkan.cpp
 #)
 
+add_definitions("-g")
 
-add_executable(${TARGET_NAME}
+link_directories(/usr/local/cuda/lib64)
+find_package(CUDA QUIET REQUIRED)
+find_package(OpenCV REQUIRED)
+
+
+cuda_add_executable(${TARGET_NAME}
   ${SHARED_SRC_FILES}
   buffer.cc
   vrsystem.cc
@@ -19,8 +25,8 @@ add_executable(${TARGET_NAME}
   framerenderbuffer.cc
   refactor_hellovr_vulkan.cpp
   learningsystem.cc
-)
-
+  )
+cuda_add_cublas_to_target(${TARGET_NAME})
 
 
 target_link_libraries(${TARGET_NAME}
@@ -29,12 +35,21 @@ target_link_libraries(${TARGET_NAME}
   ${OPENVR_LIBRARIES}
   ${CMAKE_DL_LIBS}
   ${EXTRA_LIBS}
+  ${CUDA_curand_LIBRARY}
+  ${OpenCV_LIBS}
   -llua5.3
   -lcapnp
-)
+  -lmcdnn
+  -lvlstm
+  -lcuda
+  -lcudnn
+  -lz
+  )
 
 target_include_directories(${TARGET_NAME} PRIVATE /home/marijnfs/dev/vlstm/inc)
 target_include_directories(${TARGET_NAME} PRIVATE /home/marijnfs/dev/mcdnn/inc)
+target_include_directories(${TARGET_NAME} PRIVATE /usr/local/cuda/include)
+
 
 
 setTargetOutputDirectory(${TARGET_NAME})

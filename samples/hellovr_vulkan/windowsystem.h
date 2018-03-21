@@ -13,13 +13,13 @@ struct WindowSystem {
   uint32_t width, height;
 
   Buffer vertex_buf, index_buf;
-  FrameRenderBuffer framebuffer;
+  FrameRenderBuffer *framebuffer;
   
   WindowSystem();
   void init();
-
-  void setup_window();
-
+  void init_window();
+  
+  void setup();
   
   void show_message(std::string str);
 };

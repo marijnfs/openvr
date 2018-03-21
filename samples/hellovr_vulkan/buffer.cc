@@ -18,7 +18,7 @@ Buffer::Buffer(size_t n_, VkBufferUsageFlags usage, Location loc) : n(n_) {
 
 void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
   n = n_;
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 // Create the vertex buffer and fill with data
 	VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	bci.size = n;
@@ -29,10 +29,13 @@ void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
 	vkGetBufferMemoryRequirements( vk.dev, buffer, &memreq );
 
 	VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    
 	alloc_info.memoryTypeIndex = get_mem_type( memreq.memoryTypeBits, 
 		(loc == HOST) ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT : 
-		(loc == HOST_COHERENT) ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        (loc == HOST_COHERENT) ? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT) :
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 		);
+    cout << "buf mem size: " << memreq.size << " " << alloc_info.memoryTypeIndex << endl;
 	alloc_info.allocationSize = memreq.size;
 
 	check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
@@ -44,6 +47,57 @@ template <typename T>
 void Buffer::map(T **ptr) {
   vkMapMemory( Global::vk().dev, memory, 0, VK_WHOLE_SIZE, 0, (void**)ptr );
 }
+
+template <typename T>
+Buffer::Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  init(init_data, usage, loc);
+}
+
+template <typename T>
+Buffer::Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc) {
+  init(init_data, n_, usage, loc);
+}
+
+template <typename T>
+void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
+  n = init_data.size() * sizeof(T);
+  init(n, usage, loc);
+  
+  auto &vk = Global::vk();
+  void *data(0);
+  cout << n << endl;
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], n );
+  
+  vkUnmapMemory(vk.dev , memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+}
+
+template <typename T>
+void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location loc) {
+  n = size * sizeof(T); //size in bytes
+  init(n, usage, loc);
+
+  cout << n << endl;
+  auto &vk = Global::vk();
+  void *data(0);
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], size );
+  
+  vkUnmapMemory(vk.dev, memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+}
+
 
 //nasty forward declarations
 template void Buffer::map<int>(int **ptr);
@@ -66,7 +120,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	width = width_;
 	height = height_;
 
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
 
 	int msaa_sample_count(1);
@@ -125,7 +179,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 }
 
 void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	std::vector< unsigned char > imageRGBA;
 	if (lodepng::decode( imageRGBA, width, height, img_path.c_str() ) != 0) {
 		throw StringException("failed to load texture lodepng");
@@ -187,7 +241,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 }
 
 void Image::to_colour_optimal() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
     //barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
@@ -240,7 +294,7 @@ void Image::to_read_optimal() {
 
 void Image::to_transfer_dst() {
 	// Transition the image to TRANSFER_DST to receive image
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
@@ -263,53 +317,6 @@ void Image::to_transfer_dst() {
 
 
 
-template <typename T>
-Buffer::Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
-  init(init_data, usage, loc);
-}
-
-template <typename T>
-Buffer::Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc) {
-  init(init_data, n_, usage, loc);
-}
-
-template <typename T>
-void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
-  n = init_data.size() * sizeof(T);
-  init(n, usage, loc);
-  
-  auto vk = Global::vk();
-  void *data(0);
-  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
-  
-  memcpy( data, &init_data[0], n );
-  
-  vkUnmapMemory(vk.dev , memory);
-  
-  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-  mem_range.memory = memory;
-  mem_range.size = VK_WHOLE_SIZE;
-  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
-}
-
-template <typename T>
-void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location loc) {
-  n = size * sizeof(T); //size in bytes
-  init(n, usage, loc);
-  
-  auto vk = Global::vk();
-  void *data(0);
-  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
-  
-  memcpy( data, &init_data[0], size );
-  
-  vkUnmapMemory(vk.dev , memory);
-  
-  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-  mem_range.memory = memory;
-  mem_range.size = VK_WHOLE_SIZE;
-  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
-}
 
 template
 Buffer::Buffer<Pos2Tex2>(std::vector<Pos2Tex2> &init_data, VkBufferUsageFlags usage, Location loc);

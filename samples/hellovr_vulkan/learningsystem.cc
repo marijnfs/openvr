@@ -19,10 +19,9 @@ void test(int argc, char **argv) {
 	string exp_dir("exp-uni/");
 	Log logger(exp_dir + "log.txt");
 
-
+    
     int img_size(10*10);
-	vector<float> data(img_size);
-	copy(img.data().begin(), img.data().end(), data.begin());
+	vector<float> img_data(img_size);
 
 	// int img_w = img.w();
 	// int img_h = img.h();

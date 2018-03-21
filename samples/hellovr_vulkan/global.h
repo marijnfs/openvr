@@ -73,7 +73,7 @@ struct Global {
 	VRSystem *vr_ptr = 0;
 	WindowSystem *ws_ptr = 0;
 	Scene *scene_ptr = 0;
-  Script *script_ptr;
+  Script *script_ptr = 0;
 };
 
 

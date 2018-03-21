@@ -10,10 +10,10 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 void WindowSystem::init() {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
 
-	setup_window();
+	init_window();
 }
 
-void WindowSystem::setup_window() {
+void WindowSystem::init_window() {
 	cout << "in setup window" << endl;
 	int pos_x = 700;
 	int pos_y = 100;
@@ -29,8 +29,9 @@ void WindowSystem::setup_window() {
 
 	string title("Window Title");
 	SDL_SetWindowTitle( window, title.c_str() );
-	
+}
 
+void WindowSystem::setup() {
 	vector<Pos2Tex2> verts;
 
 	//left eye verts
@@ -50,9 +51,11 @@ void WindowSystem::setup_window() {
 	cout << "setting up buffers" << endl;
 
 //aTODO: add initialisation
-	vertex_buf.init(verts, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, DEVICE);
-	index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, DEVICE);
+	vertex_buf.init(verts, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, HOST);
+	index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
 
+    framebuffer = new FrameRenderBuffer();
+    framebuffer->init(width, height);
 	cout << " done with buffers" << endl;
 }
 

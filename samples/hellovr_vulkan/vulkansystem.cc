@@ -1,5 +1,4 @@
- 
-#include "vulkansystem.h"
+ #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
 #include "shared/lodepng.h"
@@ -79,7 +78,7 @@ void GraphicsObject::init_buffers() {
 // ==== Graphics Object ====
 void GraphicsObject::render(Matrix4 &mvp, bool right) {
 		//TODO fix
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
 	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
@@ -219,8 +218,8 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
 void Swapchain::init() {
   cout << "initialising swapchain" << endl;
 
-	auto ws = Global::ws();
-	auto vk = Global::vk();
+	auto &ws = Global::ws();
+	auto &vk = Global::vk();
 
 	SDL_SysWMinfo wm_info;
 	SDL_VERSION( &wm_info.version );
@@ -250,7 +249,7 @@ void Swapchain::init() {
 	}
 
 //query supported formats
-	VkFormat swap_format;
+	VkFormat swap_format = VK_FORMAT_B8G8R8A8_UNORM;
 	uint32_t format_index(0);
 	uint32_t n_swap_format(0);
 	VkColorSpaceKHR color_space;
@@ -393,7 +392,7 @@ void Swapchain::init() {
 	renderpassci.dependencyCount = 0;
 	renderpassci.pDependencies = NULL;
 
-	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer.render_pass), "vkCreateRenderPass");
+	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer->render_pass), "vkCreateRenderPass");
 
 	for (int i(0); i < images.size(); ++i) {
 		VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -414,7 +413,7 @@ void Swapchain::init() {
 
 		VkImageView attachments[ 1 ] = { image_view };
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-		fbci.renderPass = ws.framebuffer.render_pass;
+		fbci.renderPass = ws.framebuffer->render_pass;
 		fbci.attachmentCount = 1;
 		fbci.pAttachments = &attachments[ 0 ];
 		fbci.width = ws.width;
@@ -452,6 +451,26 @@ void VulkanSystem::wait_queue() {
 	vkQueueWaitIdle( queue );
 }
 
+
+void VulkanSystem::init() {
+  cout << "initialising Vulkan System" << endl;
+  init_instance();
+      cout << "============" << endl;
+	init_device();
+    init_descriptor_sets();
+}
+
+void VulkanSystem::setup() {
+    cout << "============" << endl;
+    swapchain.init();
+
+    start_cmd();
+	init_shaders();
+    end_submit_cmd();
+    
+    cout << "Done initialising Vulkan System" << endl;
+}
+
 void VulkanSystem::init_instance() {
 	VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	app_info.pApplicationName = "hellovr_vulkan";
@@ -461,15 +480,17 @@ void VulkanSystem::init_instance() {
 	app_info.apiVersion = VK_MAKE_VERSION( 1, 0, 0 );
 
 	cout << "getting ext" << endl;
-
+    cout << &Global::vr() << endl;
 	int layer_count(0);
 
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
-    cout << "asdf" << endl;
-    char *inst_req_charp[inst_req.size()];
+    cout << "n_ext: " << inst_req.size() << endl;
+        
+    char **inst_req_charp = new char*[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
 
+        
 	VkInstanceCreateInfo ici = {};
 	ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	ici.pNext = NULL;
@@ -481,27 +502,30 @@ void VulkanSystem::init_instance() {
 
 	cout << "creating instance" << endl;
 	check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
+    delete[] inst_req_charp;
 }
 
 void VulkanSystem::init_device() {
-	auto vr = Global::vr();
+	auto &vr = Global::vr();
 	
 	uint32_t n_dev(0);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
 	vector<VkPhysicalDevice> devices(n_dev);
 	check( vkEnumeratePhysicalDevices( inst, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
+    phys_dev = (VkPhysicalDevice) vr.get_output_device(inst);
+	//VkPhysicalDevice phys_dev = devices[0]; //select first, could be altered
 
-	VkPhysicalDevice chosen_dev = devices[0]; //select first, could be altered
+	vkGetPhysicalDeviceProperties( phys_dev, &prop);
+	vkGetPhysicalDeviceMemoryProperties( phys_dev, &mem_prop );
+	vkGetPhysicalDeviceFeatures( phys_dev, &features );
 
-	vkGetPhysicalDeviceProperties( chosen_dev, &prop);
-	vkGetPhysicalDeviceMemoryProperties( chosen_dev, &mem_prop );
-	vkGetPhysicalDeviceFeatures( chosen_dev, &features );
-
+    cout << "Device: " << prop.deviceName << endl;
+    
 
 	uint32_t n_queue(0);
-	vkGetPhysicalDeviceQueueFamilyProperties(  chosen_dev, &n_queue, 0);
+	vkGetPhysicalDeviceQueueFamilyProperties(  phys_dev, &n_queue, 0);
 	vector<VkQueueFamilyProperties> queue_family(n_queue);
-	vkGetPhysicalDeviceQueueFamilyProperties( chosen_dev, &n_queue, &queue_family[0]);
+	vkGetPhysicalDeviceQueueFamilyProperties( phys_dev, &n_queue, &queue_family[0]);
 	if (n_queue == 0) {
 		cerr << "Failed to get queue properties.\n" << endl;
 		throw "";
@@ -543,136 +567,13 @@ void VulkanSystem::init_device() {
 	dci.ppEnabledExtensionNames = &pp_dev_ext[0];
 	dci.pEnabledFeatures = &features;
 
-	check( vkCreateDevice( chosen_dev, &dci, nullptr, &dev ), "vkCreateDevice");
+	check( vkCreateDevice( phys_dev, &dci, nullptr, &dev ), "vkCreateDevice");
 
 	vkGetDeviceQueue( dev, graphics_queue, 0, &queue );
 }
 
-Descriptor::Descriptor() {
-  init();
-}
-
-void Descriptor::init() {
-	auto vk = Global::vk();
-	//idx = vk.desc_sets.size();
-	//vk.desc_sets.push_back(Descriptor());
-
-	VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-	desc_inf.descriptorPool = vk.desc_pool;
-	desc_inf.descriptorSetCount = 1;
-	desc_inf.pSetLayouts = &vk.desc_set_layout;
-	vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
-}
-
-void Descriptor::register_texture(VkImageView &view) {
-	auto vk = Global::vk();
-
-	VkDescriptorImageInfo img_i = {};
-	img_i.imageView = view;
-	img_i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkWriteDescriptorSet write_desc[ 1 ] = { };
-	write_desc[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc[ 0 ].dstSet = desc;
-	write_desc[ 0 ].dstBinding = 1;
-	write_desc[ 0 ].descriptorCount = 1;
-	write_desc[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	write_desc[ 0 ].pImageInfo = &img_i;
-	//vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
-
-	img_i.imageView = view;
-	//write_desc[ 0 ].dstSet = desc;
-	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
-}
-
-void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
-	auto vk = Global::vk();
-
-	VkDescriptorBufferInfo buf_inf = {};
-	buf_inf.buffer = buf;
-	buf_inf.offset = 0;
-	buf_inf.range = VK_WHOLE_SIZE;
-
-	VkDescriptorImageInfo img_inf = {};
-	img_inf.imageView = view;
-	img_inf.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkDescriptorImageInfo sample_info = {};
-	sample_info.sampler = sampler;
-
-	VkWriteDescriptorSet write_desc_set[ 3 ] = { };
-	write_desc_set[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 0 ].dstSet = desc;
-	write_desc_set[ 0 ].dstBinding = 0;
-	write_desc_set[ 0 ].descriptorCount = 1;
-	write_desc_set[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write_desc_set[ 0 ].pBufferInfo = &buf_inf;
-	write_desc_set[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 1 ].dstSet = desc;
-	write_desc_set[ 1 ].dstBinding = 1;
-	write_desc_set[ 1 ].descriptorCount = 1;
-	write_desc_set[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	write_desc_set[ 1 ].pImageInfo = &img_inf;
-	write_desc_set[ 2 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_desc_set[ 2 ].dstSet = desc;
-	write_desc_set[ 2 ].dstBinding = 2;
-	write_desc_set[ 2 ].descriptorCount = 1;
-	write_desc_set[ 2 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	write_desc_set[ 2 ].pImageInfo = &sample_info;
-
-	vkUpdateDescriptorSets( vk.dev, _countof( write_desc_set ), write_desc_set, 0, nullptr );
-}
-
-void Descriptor::bind() {	
-	auto vk = Global::vk();
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
-
-
-
-	// vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
-	
-	// // Update the persistently mapped pointer to the CB data with the latest matrix
-	// memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
-
-	// vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
-
-	// // Draw
-	// VkDeviceSize nOffsets[ 1 ] = { 0 };
-	// vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
-}
-
-
-void VulkanSystem::init() {
-  cout << "initialising Vulkan System" << endl;
-  init_instance();
-      cout << "============" << endl;
-	init_device();
-    cout << "============" << endl;
-	init_descriptor_sets();
-	init_shaders();
-    cout << "Done initialising Vulkan System" << endl;
-}
 
 void VulkanSystem::init_descriptor_sets() {
-	//Create pool
-	size_t NUM_DESCRIPTOR_SETS(256);
-
-	VkDescriptorPoolSize pool_sizes[ 3 ];
-	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_sizes[ 1 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 1 ].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	pool_sizes[ 2 ].descriptorCount = NUM_DESCRIPTOR_SETS;
-	pool_sizes[ 2 ].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-
-	VkDescriptorPoolCreateInfo descpool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-	descpool_ci.flags = 0;
-	descpool_ci.maxSets = NUM_DESCRIPTOR_SETS;
-	descpool_ci.poolSizeCount = _countof( pool_sizes );
-	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
-	vkCreateDescriptorPool( dev, &descpool_ci, nullptr, &desc_pool );
-
-
 	//Create Layout
 	VkDescriptorSetLayoutBinding lb[3] = {};
 	lb[0].binding = 0;
@@ -696,6 +597,23 @@ void VulkanSystem::init_descriptor_sets() {
 	check( vkCreateDescriptorSetLayout( dev, &desc_set_ci, nullptr, &desc_set_layout ), "vkCreateDescriptorSetLayout");
 
 
+  //Create pool
+	size_t NUM_DESCRIPTOR_SETS(256);
+
+	VkDescriptorPoolSize pool_sizes[ 3 ];
+	pool_sizes[ 0 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sizes[ 1 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 1 ].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	pool_sizes[ 2 ].descriptorCount = NUM_DESCRIPTOR_SETS;
+	pool_sizes[ 2 ].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+	VkDescriptorPoolCreateInfo descpool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	descpool_ci.flags = 0;
+	descpool_ci.maxSets = NUM_DESCRIPTOR_SETS;
+	descpool_ci.poolSizeCount = _countof( pool_sizes );
+	descpool_ci.pPoolSizes = &pool_sizes[ 0 ];
+	vkCreateDescriptorPool( dev, &descpool_ci, nullptr, &desc_pool );
 }
 
 
@@ -749,7 +667,7 @@ void VulkanSystem::init_shaders() {
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
-      ws.framebuffer.render_pass
+      ws.framebuffer->render_pass
 	};
 
 //define strides for data used in shaders
@@ -892,6 +810,102 @@ void VulkanSystem::init_shaders() {
 		check( vkCreateGraphicsPipelines( dev, pipeline_cache, 1, &pipeline_ci, NULL, &pipelines[ pso ] ), "vkCreateGraphicsPipelines");
 	}
 }
+
+// =========== Descriptors ==============
+Descriptor::Descriptor() {
+  init();
+}
+
+void Descriptor::init() {
+	auto &vk = Global::vk();
+	//idx = vk.desc_sets.size();
+	//vk.desc_sets.push_back(Descriptor());
+
+	VkDescriptorSetAllocateInfo desc_inf = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	desc_inf.descriptorPool = vk.desc_pool;
+	desc_inf.descriptorSetCount = 1;
+	desc_inf.pSetLayouts = &vk.desc_set_layout;
+	vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
+}
+
+void Descriptor::register_texture(VkImageView &view) {
+	auto &vk = Global::vk();
+
+	VkDescriptorImageInfo img_i = {};
+	img_i.imageView = view;
+	img_i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkWriteDescriptorSet write_desc[ 1 ] = { };
+	write_desc[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc[ 0 ].dstSet = desc;
+	write_desc[ 0 ].dstBinding = 1;
+	write_desc[ 0 ].descriptorCount = 1;
+	write_desc[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	write_desc[ 0 ].pImageInfo = &img_i;
+	//vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
+
+	img_i.imageView = view;
+	//write_desc[ 0 ].dstSet = desc;
+	vkUpdateDescriptorSets( vk.dev, _countof( write_desc ), write_desc, 0, nullptr );
+}
+
+void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler) {
+	auto &vk = Global::vk();
+
+	VkDescriptorBufferInfo buf_inf = {};
+	buf_inf.buffer = buf;
+	buf_inf.offset = 0;
+	buf_inf.range = VK_WHOLE_SIZE;
+
+	VkDescriptorImageInfo img_inf = {};
+	img_inf.imageView = view;
+	img_inf.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkDescriptorImageInfo sample_info = {};
+	sample_info.sampler = sampler;
+
+	VkWriteDescriptorSet write_desc_set[ 3 ] = { };
+	write_desc_set[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 0 ].dstSet = desc;
+	write_desc_set[ 0 ].dstBinding = 0;
+	write_desc_set[ 0 ].descriptorCount = 1;
+	write_desc_set[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write_desc_set[ 0 ].pBufferInfo = &buf_inf;
+	write_desc_set[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 1 ].dstSet = desc;
+	write_desc_set[ 1 ].dstBinding = 1;
+	write_desc_set[ 1 ].descriptorCount = 1;
+	write_desc_set[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	write_desc_set[ 1 ].pImageInfo = &img_inf;
+	write_desc_set[ 2 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_desc_set[ 2 ].dstSet = desc;
+	write_desc_set[ 2 ].dstBinding = 2;
+	write_desc_set[ 2 ].descriptorCount = 1;
+	write_desc_set[ 2 ].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	write_desc_set[ 2 ].pImageInfo = &sample_info;
+
+	vkUpdateDescriptorSets( vk.dev, _countof( write_desc_set ), write_desc_set, 0, nullptr );
+}
+
+void Descriptor::bind() {	
+	auto &vk = Global::vk();
+	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
+
+
+
+	// vkCmdBindPipeline( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelines[ PSO_SCENE ] );
+	
+	// // Update the persistently mapped pointer to the CB data with the latest matrix
+	// memcpy( m_pSceneConstantBufferData[ nEye ], GetCurrentViewProjectionMatrix( nEye ).get(), sizeof( Matrix4 ) );
+
+	// vkCmdBindDescriptorSets( m_currentCommandBuffer.m_pCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSets[ DESCRIPTOR_SET_LEFT_EYE_SCENE + nEye ], 0, nullptr );
+
+	// // Draw
+	// VkDeviceSize nOffsets[ 1 ] = { 0 };
+	// vkCmdBindVertexBuffers( m_currentCommandBuffer.m_pCommandBuffer, 0, 1, &m_pSceneVertexBuffer, &nOffsets[ 0 ] );
+}
+
+
 /*
 void VulkanSystem::init_texture_maps() {
 	string tex_path = "../cube_texture.png";
@@ -1002,7 +1016,7 @@ void VulkanSystem::init_texture_maps() {
 */
 
 void Swapchain::to_present(int i) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -1020,7 +1034,7 @@ void Swapchain::to_present(int i) {
 }
 
 void Swapchain::to_colour_optimal(int i) {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -1038,25 +1052,20 @@ void Swapchain::to_colour_optimal(int i) {
 }
 
 void Swapchain::acquire_image() {
-	auto vk = Global::vk();
+	auto &vk = Global::vk();
 	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
 
     
 }
 
-// void VulkanSystem::init_vulkan() {
-// 	init_instance();
-// 	init_device();
-// 	swapchain.init();
-	
-// 	// Create the command pool
-// 	{
-// 		VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-// 		cmdpoolci.queueFamilyIndex = graphics_queue;
-// 		cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-// 		check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
-// 	}
-// }
+void VulkanSystem::init_cmd_pool() {
+  // Create the command pool
+  VkCommandPoolCreateInfo cmdpoolci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+  cmdpoolci.queueFamilyIndex = graphics_queue;
+  cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+  cmd_buffer();
+}
 
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
@@ -1078,15 +1087,15 @@ VkCommandBuffer VulkanSystem::cmd_buffer() {
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 {
-  auto vk = Global::vk();
+  auto &vk = Global::vk();
   for ( uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++ )
     {
       if ( ( mem_bits & 1 ) == 1)
-  {
-    // Type is available, does it match user properties?
-    if ( ( vk.mem_prop.memoryTypes[i].propertyFlags & mem_prop ) == mem_prop )
-      return i;
-  }
+        {
+          // Type is available, does it match user properties?
+          if ( ( vk.mem_prop.memoryTypes[i].propertyFlags & mem_prop ) == mem_prop )
+            return i;
+        }
       mem_bits >>= 1;
     }
 
@@ -1095,18 +1104,18 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 }
 
 
-void VulkanSystem::start_cmd_buffer() {
+void VulkanSystem::start_cmd() {
 	// Start the command buffer
 	VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
 }
 
-void VulkanSystem::end_cmd_buffer() {
+void VulkanSystem::end_cmd() {
 	vkEndCommandBuffer( cur_cmd_buffer );
 }
 
-void VulkanSystem::submit_cmd_buffer() {
+void VulkanSystem::submit_cmd() {
 
 // Submit the command buffer
 	VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1117,6 +1126,11 @@ void VulkanSystem::submit_cmd_buffer() {
 	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
 	si.pWaitDstStageMask = &mask;
 
-	vkQueueSubmit( queue, 1, &si, cur_fence );
+	vkQueueSubmit( queue, 1, &si, cur_fence );    
 }
 
+
+void VulkanSystem::end_submit_cmd() {
+  end_cmd();
+  submit_cmd();
+}

@@ -1,6 +1,7 @@
 #ifndef __UTIL_REFRACTOR_H__
 #define __UTIL_REFRACTOR_H__
 
+#include <map>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -21,6 +22,15 @@
 #ifndef _countof
 #define _countof(x) (sizeof(x)/sizeof((x)[0]))
 #endif
+
+
+struct StringException : public std::exception {
+	StringException(std::string msg_): msg(msg_){}
+	char const* what() const throw() {return msg.c_str();}
+	~StringException() throw() {}
+	std::string msg;
+};
+
 
 struct Timer {
   std::chrono::high_resolution_clock::time_point timepoint;
@@ -51,8 +61,28 @@ inline void ThreadSleep( unsigned long nMilliseconds )
 template <typename T>
 inline void check(VkResult res, std::string str, T other) {
   if (res != VK_SUCCESS) {
-    std::cerr << str << other << " error: " << res << std::endl;
-    throw "err";
+    std::map<VkResult, std::string> e;
+    e[VK_SUCCESS] = "VK_SUCCESS";
+    e[VK_NOT_READY]  = "VK_NOT_READY";
+    e[VK_TIMEOUT] = "VK_TIMEOUT";
+    e[VK_EVENT_SET] = "VK_EVENT_SET";
+    e[VK_EVENT_RESET] = "VK_EVENT_RESET";
+    e[VK_INCOMPLETE] = "VK_INCOMPLETE";
+    
+    e[VK_ERROR_OUT_OF_HOST_MEMORY] = "VK_ERROR_OUT_OF_HOST_MEMORY";
+    e[VK_ERROR_OUT_OF_DEVICE_MEMORY] = "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+    e[VK_ERROR_INITIALIZATION_FAILED] = "VK_ERROR_INITIALIZATION_FAILED";
+    e[VK_ERROR_DEVICE_LOST] = "VK_ERROR_DEVICE_LOST";
+    e[VK_ERROR_MEMORY_MAP_FAILED] = "VK_ERROR_MEMORY_MAP_FAILED";
+    e[VK_ERROR_LAYER_NOT_PRESENT] = "VK_ERROR_LAYER_NOT_PRESENT";
+    e[VK_ERROR_EXTENSION_NOT_PRESENT] = "VK_ERROR_EXTENSION_NOT_PRESENT";
+    e[VK_ERROR_FEATURE_NOT_PRESENT] = "VK_ERROR_FEATURE_NOT_PRESENT";
+    e[VK_ERROR_INCOMPATIBLE_DRIVER] = "VK_ERROR_INCOMPATIBLE_DRIVER";
+    e[VK_ERROR_TOO_MANY_OBJECTS] = "VK_ERROR_TOO_MANY_OBJECTS";
+    e[VK_ERROR_FORMAT_NOT_SUPPORTED] = "VK_ERROR_FORMAT_NOT_SUPPORTED";
+    e[VK_ERROR_FRAGMENTED_POOL] = "VK_ERROR_FRAGMENTED_POOL";
+    std::cerr << str << other << " error: " << e[res] << std::endl;
+    throw StringException(e[res]);
   }
 }
 
@@ -81,12 +111,6 @@ inline void sdl_check(int err) {
   }
 }
 
-struct StringException : public std::exception {
-	StringException(std::string msg_): msg(msg_){}
-	char const* what() const throw() {return msg.c_str();}
-	~StringException() throw() {}
-	std::string msg;
-};
 
 
 inline std::string read_all(std::string path) {

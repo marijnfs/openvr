@@ -13,7 +13,7 @@ void Controller::update() {
     } else {
       from_mat4(vr.left_controller.t);
     }
-    //auto vr = Global::vr();
+    //auto &vr = Global::vr();
     
     //grab position from vrsystem if tracked
   }
