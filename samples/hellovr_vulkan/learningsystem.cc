@@ -28,10 +28,10 @@ void test(int argc, char **argv) {
 	// int img_h = img.h();
 	// int img_c = img.c();
 
-	int img_w = 8;
-	int img_h = 8;
-	int img_c = 1;
-	int train_n = 20;
+	int img_w = 200;
+	int img_h = 200;
+	int img_c = 6;
+	int train_n = 120;
 
 
 	cout << "whc: " << img_w << " " << img_h << " " << img_c << endl;

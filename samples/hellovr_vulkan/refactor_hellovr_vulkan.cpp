@@ -98,12 +98,14 @@ int main() {
 
   Timer a_timer(1./60);
   uint i(0);
+
+  Recording recording;
   while (i++ < 60) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
+    scene.snap(&recording);
 
-    
     vr.render(scene);
     a_timer.wait();
   }
