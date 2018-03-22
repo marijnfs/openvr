@@ -107,12 +107,12 @@ struct VulkanSystem {
   uint32_t current_frame;
   uint32_t msaa = 1;
 
-  VkCommandPool cmd_pool;
+  VkCommandPool cmd_pool = 0;
   Swapchain swapchain;
 
 
-  VkDescriptorPool desc_pool;
-  VkDescriptorSetLayout desc_set_layout;
+  VkDescriptorPool desc_pool = 0;
+  VkDescriptorSetLayout desc_set_layout = 0;
   std::vector<VkDescriptorSet> desc_sets;
   
   //Buffer scene_constant_buffer[2]; //for both eyes

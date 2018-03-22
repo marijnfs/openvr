@@ -27,6 +27,7 @@ void FencedCommandBuffer::reset() {
 
 void FencedCommandBuffer::init() {
 	auto &vk = Global::vk();
+    cout << "cmdpool:" << vk.cmd_pool << endl;
 	VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	cmd_buffer_alloc_info.commandBufferCount = 1;
 	cmd_buffer_alloc_info.commandPool = vk.cmd_pool;
@@ -133,6 +134,8 @@ void GraphicsCanvas::init() {
   init_buffers();
   auto *img = ImageFlywheel::image(texture);
 
+  cout << "img " << img << endl;
+  
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
 }
@@ -457,7 +460,9 @@ void VulkanSystem::init() {
   init_instance();
       cout << "============" << endl;
 	init_device();
+    init_cmd_pool();
     init_descriptor_sets();
+    
 }
 
 void VulkanSystem::setup() {
@@ -465,7 +470,6 @@ void VulkanSystem::setup() {
     swapchain.init();
 
 	init_shaders();
-    end_submit_cmd();
     
     cout << "Done initialising Vulkan System" << endl;
 }
@@ -1063,7 +1067,6 @@ void VulkanSystem::init_cmd_pool() {
   cmdpoolci.queueFamilyIndex = graphics_queue;
   cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
-  cmd_buffer();
 }
 
 
