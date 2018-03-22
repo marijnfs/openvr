@@ -79,7 +79,7 @@ void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location 
 }
 
 template <typename T>
-void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location loc) {
+void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location loc) { 
   n = size * sizeof(T); //size in bytes
   init(n, usage, loc);
 
@@ -234,7 +234,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	//TODO: create getpixel buffer?
 	
 	to_transfer_dst();
-	vkCmdCopyBufferToImage( vk.cur_cmd_buffer, staging_buffer.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
+	vkCmdCopyBufferToImage( vk.cmd_buffer(), staging_buffer.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
 	to_read_optimal();
 
 	delete [] ptr;
@@ -256,7 +256,7 @@ void Image::to_colour_optimal() {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	layout = barier.newLayout;
 }
 
@@ -272,7 +272,7 @@ void Image::to_depth_optimal() {
 	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	barier.oldLayout = layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	layout = barier.newLayout;
 }
 
@@ -288,7 +288,7 @@ void Image::to_read_optimal() {
 	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	barier.oldLayout = layout;
 	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cur_cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 	layout = barier.newLayout;
 }
 
@@ -309,7 +309,7 @@ void Image::to_transfer_dst() {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 

@@ -130,14 +130,14 @@ struct VulkanSystem {
   //Shader stuff
   VkShaderModule shader_modules_vs[PSO_COUNT], shader_modules_ps[PSO_COUNT];
   VkPipeline pipelines[PSO_COUNT];
-  VkPipelineLayout pipeline_layout;
-  VkPipelineCache pipeline_cache;
+  VkPipelineLayout pipeline_layout = 0;
+  VkPipelineCache pipeline_cache = 0;
 
   std::deque< FencedCommandBuffer > cmd_buffers;
-  VkCommandBuffer cur_cmd_buffer;
-  VkFence cur_fence;
+  VkCommandBuffer cur_cmd_buffer = 0;
+  VkFence cur_fence = 0;
 
-  VkSampler sampler;
+  VkSampler sampler = 0;
 
   VkDebugReportCallbackEXT debug_callback;
 

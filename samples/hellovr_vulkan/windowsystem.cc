@@ -46,7 +46,7 @@ void WindowSystem::setup() {
 	verts.push_back( Pos2Tex2{ Vector2(0, 1), Vector2(0, 0)} );
 	verts.push_back( Pos2Tex2{ Vector2(1, 1), Vector2(1, 0)} );
 
-	uint16_t indices[] = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6};
+	vector<uint16_t> indices = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6};
 
 	cout << "setting up buffers" << endl;
 

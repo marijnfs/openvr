@@ -21,11 +21,11 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 1 ].depthStencil.stencil = 0;
 	renderpassci.pClearValues = &cv[ 0 ];
 
-	vkCmdBeginRenderPass( Global::vk().cur_cmd_buffer, &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-	vkCmdEndRenderPass( Global::vk().cur_cmd_buffer );
+	vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {
