@@ -249,15 +249,16 @@ struct DrawVisitor : public ObjectVisitor {
 
   template <typename T>
     T& gob(int i) {
+    check_size_and_type<GraphicsCanvas>(i);
     return *dynamic_cast<T*>(gobs[i]);
   }
   
   void visit(Canvas &canvas) {
-    check_size_and_type<GraphicsCanvas>(i);
     auto &gcanvas = gob<GraphicsCanvas>(i);
     
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
-    
+
+    std::cout << "render canvas" << std::endl;
     gcanvas.render(mat, right);
   }
   

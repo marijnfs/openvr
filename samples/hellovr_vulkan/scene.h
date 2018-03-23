@@ -60,10 +60,10 @@ struct HMD;
 struct ObjectVisitor {
   int i = 0;
 
-  virtual void visit(Canvas &canvas) = 0;
-  virtual void visit(Controller &controller) = 0;
-  virtual void visit(Point &point) = 0;
-  virtual void visit(HMD &hmd) = 0;
+  virtual void visit(Canvas &canvas) {};
+  virtual void visit(Controller &controller) {};
+  virtual void visit(Point &point) {};
+  virtual void visit(HMD &hmd) {};
 };
 
 struct Object {
@@ -445,8 +445,10 @@ struct Scene {
   }
 
   void visit(ObjectVisitor &visitor) {
+    std::cout << "visitor " << std::endl;
     visitor.i = 0;
     for (auto &kv : objects) {
+      std::cout << "visiting object " << visitor.i << std::endl;
       kv.second->visit(visitor);
       ++visitor.i;
     }

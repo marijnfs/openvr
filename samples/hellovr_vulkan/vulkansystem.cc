@@ -78,7 +78,8 @@ void GraphicsObject::init_buffers() {
 
 // ==== Graphics Object ====
 void GraphicsObject::render(Matrix4 &mvp, bool right) {
-		//TODO fix
+
+  //TODO fix
 	auto &vk = Global::vk();
 	vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
@@ -89,7 +90,8 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
       memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
     else
       memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-
+    cout << n_vertex << " " << vertex_buf.n << endl;
+  return;
     if (right)
       vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
     else
@@ -97,12 +99,13 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
 
 		// Draw
 	VkDeviceSize offsets[ 1 ] = { 0 };
+    cout << "nv: " << n_vertex << endl;
 	vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
     if (!index_buf.size())
       vkCmdDraw( vk.cmd_buffer(), n_vertex, 1, 0, 0 );
     else {
       	vkCmdBindIndexBuffer( vk.cmd_buffer(), index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
-        vkCmdDrawIndexed( vk.cmd_buffer(), vertex_buf.size(), 1, 0, 0, 0 );
+        vkCmdDrawIndexed( vk.cmd_buffer(), n_vertex, 1, 0, 0, 0 );
     }
 }
 
@@ -112,6 +115,7 @@ void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
 	v.push_back( z );
 	v.push_back( tx );
 	v.push_back( ty );
+    n_vertex++;
 }
 
 
@@ -124,6 +128,7 @@ GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
 }
 
 void GraphicsCanvas::init() {
+  cout << "init Graphics Canvas" << endl;
   add_vertex( 0, 1, 0, 0, 1); //Front
   add_vertex( 1, 1, 0, 1, 1);
   add_vertex( 1, 0, 0, 1, 0);
@@ -138,6 +143,7 @@ void GraphicsCanvas::init() {
   
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
+  Global::vk().end_submit_cmd();
 }
 
 GraphicsCube::GraphicsCube() {

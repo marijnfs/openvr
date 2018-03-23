@@ -100,10 +100,10 @@ int main() {
   scene.add_canvas("test");
   scene.set_pos("test", Pos(1, 1, 1));
 
-  Timer a_timer(1./60);
+  Timer a_timer(1.);
   uint i(0);
-  while (i++ < 60) {
-    //cout << i << endl;
+  while (i++ < 5) {
+    cout << i << endl;
     vr.update_track_pose();
     scene.step();
 

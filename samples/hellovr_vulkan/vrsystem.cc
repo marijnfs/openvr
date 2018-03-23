@@ -147,8 +147,9 @@ void VRSystem::render_companion_window() {
 void VRSystem::render(Scene &scene) {
 	auto &vk = Global::vk();
 
+    cout << "rendering: " << endl;
 	vk.swapchain.acquire_image();
-
+    
 	// RENDERING
 	render_stereo_targets(scene);
 	render_companion_window();
@@ -213,9 +214,12 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
-	
+	ObjectVisitor dummy;
+    return ;    
     draw_visitor.right = false;
-    scene.visit(draw_visitor);
+    cout << "visitng and stuff" << endl;
+    //scene.visit(draw_visitor);
+    scene.visit(dummy);
   	//render stuff
 	
 	left_eye_fb->end_render_pass();
@@ -231,7 +235,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
 	
     draw_visitor.right = true;
-    scene.visit(draw_visitor);
+    scene.visit(dummy);
+    //scene.visit(draw_visitor);
     
   	//render stuff
 	right_eye_fb->end_render_pass();
