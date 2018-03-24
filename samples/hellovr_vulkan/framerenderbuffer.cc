@@ -29,7 +29,7 @@ void FrameRenderBuffer::start_render_pass() {
 }
 
 void FrameRenderBuffer::end_render_pass() {
-  //vkCmdEndRenderPass( Global::vk().cmd_buffer() );
+  vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {

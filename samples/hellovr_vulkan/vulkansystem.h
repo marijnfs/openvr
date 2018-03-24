@@ -71,6 +71,8 @@ struct Swapchain {
   VkSurfaceKHR surface = 0;
   VkSwapchainKHR swapchain = 0;
 
+  VkRenderPass renderpass = 0;
+  
   std::vector< VkImage > images;
   std::vector< VkImageView > views;
   std::vector< VkFramebuffer > framebuffers;
@@ -85,9 +87,12 @@ struct Swapchain {
   void init();
   void to_present(int i);
   void to_colour_optimal(int i);
+  void to_present_optimal(int i);
 
   void acquire_image();  
 
+  void begin_render_pass(uint32_t width, uint32_t height);
+  void end_render_pass();
   
 };
 
@@ -103,8 +108,6 @@ struct VulkanSystem {
   VkQueue queue;
 
   int graphics_queue;
-  uint32_t frame_idx;
-  uint32_t current_frame;
   uint32_t msaa = 1;
 
   VkCommandPool cmd_pool = 0;
@@ -155,8 +158,8 @@ struct VulkanSystem {
   void init_texture_maps();
 
   void setup();
-    
-  void submit(FencedCommandBuffer &fcb);
+
+  void submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0);
   void wait_queue();
 
 
@@ -168,6 +171,8 @@ struct VulkanSystem {
   void end_cmd();
   void submit_cmd();
   void end_submit_cmd();
+  void submit_swapchain_cmd();
+  void end_submit_swapchain_cmd();
   
   VkCommandBuffer cmd_buffer();
   

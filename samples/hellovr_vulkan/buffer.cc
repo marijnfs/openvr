@@ -247,7 +247,7 @@ void Image::to_colour_optimal() {
     //barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
 	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	barier.oldLayout = layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	layout = barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	barier.image = img;
 	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barier.subresourceRange.baseMipLevel = 0;
@@ -257,7 +257,6 @@ void Image::to_colour_optimal() {
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
 	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	layout = barier.newLayout;
 }
 
 void Image::to_depth_optimal() {
@@ -271,9 +270,8 @@ void Image::to_depth_optimal() {
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	barier.oldLayout = layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	layout = barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	layout = barier.newLayout;
 }
 
 void Image::to_read_optimal() {
@@ -287,9 +285,8 @@ void Image::to_read_optimal() {
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	barier.oldLayout = layout;
-	barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	layout = barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
-	layout = barier.newLayout;
 }
 
 void Image::to_transfer_dst() {
@@ -299,8 +296,8 @@ void Image::to_transfer_dst() {
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barier.srcAccessMask = 0;
 	barier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barier.oldLayout = layout;
+	layout = barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barier.image = img;
 	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barier.subresourceRange.baseMipLevel = 0;
@@ -312,8 +309,25 @@ void Image::to_transfer_dst() {
 	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
+void Image::to_transfer_src() {
+	// Transition the image to TRANSFER_DST to receive image
+	auto &vk = Global::vk();
 
-
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barier.oldLayout = layout;
+	layout = barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barier.image = img;
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = mip_levels;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+}
 
 
 

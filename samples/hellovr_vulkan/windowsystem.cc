@@ -53,12 +53,12 @@ void WindowSystem::setup() {
 //aTODO: add initialisation
 	vertex_buf.init(verts, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, HOST);
 	index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
-
-    framebuffer = new FrameRenderBuffer();
-    framebuffer->init(width, height);
+    
+    //framebuffer = new FrameRenderBuffer();
+    // framebuffer->init(width, height);
 	cout << " done with buffers" << endl;
 }
 
 void WindowSystem::show_message(string str) {
-	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "VR_Init Failed", str.c_str(), NULL );
+	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "Notice", str.c_str(), NULL );
 }

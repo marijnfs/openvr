@@ -401,7 +401,7 @@ void Swapchain::init() {
 	renderpassci.dependencyCount = 0;
 	renderpassci.pDependencies = NULL;
 
-	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &ws.framebuffer->render_pass), "vkCreateRenderPass");
+	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &render_pass), "vkCreateRenderPass");
 
 	for (int i(0); i < images.size(); ++i) {
 		VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -422,7 +422,7 @@ void Swapchain::init() {
 
 		VkImageView attachments[ 1 ] = { image_view };
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-		fbci.renderPass = ws.framebuffer->render_pass;
+		fbci.renderPass = render_pass;
 		fbci.attachmentCount = 1;
 		fbci.pAttachments = &attachments[ 0 ];
 		fbci.width = ws.width;
@@ -443,17 +443,47 @@ void Swapchain::init() {
 }
 
 // ==== Vulkan System====
+void Swapchain::begin_render_pass(uint32_t width, uint32_t height) {
+	VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+	renderPassBeginInfo.renderPass = render_pass;
+	renderPassBeginInfo.framebuffer = framebuffers[current_swapchain_image];
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = width;
+	renderPassBeginInfo.renderArea.extent.height = height;
+	VkClearValue clearValues[ 1 ];
+	clearValues[ 0 ].color.float32[ 0 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 1 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 2 ] = 0.0f;
+	clearValues[ 0 ].color.float32[ 3 ] = 1.0f;
+	renderPassBeginInfo.clearValueCount = _countof( clearValues );
+	renderPassBeginInfo.pClearValues = &clearValues[ 0 ];
+	vkCmdBeginRenderPass( vk.cmd_buffer(), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+}
+
+void Swapchain::end_render_pass() {
+  auto &vk = Global::vk();
+  vkCmdEndRenderPass( vk.cmd_buffer() );
+}
+                                 
 
 
 VulkanSystem::VulkanSystem() {
   
 }
 
-void VulkanSystem::submit(FencedCommandBuffer &fcb) {
+void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0) {
 	VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submiti.commandBufferCount = 1;
-	submiti.pCommandBuffers = &fcb.cmd_buffer;
-	vkQueueSubmit( queue, 1, &submiti, fcb.fence );
+	submiti.pCommandBuffers = &cmd;
+    if (semaphore) {
+      VkPipelineStageFlags dst_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      submitInfo.waitSemaphoreCount = 1;
+      submitInfo.pWaitSemaphores = &semaphore;
+      submitInfo.pWaitDstStageMask = &dst_mask;
+    }
+    
+	vkQueueSubmit( queue, 1, &submiti, fence );
 }
 
 void VulkanSystem::wait_queue() {
@@ -1060,6 +1090,24 @@ void Swapchain::to_colour_optimal(int i) {
 	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
+void Swapchain::to_present_optimal(int i) {
+	auto &vk = Global::vk();
+	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	barier.image = images[i];
+	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = 1;
+	barier.srcQueueFamilyIndex = vk.graphics_queue;
+	barier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+}
+
 void Swapchain::acquire_image() {
 	auto &vk = Global::vk();
 	check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
@@ -1130,23 +1178,20 @@ void VulkanSystem::end_cmd() {
   vkEndCommandBuffer( cur_cmd_buffer );
 }
 
-void VulkanSystem::submit_cmd() {
-
+void VulkanSystem::submit_swapchain_cmd() {
 // Submit the command buffer
-	VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	si.commandBufferCount = 1;
-	si.pCommandBuffers = &cur_cmd_buffer;
-	si.waitSemaphoreCount = 1;
-	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
-	si.pWaitDstStageMask = &mask;
-
-	vkQueueSubmit( queue, 1, &si, cur_fence );
-    cur_cmd_buffer = 0;
+  submit(cur_cmd_buffer, cud_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
+  cur_cmd_buffer = 0;
+  ++swapchain.frame_idx;
 }
 
 
+void VulkanSystem::end_submit_swapchain_cmd() {
+  end_cmd();
+  submit_swapchain_cmd();
+}
+
 void VulkanSystem::end_submit_cmd() {
   end_cmd();
-  submit_cmd();
+  submit(cur_cmd_buffer, cur_fence);
 }

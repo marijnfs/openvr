@@ -65,6 +65,7 @@ struct Image {
     void to_depth_optimal();
     void to_read_optimal();
     void to_transfer_dst();
+  void to_transfer_src();
 
 };
 
