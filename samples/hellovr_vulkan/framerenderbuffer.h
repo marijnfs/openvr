@@ -6,8 +6,8 @@
 
 struct FrameRenderBuffer {
     Image img, depth_stencil;
-    VkRenderPass render_pass;
-    VkFramebuffer framebuffer;
+    VkRenderPass render_pass = 0;
+    VkFramebuffer framebuffer = 0;
     int width = 0, height = 0;
   Descriptor desc;
   

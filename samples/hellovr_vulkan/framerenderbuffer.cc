@@ -2,6 +2,8 @@
 #include "global.h"
 #include "util.h"
 
+using namespace std;
+
 void FrameRenderBuffer::start_render_pass() {
 	// Start the renderpass
 	VkRenderPassBeginInfo renderpassci = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
@@ -9,6 +11,7 @@ void FrameRenderBuffer::start_render_pass() {
 	renderpassci.framebuffer = framebuffer;
 	renderpassci.renderArea.offset.x = 0;
 	renderpassci.renderArea.offset.y = 0;
+    cout << "wh:" << width << " " << height << endl;///////////
 	renderpassci.renderArea.extent.width = width;
 	renderpassci.renderArea.extent.height = height;
 	renderpassci.clearValueCount = 2;
@@ -20,12 +23,13 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 1 ].depthStencil.depth = 1.0f;
 	cv[ 1 ].depthStencil.stencil = 0;
 	renderpassci.pClearValues = &cv[ 0 ];
-
+    cout << render_pass << " " << framebuffer << endl;
+    cout << Global::vk().cmd_buffer() << endl;
 	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-	vkCmdEndRenderPass( Global::vk().cmd_buffer() );
+  //vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {

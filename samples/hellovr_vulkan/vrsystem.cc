@@ -152,7 +152,7 @@ void VRSystem::render(Scene &scene) {
     
 	// RENDERING
 	render_stereo_targets(scene);
-	render_companion_window();
+	//render_companion_window();
 
 	vk.end_submit_cmd();
 
@@ -208,8 +208,11 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	left_eye_fb->img.to_colour_optimal();
 	if (left_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		left_eye_fb->depth_stencil.to_depth_optimal();
-	left_eye_fb->start_render_pass();
-	
+
+
+    left_eye_fb->start_render_pass();
+    left_eye_fb->end_render_pass();
+    return;	
 	//TODO:  have to set eye position
 
 	auto proj_left = get_view_projection(vr::Eye_Left);
