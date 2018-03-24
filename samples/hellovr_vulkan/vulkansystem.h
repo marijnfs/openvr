@@ -107,12 +107,12 @@ struct VulkanSystem {
   uint32_t current_frame;
   uint32_t msaa = 1;
 
-  VkCommandPool cmd_pool;
+  VkCommandPool cmd_pool = 0;
   Swapchain swapchain;
 
 
-  VkDescriptorPool desc_pool;
-  VkDescriptorSetLayout desc_set_layout;
+  VkDescriptorPool desc_pool = 0;
+  VkDescriptorSetLayout desc_set_layout = 0;
   std::vector<VkDescriptorSet> desc_sets;
   
   //Buffer scene_constant_buffer[2]; //for both eyes
@@ -130,14 +130,14 @@ struct VulkanSystem {
   //Shader stuff
   VkShaderModule shader_modules_vs[PSO_COUNT], shader_modules_ps[PSO_COUNT];
   VkPipeline pipelines[PSO_COUNT];
-  VkPipelineLayout pipeline_layout;
-  VkPipelineCache pipeline_cache;
+  VkPipelineLayout pipeline_layout = 0;
+  VkPipelineCache pipeline_cache = 0;
 
   std::deque< FencedCommandBuffer > cmd_buffers;
-  VkCommandBuffer cur_cmd_buffer;
-  VkFence cur_fence;
+  VkCommandBuffer cur_cmd_buffer = 0;
+  VkFence cur_fence = 0;
 
-  VkSampler sampler;
+  VkSampler sampler = 0;
 
   VkDebugReportCallbackEXT debug_callback;
 
@@ -249,15 +249,16 @@ struct DrawVisitor : public ObjectVisitor {
 
   template <typename T>
     T& gob(int i) {
+    check_size_and_type<GraphicsCanvas>(i);
     return *dynamic_cast<T*>(gobs[i]);
   }
   
   void visit(Canvas &canvas) {
-    check_size_and_type<GraphicsCanvas>(i);
     auto &gcanvas = gob<GraphicsCanvas>(i);
     
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
-    
+
+    std::cout << "render canvas" << std::endl;
     gcanvas.render(mat, right);
   }
   

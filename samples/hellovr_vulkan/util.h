@@ -9,6 +9,7 @@
 #include "lvulkan.h"
 #include <openvr.h>
 #include <iostream>
+#include <sstream>
 #include <SDL.h>
 #include <chrono>
 #include <thread>
@@ -26,6 +27,12 @@
 
 struct StringException : public std::exception {
 	StringException(std::string msg_): msg(msg_){}
+  template <typename T>
+  	StringException(std::string msg_, T t)  {
+    std::ostringstream oss;
+    oss << msg_ << " " << t << std::endl;
+    msg = oss.str();
+  }
 	char const* what() const throw() {return msg.c_str();}
 	~StringException() throw() {}
 	std::string msg;
@@ -116,7 +123,7 @@ inline void sdl_check(int err) {
 inline std::string read_all(std::string path) {
 	std::ifstream t(path.c_str());
 	if (!t)
-		throw "failed to open";
+      throw StringException("failed to open", path);
 
 	std::string str;
 

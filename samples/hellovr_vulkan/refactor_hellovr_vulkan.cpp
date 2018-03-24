@@ -100,8 +100,9 @@ int main() {
   scene.add_canvas("test");
   scene.set_pos("test", Pos(1, 1, 1));
 
-  Timer a_timer(1./60);
+  Timer a_timer(1.);
   uint i(0);
+
 
   Recording recording;
   while (i++ < 60) {

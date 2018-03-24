@@ -27,6 +27,7 @@ void FencedCommandBuffer::reset() {
 
 void FencedCommandBuffer::init() {
 	auto &vk = Global::vk();
+    cout << "cmdpool:" << vk.cmd_pool << endl;
 	VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	cmd_buffer_alloc_info.commandBufferCount = 1;
 	cmd_buffer_alloc_info.commandPool = vk.cmd_pool;
@@ -77,9 +78,10 @@ void GraphicsObject::init_buffers() {
 
 // ==== Graphics Object ====
 void GraphicsObject::render(Matrix4 &mvp, bool right) {
-		//TODO fix
+
+  //TODO fix
 	auto &vk = Global::vk();
-	vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
+	vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_SCENE ] );
 
 	// Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
 	//TODO set eye matrix
@@ -88,20 +90,22 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
       memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
     else
       memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-
+    cout << n_vertex << " " << vertex_buf.n << endl;
+  return;
     if (right)
-      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
+      vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
     else
-      vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
+      vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
 
 		// Draw
 	VkDeviceSize offsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
+    cout << "nv: " << n_vertex << endl;
+	vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
     if (!index_buf.size())
-      vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+      vkCmdDraw( vk.cmd_buffer(), n_vertex, 1, 0, 0 );
     else {
-      	vkCmdBindIndexBuffer( vk.cur_cmd_buffer, index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
-        vkCmdDrawIndexed( vk.cur_cmd_buffer, vertex_buf.size(), 1, 0, 0, 0 );
+      	vkCmdBindIndexBuffer( vk.cmd_buffer(), index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
+        vkCmdDrawIndexed( vk.cmd_buffer(), n_vertex, 1, 0, 0, 0 );
     }
 }
 
@@ -111,6 +115,7 @@ void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
 	v.push_back( z );
 	v.push_back( tx );
 	v.push_back( ty );
+    n_vertex++;
 }
 
 
@@ -123,6 +128,7 @@ GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
 }
 
 void GraphicsCanvas::init() {
+  cout << "init Graphics Canvas" << endl;
   add_vertex( 0, 1, 0, 0, 1); //Front
   add_vertex( 1, 1, 0, 1, 1);
   add_vertex( 1, 0, 0, 1, 0);
@@ -133,8 +139,11 @@ void GraphicsCanvas::init() {
   init_buffers();
   auto *img = ImageFlywheel::image(texture);
 
+  cout << "img " << img << endl;
+  
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
+  Global::vk().end_submit_cmd();
 }
 
 GraphicsCube::GraphicsCube() {
@@ -193,7 +202,7 @@ GraphicsCube::GraphicsCube() {
 /*
 void GraphicsCube::render(Matrix4 &mvp, bool right) {
   auto &vk = Global::vk();
-  vkCmdBindPipeline( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[PSO_SCENE]);
+  vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[PSO_SCENE]);
 
   if (right)
     memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
@@ -202,14 +211,14 @@ void GraphicsCube::render(Matrix4 &mvp, bool right) {
   
   
   if (right)
-    vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
+    vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
   else
-    vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
+    vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
   
   // Draw
   VkDeviceSize offsets[ 1 ] = { 0 };
-  vkCmdBindVertexBuffers( vk.cur_cmd_buffer, 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
-  vkCmdDraw( vk.cur_cmd_buffer, n_vertex, 1, 0, 0 );
+  vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
+  vkCmdDraw( vk.cmd_buffer(), n_vertex, 1, 0, 0 );
 }
 */
 
@@ -457,16 +466,16 @@ void VulkanSystem::init() {
   init_instance();
       cout << "============" << endl;
 	init_device();
+    init_cmd_pool();
     init_descriptor_sets();
+    
 }
 
 void VulkanSystem::setup() {
     cout << "============" << endl;
     swapchain.init();
 
-    start_cmd();
 	init_shaders();
-    end_submit_cmd();
     
     cout << "Done initialising Vulkan System" << endl;
 }
@@ -889,7 +898,7 @@ void Descriptor::register_model_texture(VkBuffer &buf, VkImageView &view, VkSamp
 
 void Descriptor::bind() {	
 	auto &vk = Global::vk();
-	vkCmdBindDescriptorSets( vk.cur_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
+	vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
 
 
 
@@ -1030,7 +1039,7 @@ void Swapchain::to_present(int i) {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 void Swapchain::to_colour_optimal(int i) {
@@ -1048,7 +1057,7 @@ void Swapchain::to_colour_optimal(int i) {
 	barier.subresourceRange.layerCount = 1;
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cur_cmd_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
 
 void Swapchain::acquire_image() {
@@ -1064,25 +1073,29 @@ void VulkanSystem::init_cmd_pool() {
   cmdpoolci.queueFamilyIndex = graphics_queue;
   cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
-  cmd_buffer();
 }
 
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
-	for (auto &buf : cmd_buffers) {
-		if (buf.finished()) {
-			buf.reset();
-			cur_cmd_buffer = buf.cmd_buffer;
-			cur_fence = buf.fence;
-			return cur_cmd_buffer;
-		}
-	}
-	cmd_buffers.push_back(FencedCommandBuffer());
-	cmd_buffers.back().init();
-	cur_cmd_buffer = cmd_buffers.back().cmd_buffer;
-	cur_fence = cmd_buffers.back().fence;
-
-	return cur_cmd_buffer;
+  cout << "CMD BUFFER CALLED" << endl;
+  if (cur_cmd_buffer)
+    return cur_cmd_buffer;
+  for (auto &buf : cmd_buffers) {
+    if (buf.finished()) {
+      buf.reset();
+      cur_cmd_buffer = buf.cmd_buffer;
+      cur_fence = buf.fence;
+      start_cmd();
+      return cur_cmd_buffer;
+    }
+  }
+  cmd_buffers.push_back(FencedCommandBuffer());
+  cmd_buffers.back().init();
+  cur_cmd_buffer = cmd_buffers.back().cmd_buffer;
+  cur_fence = cmd_buffers.back().fence;
+  
+  start_cmd();
+  return cur_cmd_buffer;
 }
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
@@ -1105,14 +1118,16 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
 
 
 void VulkanSystem::start_cmd() {
-	// Start the command buffer
-	VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+  // Start the command buffer
+  	VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    cout << cur_cmd_buffer << endl;
 	vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
 }
 
 void VulkanSystem::end_cmd() {
-	vkEndCommandBuffer( cur_cmd_buffer );
+  cout << cur_cmd_buffer << endl;
+  vkEndCommandBuffer( cur_cmd_buffer );
 }
 
 void VulkanSystem::submit_cmd() {
@@ -1126,7 +1141,8 @@ void VulkanSystem::submit_cmd() {
 	si.pWaitSemaphores = &swapchain.semaphores[ swapchain.frame_idx ];
 	si.pWaitDstStageMask = &mask;
 
-	vkQueueSubmit( queue, 1, &si, cur_fence );    
+	vkQueueSubmit( queue, 1, &si, cur_fence );
+    cur_cmd_buffer = 0;
 }
 
 
