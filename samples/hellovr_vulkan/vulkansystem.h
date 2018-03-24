@@ -71,7 +71,7 @@ struct Swapchain {
   VkSurfaceKHR surface = 0;
   VkSwapchainKHR swapchain = 0;
 
-  VkRenderPass renderpass = 0;
+  VkRenderPass render_pass = 0;
   
   std::vector< VkImage > images;
   std::vector< VkImageView > views;

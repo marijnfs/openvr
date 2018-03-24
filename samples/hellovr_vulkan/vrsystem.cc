@@ -230,8 +230,8 @@ void VRSystem::render_companion_window() {
 	// End the renderpass
     sc.end_render_pass();
     sc.to_present_optimal(sc.current_swapchain_image);
-    left_eye_fb->img.to_src_optimal();
-    right_eye_fb->img.to_src_optimal();
+    left_eye_fb->img.to_transfer_src();
+    right_eye_fb->img.to_transfer_src();
 }
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )

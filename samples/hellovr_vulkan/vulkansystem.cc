@@ -444,6 +444,7 @@ void Swapchain::init() {
 
 // ==== Vulkan System====
 void Swapchain::begin_render_pass(uint32_t width, uint32_t height) {
+    auto &vk = Global::vk();
 	VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBeginInfo.renderPass = render_pass;
 	renderPassBeginInfo.framebuffer = framebuffers[current_swapchain_image];
@@ -472,15 +473,15 @@ VulkanSystem::VulkanSystem() {
   
 }
 
-void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0) {
+void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore) {
 	VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submiti.commandBufferCount = 1;
 	submiti.pCommandBuffers = &cmd;
     if (semaphore) {
       VkPipelineStageFlags dst_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      submitInfo.waitSemaphoreCount = 1;
-      submitInfo.pWaitSemaphores = &semaphore;
-      submitInfo.pWaitDstStageMask = &dst_mask;
+      submiti.waitSemaphoreCount = 1;
+      submiti.pWaitSemaphores = &semaphore;
+      submiti.pWaitDstStageMask = &dst_mask;
     }
     
 	vkQueueSubmit( queue, 1, &submiti, fence );
@@ -659,7 +660,6 @@ void VulkanSystem::init_descriptor_sets() {
 
 void VulkanSystem::init_shaders() {
   auto &vr = Global::vr();
-  auto &ws = Global::ws();
   //Create Shaders, probably most involved part
 	//Init desc sets first
 	vector<string> shader_names = {
@@ -706,7 +706,7 @@ void VulkanSystem::init_shaders() {
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
       vr.left_eye_fb->render_pass,
-      ws.framebuffer->render_pass
+      swapchain.render_pass
 	};
 
 //define strides for data used in shaders
@@ -1180,7 +1180,7 @@ void VulkanSystem::end_cmd() {
 
 void VulkanSystem::submit_swapchain_cmd() {
 // Submit the command buffer
-  submit(cur_cmd_buffer, cud_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
+  submit(cur_cmd_buffer, cur_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
   cur_cmd_buffer = 0;
   ++swapchain.frame_idx;
 }
