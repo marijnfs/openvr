@@ -117,7 +117,8 @@ struct VulkanSystem {
   VkDescriptorPool desc_pool = 0;
   VkDescriptorSetLayout desc_set_layout = 0;
   std::vector<VkDescriptorSet> desc_sets;
-  
+
+  bool validation = true;
   //Buffer scene_constant_buffer[2]; //for both eyes
 
 	//VkImage scene_img;
