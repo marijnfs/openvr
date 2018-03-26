@@ -521,11 +521,36 @@ void VulkanSystem::init_instance() {
 
 	cout << "getting ext" << endl;
     cout << &Global::vr() << endl;
-	int layer_count(0);
 
+    vector<char*> enabled_layer_names;
+    
 	auto inst_req = Global::vr().get_inst_ext_required_verified();
     cout << "n_ext: " << inst_req.size() << endl;
-        
+
+    vector<VkLayerProperties> layer_properties;
+    if (validation) {
+      vector<string> instance_validation_layers;
+        {
+          "VK_LAYER_GOOGLE_threading",
+          "VK_LAYER_LUNARG_parameter_validation",
+          "VK_LAYER_LUNARG_object_tracker",
+          "VK_LAYER_LUNARG_image",
+          "VK_LAYER_LUNARG_core_validation",
+          "VK_LAYER_LUNARG_swapchain"
+        };
+      
+      uint32_t n_layer_properties(0);
+      check(vkEnumerateInstanceLayerProperties( &n_layer_properties, nullptr ), "vkEnumerateInstanceLayerProperties");
+      layer_properties.resize(n_layer_properties);
+      check(vkEnumerateInstanceLayerProperties( &n_layer_properties, &layer_properties[0] ), "vkEnumerateInstanceLayerProperties");
+
+      for (int n(0); n < n_layer_properties; ++n)
+        for (auto v : instance_validation_layers)
+          if (string(layer_properties[n].layerName).find(v) != string::npos)
+            enabled_layer_names.push_back(layer_properties[n].layerName);
+      inst_req.push_back( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+    }
+
     char **inst_req_charp = new char*[inst_req.size()];
 	for (int i(0); i < inst_req.size(); ++i)
 		inst_req_charp[i] = (char*)inst_req[i].c_str();
@@ -537,8 +562,8 @@ void VulkanSystem::init_instance() {
 	ici.pApplicationInfo = &app_info;
 	ici.enabledExtensionCount = inst_req.size();
 	ici.ppEnabledExtensionNames = inst_req_charp;
-	ici.enabledLayerCount = layer_count;
-	ici.ppEnabledLayerNames = 0; //might need validation layers later
+	ici.enabledLayerCount = enabled_layer_names.size();
+	ici.ppEnabledLayerNames = &enabled_layer_names[0]; //might need validation layers later
 
 	cout << "creating instance" << endl;
 	check( vkCreateInstance( &ici, nullptr, &inst), "Create Instance");
@@ -587,7 +612,7 @@ void VulkanSystem::init_device() {
 	auto dev_ext = vr.get_dev_ext_required_verified();
 	// Add additional required extensions
 	dev_ext.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
-
+    
 	vector<char *> pp_dev_ext(dev_ext.size());
 	for (int i(0); i < dev_ext.size(); ++i)
 		pp_dev_ext[i] = (char*) dev_ext[i].c_str();
