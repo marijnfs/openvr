@@ -22,17 +22,20 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 0 ].color.float32[ 3 ] = 1.0f;
 	cv[ 1 ].depthStencil.depth = 1.0f;
 	cv[ 1 ].depthStencil.stencil = 0;
+
 	renderpassci.pClearValues = &cv[ 0 ];
+    cout << "renderpass: " << endl;
     cout << render_pass << " " << framebuffer << endl;
     cout << Global::vk().cmd_buffer() << endl;
-	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	//vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-  vkCmdEndRenderPass( Global::vk().cmd_buffer() );
+  //vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {
+  cout << "init frame render buf: " << width_ << " " << height_ << endl;
 	width = width_;
 	height = height_;
 	auto &vk = Global::vk();

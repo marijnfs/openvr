@@ -1194,4 +1194,5 @@ void VulkanSystem::end_submit_swapchain_cmd() {
 void VulkanSystem::end_submit_cmd() {
   end_cmd();
   submit(cur_cmd_buffer, cur_fence);
+  cur_cmd_buffer = 0;
 }

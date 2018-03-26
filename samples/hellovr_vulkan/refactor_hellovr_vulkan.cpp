@@ -105,7 +105,7 @@ int main() {
 
 
   Recording recording;
-  while (i++ < 60) {
+  while (i++ < 5) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();

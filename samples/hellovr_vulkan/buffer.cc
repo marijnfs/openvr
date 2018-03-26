@@ -131,7 +131,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	imgci.extent.depth = 1;
 	imgci.mipLevels = mip_levels;
 	imgci.arrayLayers = 1;
-	imgci.format = VK_FORMAT_R8G8B8A8_SRGB;
+	imgci.format = format;
 	imgci.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imgci.samples = ( VkSampleCountFlagBits ) msaa_sample_count;
 	imgci.usage = usage;

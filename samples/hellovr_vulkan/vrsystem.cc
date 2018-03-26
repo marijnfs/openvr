@@ -156,7 +156,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 
     left_eye_fb->start_render_pass();
     left_eye_fb->end_render_pass();
-    return;	
+    return;
+    
 	//TODO:  have to set eye position
 
 	auto proj_left = get_view_projection(vr::Eye_Left);
