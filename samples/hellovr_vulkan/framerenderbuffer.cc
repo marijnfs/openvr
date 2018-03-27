@@ -27,11 +27,11 @@ void FrameRenderBuffer::start_render_pass() {
     cout << "renderpass: " << endl;
     cout << render_pass << " " << framebuffer << endl;
     cout << Global::vk().cmd_buffer() << endl;
-	//vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 void FrameRenderBuffer::end_render_pass() {
-  //vkCmdEndRenderPass( Global::vk().cmd_buffer() );
+  vkCmdEndRenderPass( Global::vk().cmd_buffer() );
 }
 
 void FrameRenderBuffer::init(int width_, int height_) {

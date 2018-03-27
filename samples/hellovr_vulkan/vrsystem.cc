@@ -96,7 +96,7 @@ void VRSystem::render(Scene &scene) {
     
 	// RENDERING
 	render_stereo_targets(scene);
-	//render_companion_window();
+	render_companion_window();
 
 	vk.end_submit_cmd();
 
@@ -165,15 +165,13 @@ void VRSystem::render_stereo_targets(Scene &scene) {
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
    
     left_eye_fb->start_render_pass();
-    left_eye_fb->end_render_pass();
-    return;
-    
+        
 	//TODO:  have to set eye position
 
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
+
 	ObjectVisitor dummy;
-    return ;    
     draw_visitor.right = false;
     cout << "visitng and stuff" << endl;
     //scene.visit(draw_visitor);
