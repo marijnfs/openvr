@@ -116,10 +116,11 @@ Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspec
   init_from_img(path, format, usage, aspect);  
 }
 
-void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_) {
+void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_) {
 	width = width_;
 	height = height_;
-
+    aspect = aspect_;
+    
 	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
 
@@ -178,7 +179,8 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	}
 }
 
-void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_) {
+  aspect = aspect_;
 	auto &vk = Global::vk();
 	std::vector< unsigned char > imageRGBA;
 	if (lodepng::decode( imageRGBA, width, height, img_path.c_str() ) != 0) {
@@ -201,7 +203,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	buf_img_cpy.imageSubresource.baseArrayLayer = 0;
 	buf_img_cpy.imageSubresource.layerCount = 1;
 	buf_img_cpy.imageSubresource.mipLevel = 0;
-	buf_img_cpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	buf_img_cpy.imageSubresource.aspectMask = aspect;
 	buf_img_cpy.imageOffset.x = 0;
 	buf_img_cpy.imageOffset.y = 0;
 	buf_img_cpy.imageOffset.z = 0;
@@ -257,6 +259,24 @@ void Image::to_colour_optimal() {
 	barier.srcQueueFamilyIndex = vk.graphics_queue;
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
 	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+}
+
+void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout) {
+  	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barier.image = img;
+	barier.subresourceRange.aspectMask = aspect;
+	barier.subresourceRange.baseMipLevel = 0;
+	barier.subresourceRange.levelCount = 1;
+	barier.subresourceRange.baseArrayLayer = 0;
+	barier.subresourceRange.layerCount = mip_levels;
+    barier.srcAccessMask = access_flags;
+	barier.dstAccessMask = access_flags = dst_access;
+
+    barier.oldLayout = layout;
+	barier.newLayout = layout = new_layout;
+
+    vkCmdPipelineBarrier( Global::vk().cmd_buffer(), src_stage, dst_stage, 0, 0, NULL, 0, NULL, 1, &barier );
+
 }
 
 void Image::to_depth_optimal() {

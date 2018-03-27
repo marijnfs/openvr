@@ -48,7 +48,10 @@ struct Image {
     VkImage img;
     VkDeviceMemory mem;
     VkImageLayout layout;
-    VkImageView view;
+  VkAccessFlags access_flags = 0;
+  VkImageAspectFlags aspect;
+  
+  VkImageView view;
     VkSampler sampler;
 
     unsigned width = 0, height = 0;
@@ -61,10 +64,12 @@ struct Image {
     void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_ = 1);
     void init_from_img(std::string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
-    void to_colour_optimal();
-    void to_depth_optimal();
-    void to_read_optimal();
-    void to_transfer_dst();
+  void barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout, VkImageAspect aspect);
+
+  void to_colour_optimal();
+  void to_depth_optimal();
+  void to_read_optimal();
+  void to_transfer_dst();
   void to_transfer_src();
 
 };
