@@ -45,18 +45,21 @@ struct ViewedBuffer {
 };
 
 struct Image {
-    VkImage img;
-    VkDeviceMemory mem;
-    VkImageLayout layout;
+    VkImage img = 0;
+    VkDeviceMemory mem = 0;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
   VkAccessFlags access_flags = 0;
-  VkImageAspectFlags aspect;
+  VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   
-  VkImageView view;
-    VkSampler sampler;
+  VkImageView view = 0;
+    VkSampler sampler = 0;
 
     unsigned width = 0, height = 0;
     int mip_levels = 1;
 
+Image(VkImage img_) : img(img_) {
+  }
+  
     Image();
     Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
   Image(std::string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
@@ -64,13 +67,13 @@ struct Image {
     void init(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int mip_levels_ = 1);
     void init_from_img(std::string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 
-  void barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout, VkImageAspect aspect);
+  void barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout);
 
-  void to_colour_optimal();
-  void to_depth_optimal();
-  void to_read_optimal();
-  void to_transfer_dst();
-  void to_transfer_src();
+  //void to_colour_optimal();
+  //void to_depth_optimal();
+  //void to_read_optimal();
+  //void to_transfer_dst();
+  //void to_transfer_src();
 
 };
 

@@ -148,12 +148,22 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	VkRect2D scissor = { 0, 0, render_width, render_height};
 	vkCmdSetScissor( vk.cmd_buffer(), 0, 1, &scissor );
 
-    
+
+    /*
 	left_eye_fb->img.to_colour_optimal();
 	if (left_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
 		left_eye_fb->depth_stencil.to_depth_optimal();
-
-
+    */ 
+    left_eye_fb->img.barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    if (left_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+      left_eye_fb->depth_stencil.barrier(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+   
     left_eye_fb->start_render_pass();
     left_eye_fb->end_render_pass();
     return;
@@ -171,13 +181,23 @@ void VRSystem::render_stereo_targets(Scene &scene) {
   	//render stuff
 	
 	left_eye_fb->end_render_pass();
-	left_eye_fb->img.to_read_optimal();
+	
+    left_eye_fb->img.barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 
-	right_eye_fb->img.to_colour_optimal();
-	if (right_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
-		right_eye_fb->depth_stencil.to_depth_optimal();
-	right_eye_fb->start_render_pass();
+    //Right Eye
+    right_eye_fb->img.barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                              VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    if (right_eye_fb->depth_stencil.layout == VK_IMAGE_LAYOUT_UNDEFINED)
+      right_eye_fb->depth_stencil.barrier(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    right_eye_fb->start_render_pass();
+    
+
 
 	auto proj_right = get_view_projection(vr::Eye_Right);
     memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
@@ -188,7 +208,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     
   	//render stuff
 	right_eye_fb->end_render_pass();
-	right_eye_fb->img.to_read_optimal();
+    right_eye_fb->img.barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void VRSystem::render_companion_window() {
@@ -204,7 +224,11 @@ void VRSystem::render_companion_window() {
 
 
     // Start the renderpass
-    sc.to_colour_optimal(sc.current_swapchain_image);
+    //sc.to_colour_optimal(sc.current_swapchain_image);
+    sc.current_img().barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     sc.begin_render_pass(ws.width, ws.height);
 
     
@@ -230,9 +254,21 @@ void VRSystem::render_companion_window() {
 
 	// End the renderpass
     sc.end_render_pass();
-    sc.to_present_optimal(sc.current_swapchain_image);
-    left_eye_fb->img.to_transfer_src();
-    right_eye_fb->img.to_transfer_src();
+    sc.current_img().barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    left_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    right_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    //sc.to_present_optimal(sc.current_swapchain_image);
+    //left_eye_fb->img.to_transfer_src();
+    //right_eye_fb->img.to_transfer_src();
 }
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )

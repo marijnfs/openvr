@@ -7,7 +7,7 @@
 #include "buffer.h"
 #include "shared/Matrices.h"
 #include "flywheel.h"
-
+#include "util.h"
 
 inline Matrix4 glm_to_mat4(glm::mat4 mat) {
   auto m = &mat[0];
@@ -73,7 +73,8 @@ struct Swapchain {
 
   VkRenderPass render_pass = 0;
   
-  std::vector< VkImage > images;
+  std::vector< VkImage > vk_images;
+  std::vector< Image* > images;
   std::vector< VkImageView > views;
   std::vector< VkFramebuffer > framebuffers;
   std::vector< VkSemaphore > semaphores;
@@ -84,13 +85,15 @@ struct Swapchain {
   
   //VkRenderPass renderpass, companion_renderpass;
 
+
+  
   void init();
-  void to_present(int i);
-  void to_colour_optimal(int i);
-  void to_present_optimal(int i);
+  //void to_present(int i);
+  //void to_colour_optimal(int i);
+  //void to_present_optimal(int i);
 
-  void acquire_image();  
-
+  void acquire_image();
+  Image &current_img();
   void begin_render_pass(uint32_t width, uint32_t height);
   void end_render_pass();
   
@@ -119,6 +122,8 @@ struct VulkanSystem {
   std::vector<VkDescriptorSet> desc_sets;
 
   bool validation = true;
+  VkDebugReportCallbackEXT callback = 0;
+  
   //Buffer scene_constant_buffer[2]; //for both eyes
 
 	//VkImage scene_img;
@@ -143,8 +148,6 @@ struct VulkanSystem {
 
   VkSampler sampler = 0;
 
-  VkDebugReportCallbackEXT debug_callback;
-
 
 
   VulkanSystem();
@@ -157,7 +160,8 @@ struct VulkanSystem {
   void init_swapchain();
   void init_shaders();
   void init_texture_maps();
-
+  void init_debug_callback();
+  
   void setup();
 
   void submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0);
@@ -177,8 +181,8 @@ struct VulkanSystem {
   
   VkCommandBuffer cmd_buffer();
   
-  void img_to_colour_optimal(VkImage &img);
-  void swapchain_to_present(int i);
+  //void img_to_colour_optimal(VkImage &img);
+  //void swapchain_to_present(int i);
 };
 
 #include "scene.h"
@@ -280,5 +284,42 @@ struct DrawVisitor : public ObjectVisitor {
 };
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop );
+
+
+inline VkResult create_debug_report_callback_EXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
+  auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
+  if (func != nullptr) {
+    return func(instance, pCreateInfo, pAllocator, pCallback);
+  } else {
+    return VK_ERROR_EXTENSION_NOT_PRESENT;
+  }
+}
+
+/*
+typedef VkBool32 (VKAPI_PTR *PFN_vkDebugReportCallbackEXT)(
+                   VkDebugReportFlagsEXT                       flags,
+                   VkDebugReportObjectTypeEXT                  objectType,
+                   uint64_t                                    object,
+                   size_t                                      location,
+                   int32_t                                     messageCode,
+                   const char*                                 pLayerPrefix,
+                   const char*                                 pMessage,
+                   void*                                       pUserData);
+*/
+static VkBool32 VKAPI_PTR debug_callback(
+                                                    VkDebugReportFlagsEXT flags,
+                                                    VkDebugReportObjectTypeEXT objType,
+                                                    uint64_t obj,
+                                                    size_t location,
+                                                    int32_t code,
+                                                    const char* layerPrefix,
+                                                    const char* msg,
+                                                    void* userData) {
+
+  std::cout << "In Debug Callback: " << std::endl;
+  std::cerr << "validation layer: " << msg << std::endl;
+  throw StringException(msg);
+  return VK_FALSE;
+}
 
 #endif

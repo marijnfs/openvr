@@ -230,126 +230,136 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 
 	init(width, height, format, usage, aspect, img_copies.size());
 
-	Buffer staging_buffer(buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 	//TODO: copy data in staging buffer
 
 	//TODO: create getpixel buffer?
 	
-	to_transfer_dst();
-	vkCmdCopyBufferToImage( vk.cmd_buffer(), staging_buffer.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
-	to_read_optimal();
+    //to_transfer_dst();
+    barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    vkCmdCopyBufferToImage( vk.cmd_buffer(), staging_buffer.buffer, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ( uint32_t ) img_copies.size(), &img_copies[ 0 ] );
+
+    barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    //to_read_optimal();
 
 	delete [] ptr;
 }
 
+void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout) {
+  auto &vk = Global::vk();
+  VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = aspect;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = mip_levels;
+    barrier.srcAccessMask = access_flags;
+	barrier.dstAccessMask = access_flags = dst_access;
+    barrier.srcQueueFamilyIndex = vk.graphics_queue;
+    barrier.dstQueueFamilyIndex = vk.graphics_queue;
+        
+    barrier.oldLayout = layout;
+	barrier.newLayout = layout = new_layout;
+
+    vkCmdPipelineBarrier( vk.cmd_buffer(), src_stage, dst_stage, 0, 0, NULL, 0, NULL, 1, &barrier );
+
+}
+
+/*
 void Image::to_colour_optimal() {
 	auto &vk = Global::vk();
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-    //barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-	barier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barier.oldLayout = layout;
-	layout = barier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	barier.image = img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = vk.graphics_queue;
-	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    //barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.oldLayout = layout;
+	layout = barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcQueueFamilyIndex = vk.graphics_queue;
+	barrier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barrier );
 }
 
-void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout) {
-  	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.image = img;
-	barier.subresourceRange.aspectMask = aspect;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = mip_levels;
-    barier.srcAccessMask = access_flags;
-	barier.dstAccessMask = access_flags = dst_access;
-
-    barier.oldLayout = layout;
-	barier.newLayout = layout = new_layout;
-
-    vkCmdPipelineBarrier( Global::vk().cmd_buffer(), src_stage, dst_stage, 0, 0, NULL, 0, NULL, 1, &barier );
-
-}
 
 void Image::to_depth_optimal() {
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.image = img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcAccessMask = 0;
-	barier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	barier.oldLayout = layout;
-	layout = barier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	barrier.oldLayout = layout;
+	layout = barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier );
 }
 
 void Image::to_read_optimal() {
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.image = img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = 1;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcAccessMask = 0;
-	barier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barier.oldLayout = layout;
-	layout = barier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barrier.oldLayout = layout;
+	layout = barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	vkCmdPipelineBarrier( Global::vk().cmd_buffer(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier );
 }
 
 void Image::to_transfer_dst() {
 	// Transition the image to TRANSFER_DST to receive image
 	auto &vk = Global::vk();
 
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.srcAccessMask = 0;
-	barier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barier.oldLayout = layout;
-	layout = barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barier.image = img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = mip_levels;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = vk.graphics_queue;
-	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.oldLayout = layout;
+	layout = barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mip_levels;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcQueueFamilyIndex = vk.graphics_queue;
+	barrier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barrier );
 }
 
 void Image::to_transfer_src() {
 	// Transition the image to TRANSFER_DST to receive image
 	auto &vk = Global::vk();
 
-	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	barier.oldLayout = layout;
-	layout = barier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	barier.image = img;
-	barier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barier.subresourceRange.baseMipLevel = 0;
-	barier.subresourceRange.levelCount = mip_levels;
-	barier.subresourceRange.baseArrayLayer = 0;
-	barier.subresourceRange.layerCount = 1;
-	barier.srcQueueFamilyIndex = vk.graphics_queue;
-	barier.dstQueueFamilyIndex = vk.graphics_queue;
-	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.oldLayout = layout;
+	layout = barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.image = img;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mip_levels;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcQueueFamilyIndex = vk.graphics_queue;
+	barrier.dstQueueFamilyIndex = vk.graphics_queue;
+	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier );
 }
 
-
+*/
 
 
 template

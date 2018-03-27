@@ -1,4 +1,4 @@
- #include "vulkansystem.h"
+#include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
 #include "shared/lodepng.h"
@@ -357,9 +357,11 @@ void Swapchain::init() {
 	check( vkCreateSwapchainKHR( vk.dev, &scci, NULL, &swapchain), "vkCreateSwapchainKHR");
 
 	check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, NULL), "vkGetSwapchainImagesKHR");
-	images.resize(n_swap);
-	check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, &images[0]), "vkGetSwapchainImagesKHR");
-
+	vk_images.resize(n_swap);
+	check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, &vk_images[0]), "vkGetSwapchainImagesKHR");
+    images.resize(n_swap);
+    for (int i(0); i < n_swap; ++i)
+      images[i] = new Image(vk_images[0]);
 
 
 // Create a renderpass
@@ -403,10 +405,10 @@ void Swapchain::init() {
 
 	check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &render_pass), "vkCreateRenderPass");
 
-	for (int i(0); i < images.size(); ++i) {
+	for (int i(0); i < vk_images.size(); ++i) {
 		VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		viewci.flags = 0;
-		viewci.image = images[ i ];
+		viewci.image = vk_images[ i ];
 		viewci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		viewci.format = swap_format;
 		viewci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
@@ -497,6 +499,7 @@ void VulkanSystem::init() {
   init_instance();
       cout << "============" << endl;
 	init_device();
+    init_debug_callback();
     init_cmd_pool();
     init_descriptor_sets();
     
@@ -1079,7 +1082,7 @@ void VulkanSystem::init_texture_maps() {
 	}
 }
 */
-
+/*
 void Swapchain::to_present(int i) {
 	auto &vk = Global::vk();
 	VkImageMemoryBarrier barier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
@@ -1133,6 +1136,11 @@ void Swapchain::to_present_optimal(int i) {
 	barier.dstQueueFamilyIndex = vk.graphics_queue;
 	vkCmdPipelineBarrier( vk.cmd_buffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barier );
 }
+*/
+
+Image &Swapchain::current_img() {
+  return *images[current_swapchain_image];
+}
 
 void Swapchain::acquire_image() {
 	auto &vk = Global::vk();
@@ -1147,6 +1155,17 @@ void VulkanSystem::init_cmd_pool() {
   cmdpoolci.queueFamilyIndex = graphics_queue;
   cmdpoolci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   check( vkCreateCommandPool( dev, &cmdpoolci, nullptr, &cmd_pool ), "vkCreateCommandPool");
+}
+
+void VulkanSystem::init_debug_callback() {
+  VkDebugReportCallbackCreateInfoEXT ci = {};
+  ci.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+  ci.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+  ci.pfnCallback = &debug_callback;
+
+  if (create_debug_report_callback_EXT(inst, &ci, nullptr, &callback) != VK_SUCCESS) {
+    throw std::runtime_error("failed to set up debug callback!");
+  }
 }
 
 
