@@ -529,7 +529,7 @@ void VulkanSystem::init_instance() {
 
     vector<VkLayerProperties> layer_properties;
     if (validation) {
-      vector<string> instance_validation_layers;
+      vector<string> instance_validation_layers =
         {
           "VK_LAYER_GOOGLE_threading",
           "VK_LAYER_LUNARG_parameter_validation",
@@ -703,7 +703,8 @@ void VulkanSystem::init_shaders() {
 		for (auto stage : stages) {
 			string path = "../shaders/" + shader_name + "_" + stage + ".spv";
 			string code = read_all(path);
-
+            cout << path << endl;
+            cout << "code size: " << code.size() << endl;
 			VkShaderModuleCreateInfo shader_ci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 			shader_ci.codeSize = code.size();
 			shader_ci.pCode = ( const uint32_t *) &code[0];
