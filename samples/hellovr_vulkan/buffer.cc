@@ -161,7 +161,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	img_view_ci.subresourceRange.baseMipLevel = 0;
 	img_view_ci.subresourceRange.levelCount = 1;
 	img_view_ci.subresourceRange.baseArrayLayer = 0;
-	img_view_ci.subresourceRange.layerCount = 1;
+	img_view_ci.subresourceRange.layerCount = mip_levels;
 	check( vkCreateImageView( vk.dev, &img_view_ci, nullptr, &view ), "vkCreateImageView");
 
 	if (true) { //Do we always need sampler?
@@ -231,10 +231,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	init(width, height, format, usage, aspect, img_copies.size());
 
 	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-	//TODO: copy data in staging buffer
 
-	//TODO: create getpixel buffer?
-	
     //to_transfer_dst();
     barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
@@ -242,9 +239,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 
     barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    //to_read_optimal();
-
-	delete [] ptr;
+    delete [] ptr;
 }
 
 void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout) {

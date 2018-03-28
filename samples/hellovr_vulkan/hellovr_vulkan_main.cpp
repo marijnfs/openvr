@@ -2206,7 +2206,7 @@ bool CMainApplication::SetupTexturemaps()
 	memcpy( pCurBuffer, &imageRGBA[0], sizeof( uint8_t ) * nImageWidth * nImageHeight * 4 );
 	pCurBuffer += sizeof( uint8_t ) * nImageWidth * nImageHeight * 4;
 
-	std::vector< VkBufferImageCopy > bufferImageCopies;
+    std::vector< VkBufferImageCopy > bufferImageCopies;
 	VkBufferImageCopy bufferImageCopy = {};
 	bufferImageCopy.bufferOffset = 0;
 	bufferImageCopy.bufferRowLength = 0;
