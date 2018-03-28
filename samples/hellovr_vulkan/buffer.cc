@@ -107,16 +107,15 @@ template void Buffer::map<void>(void **ptr);
 
 
 Image::Image() {}
-
-Image::Image(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) : width(width_), height(height_) {
-	init(width, height, format, usage, aspect);
+Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int msaa_sample_count) {
+  init(width, height, format, usage, aspect, msaa_sample_count);
 }
 
 Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
   init_from_img(path, format, usage, aspect);  
 }
 
-void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_) {
+void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count) {
 	width = width_;
 	height = height_;
     aspect = aspect_;
@@ -124,7 +123,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
 
-	int msaa_sample_count(1);
+	
 	VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imgci.imageType = VK_IMAGE_TYPE_2D;
 	imgci.extent.width = width;
