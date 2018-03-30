@@ -108,7 +108,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	fb_ci.layers = 1;
 	check( vkCreateFramebuffer( vk.dev, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
 
-	img.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	//img.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depth_stencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     desc.register_texture(img.view);

@@ -2932,7 +2932,7 @@ void CMainApplication::SetupCompanionWindow()
 		imageMemoryBarrier.srcAccessMask = 0;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		imageMemoryBarrier.image = m_swapchainImages[ nSwapchainImage ];
 		imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		imageMemoryBarrier.subresourceRange.baseMipLevel = 0;

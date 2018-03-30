@@ -39,7 +39,7 @@ void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
 	alloc_info.allocationSize = memreq.size;
 
 	check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
-
+    
 	check( vkBindBufferMemory( vk.dev, buffer, memory, 0 ), "vkBindBufferMemory" );
 };
 
@@ -108,7 +108,7 @@ template void Buffer::map<void>(void **ptr);
 
 Image::Image() {}
 Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int msaa_sample_count) {
-  init(width, height, format, usage, aspect, msaa_sample_count);
+  init(width, height, format, usage, aspect, 1, msaa_sample_count);
 }
 
 Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
@@ -116,14 +116,16 @@ Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspec
 }
 
 void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count) {
+  cout << "Image Init" << endl;
 	width = width_;
 	height = height_;
     aspect = aspect_;
     
 	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
-
-	
+    cout << "MIP LEVELS: " << mip_levels << endl;
+    cout << "samples: " << msaa_sample_count << endl;
+    
 	VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imgci.imageType = VK_IMAGE_TYPE_2D;
 	imgci.extent.width = width;

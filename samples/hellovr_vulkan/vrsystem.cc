@@ -163,7 +163,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
                                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-   
+
+    cout << "starting render pass" << endl;
     left_eye_fb->start_render_pass();
         
 	//TODO:  have to set eye position
