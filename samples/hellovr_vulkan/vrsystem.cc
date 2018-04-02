@@ -66,6 +66,8 @@ void VRSystem::setup_render_targets() {
   cout << "ptr: " << ivrsystem << endl;
   ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
 
+
+  
   left_eye_fb = new FrameRenderBuffer();
   right_eye_fb = new FrameRenderBuffer();
   
@@ -95,6 +97,7 @@ void VRSystem::render(Scene &scene) {
 	bounds.vMax = 1.0f;
 
 	vr::VRVulkanTextureData_t vulkanData;
+    //cout << "img: " << left_eye_fb->img.img << endl;
 	vulkanData.m_nImage = ( uint64_t ) left_eye_fb->img.img;
 	vulkanData.m_pDevice = ( VkDevice_T * ) vk.dev;
 	vulkanData.m_pPhysicalDevice = ( VkPhysicalDevice_T * ) vk.phys_dev;
@@ -105,7 +108,7 @@ void VRSystem::render(Scene &scene) {
 	vulkanData.m_nWidth = render_width;
 	vulkanData.m_nHeight = render_height;
 	vulkanData.m_nFormat = VK_FORMAT_R8G8B8A8_SRGB;
-	vulkanData.m_nSampleCount = vk.msaa;
+	vulkanData.m_nSampleCount = msaa;
     
     //submitting to HMD
 	vr::Texture_t texture = { &vulkanData, vr::TextureType_Vulkan, vr::ColorSpace_Auto };

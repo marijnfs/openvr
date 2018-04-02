@@ -10,7 +10,7 @@ struct FrameRenderBuffer {
     VkFramebuffer framebuffer = 0;
     int width = 0, height = 0;
   Descriptor desc;
-  int msaa = 4;
+  //int msaa = 4;
 
 
     void init(int width_, int height_);

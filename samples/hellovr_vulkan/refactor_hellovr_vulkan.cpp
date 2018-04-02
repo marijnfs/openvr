@@ -94,7 +94,7 @@ int main() {
   vr.setup();
   ws.setup();
   vk.setup();
-  
+  vk.end_submit_cmd();
   
   auto &scene = Global::scene();
   scene.add_canvas("test");

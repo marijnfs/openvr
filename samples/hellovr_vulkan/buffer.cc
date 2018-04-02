@@ -126,14 +126,14 @@ Image::Image(VkImage img_, VkFormat format_, VkImageAspectFlags aspect_) :
 }
 
 Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int msaa_sample_count) {
-  init(width, height, format, usage, aspect, 1, msaa_sample_count);
+  init(width, height, format, usage, aspect, 1, msaa_sample_count, false);
 }
 
 Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
   init_from_img(path, format, usage, aspect);  
 }
 
-void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count) {
+void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count, bool make_sampler) {
   cout << "Image Init" << endl;
 	width = width_;
 	height = height_;
@@ -179,12 +179,12 @@ void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags us
 	img_view_ci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
 	img_view_ci.subresourceRange.aspectMask = aspect;
 	img_view_ci.subresourceRange.baseMipLevel = 0;
-	img_view_ci.subresourceRange.levelCount = 1;
+	img_view_ci.subresourceRange.levelCount = mip_levels;
 	img_view_ci.subresourceRange.baseArrayLayer = 0;
-	img_view_ci.subresourceRange.layerCount = mip_levels;
+	img_view_ci.subresourceRange.layerCount = 1;
 	check( vkCreateImageView( vk.dev, &img_view_ci, nullptr, &view ), "vkCreateImageView");
 
-	if (true) { //Do we always need sampler?
+	if (make_sampler) { //Do we always need sampler?
 		VkSamplerCreateInfo sampler_ci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 		sampler_ci.magFilter = VK_FILTER_LINEAR;
 		sampler_ci.minFilter = VK_FILTER_LINEAR;
@@ -248,7 +248,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	}
 	buf_size = cur_buffer - ptr;
 
-	init(width, height, format, usage, aspect, img_copies.size());
+	init(width, height, format, usage, aspect, img_copies.size(), 1, true);
 
 	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 

@@ -2644,6 +2644,7 @@ void CMainApplication::SetupCameras()
 //          Returns false if the setup failed.
 //-----------------------------------------------------------------------------
 bool CMainApplication::CreateFrameBuffer( int nWidth, int nHeight, FramebufferDesc &framebufferDesc )
+
 {
 	//---------------------------//
 	//    Create color target    //

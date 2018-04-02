@@ -69,12 +69,14 @@ struct Global {
 		inst();
 	}
 
-	VulkanSystem *vk_ptr = 0;
+  
+  	VulkanSystem *vk_ptr = 0;
 	VRSystem *vr_ptr = 0;
 	WindowSystem *ws_ptr = 0;
 	Scene *scene_ptr = 0;
   Script *script_ptr = 0;
 };
 
+static int msaa = 4;
 
 #endif

@@ -111,7 +111,7 @@ struct VulkanSystem {
   VkQueue queue;
 
   int graphics_queue;
-  uint32_t msaa = 1;
+  //uint32_t msaa = 1;
 
   VkCommandPool cmd_pool = 0;
   Swapchain swapchain;

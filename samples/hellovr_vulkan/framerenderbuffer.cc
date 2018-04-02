@@ -40,11 +40,11 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	height = height_;
 	auto &vk = Global::vk();
     
-	img.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
-	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+	img.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaa, false);
+	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 1, msaa, false);
 
-	int msaa_sample_count(1);
-	// Create a renderpass
+
+    // Create a renderpass
 	uint32_t n_attach = 2;
 	VkAttachmentDescription att_desc[ 2 ];
 	VkAttachmentReference att_ref[ 2 ];
@@ -54,7 +54,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	att_ref[ 1 ].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	att_desc[ 0 ].format = VK_FORMAT_R8G8B8A8_SRGB;
-	att_desc[ 0 ].samples = (VkSampleCountFlagBits) msaa_sample_count;
+	att_desc[ 0 ].samples = (VkSampleCountFlagBits) msaa;
 	att_desc[ 0 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	att_desc[ 0 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	att_desc[ 0 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -64,7 +64,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	att_desc[ 0 ].flags = 0;
 
 	att_desc[ 1 ].format = VK_FORMAT_D32_SFLOAT;
-	att_desc[ 1 ].samples = (VkSampleCountFlagBits) msaa_sample_count;
+    att_desc[ 1 ].samples = (VkSampleCountFlagBits) msaa;
 	att_desc[ 1 ].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	att_desc[ 1 ].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	att_desc[ 1 ].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -109,7 +109,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	check( vkCreateFramebuffer( vk.dev, &fb_ci, NULL, &framebuffer), "vkCreateFramebuffer");
 
 	//img.layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_stencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	//depth_stencil.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     desc.register_texture(img.view);
 }
