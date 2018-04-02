@@ -39,32 +39,21 @@ void FencedCommandBuffer::init() {
 }
 
 // ==== Render Model ====
-/*
-  void RenderModel::init() {
-  int vert_count(0);
-  int idx_count(0);
-
-  vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * vert_count, HOST);
-  index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * idx_count, HOST);
-
-  }*/
-
-
 GraphicsObject::GraphicsObject() {
   
 }
 
 void GraphicsObject::init_buffers() {
   if (n_vertex)
-    vertex_buf.init(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof( vr::RenderModel_Vertex_t ) * n_vertex, HOST);
+    vertex_buf.init(sizeof( vr::RenderModel_Vertex_t ) * n_vertex, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, HOST);
   if (n_index)
-    index_buf.init(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(uint16_t) * n_index, HOST);
+    index_buf.init(sizeof(uint16_t) * n_index, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
   
   mvp_left = new Matrix4();
   mvp_right = new Matrix4();
 
-  mvp_buffer_left.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-  mvp_buffer_right.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
+  mvp_buffer_left.init(sizeof(Matrix4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_COHERENT);
+  mvp_buffer_right.init(sizeof(Matrix4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_COHERENT);
   
   mvp_buffer_left.map((void**)&mvp_left);
   mvp_buffer_right.map((void**)&mvp_right);
@@ -143,7 +132,6 @@ void GraphicsCanvas::init() {
   
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
-  Global::vk().end_submit_cmd();
 }
 
 GraphicsCube::GraphicsCube() {
