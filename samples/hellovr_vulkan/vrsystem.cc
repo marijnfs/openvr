@@ -164,7 +164,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	auto proj_left = get_view_projection(vr::Eye_Left);
 	memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
 
-	ObjectVisitor dummy;
+	//ObjectVisitor dummy;
     draw_visitor.right = false;
     cout << "visitng and stuff" << endl;
     scene.visit(draw_visitor);
@@ -194,8 +194,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
 	
     draw_visitor.right = true;
-    scene.visit(dummy);
-    //scene.visit(draw_visitor);
+    scene.visit(draw_visitor);
     
   	//render stuff
 	right_eye_fb->end_render_pass();
