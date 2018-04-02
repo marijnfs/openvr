@@ -75,7 +75,7 @@ struct Swapchain {
   
   std::vector< VkImage > vk_images;
   std::vector< Image* > images;
-  std::vector< VkImageView > views;
+  //std::vector< VkImageView > views;
   std::vector< VkFramebuffer > framebuffers;
   std::vector< VkSemaphore > semaphores;
 

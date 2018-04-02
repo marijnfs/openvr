@@ -22,11 +22,6 @@ void TrackedController::set_t(Matrix4 &t_) {
 VRSystem::VRSystem() {
 }
 
-void VRSystem::setup() {
-  setup_render_targets();
-  setup_render_models();  
-}
-
 void VRSystem::init() {
 	cout << "initialising VRSystem" << endl;
 
@@ -41,7 +36,8 @@ void VRSystem::init() {
 	check(err);
 
 	render_models = (vr::IVRRenderModels *)vr::VR_GetGenericInterface( vr::IVRRenderModels_Version, &err );
-
+    check(err);
+    
 	driver_str = query_str(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
 	display_str = query_str(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
 
@@ -52,20 +48,6 @@ void VRSystem::init() {
 		throw StringException("Couldn't create VRCompositor");
 	}
 
-	//setup eye pos buffer
-	//eye_pos_buffer.resize(2);
-	//eye_pos_buffer[0].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	//eye_pos_buffer[1].init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	
-
-	
-	//left_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-	//right_eye_buf.init(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Matrix4), HOST_COHERENT);
-
-	//left_eye_buf.map(&left_eye_mvp);
-	//right_eye_buf.map(&right_eye_mvp);
-
-	//initialise the eye projection and translation matrices (these stay fixed)
 	eye_pos_left = get_eye_transform(vr::Eye_Left);
 	eye_pos_right = get_eye_transform(vr::Eye_Right);
 
@@ -73,6 +55,11 @@ void VRSystem::init() {
 	projection_right = get_hmd_projection(vr::Eye_Right);
 	
 	cout << "done initialising VRSystem" << endl;
+}
+
+void VRSystem::setup() {
+  setup_render_targets();
+  setup_render_models();  
 }
 
 void VRSystem::setup_render_targets() {
@@ -237,7 +224,7 @@ void VRSystem::render_companion_window() {
 	VkRect2D scissor = { 0, 0, ws.width, ws.height };
 	vkCmdSetScissor( vk.cmd_buffer(), 0, 1, &scissor );
 
-	// Bind the pipeline and descriptor set
+    	// Bind the pipeline and descriptor set
 	vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_COMPANION ] );
 	vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb->desc.desc, 0, nullptr );
 

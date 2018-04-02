@@ -47,7 +47,8 @@ struct ViewedBuffer {
 struct Image {
     VkImage img = 0;
     VkDeviceMemory mem = 0;
-    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkFormat format = VK_FORMAT_UNDEFINED;
   VkAccessFlags access_flags = 0;
   VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   
@@ -57,8 +58,7 @@ struct Image {
     unsigned width = 0, height = 0;
     int mip_levels = 1;
 
-Image(VkImage img_) : img(img_) {
-  }
+  Image(VkImage img_, VkFormat format_, VkImageAspectFlags aspect_);
   
     Image();
   Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT, int msaa_sample_count = 1);

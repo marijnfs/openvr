@@ -267,12 +267,15 @@ void Swapchain::init() {
   vector<VkSurfaceFormatKHR> swap_formats(n_swap_format);
   check( vkGetPhysicalDeviceSurfaceFormatsKHR( vk.phys_dev, surface, &n_swap_format, &swap_formats[0]), "vkGetPhysicalDeviceSurfaceFormatsKHR");
 
-  for (int i(0); i < n_swap_format; ++i) {
-    if (swap_formats[i].format == VK_FORMAT_B8G8R8A8_SRGB || swap_formats[i].format == VK_FORMAT_R8G8B8A8_SRGB) {
-      format_index = i;
-      break;
+  if (n_swap_format == 1 && swap_formats[0].format == VK_FORMAT_UNDEFINED)
+    throw "strange";
+  else
+    for (int i(0); i < n_swap_format; ++i) {
+      if (swap_formats[i].format == VK_FORMAT_B8G8R8A8_SRGB || swap_formats[i].format == VK_FORMAT_R8G8B8A8_SRGB) {
+        format_index = i;
+        break;
+      }
     }
-  }
   swap_format = swap_formats[format_index].format;
   color_space = swap_formats[format_index].colorSpace;
 
@@ -361,7 +364,7 @@ void Swapchain::init() {
   check( vkGetSwapchainImagesKHR(vk.dev, swapchain, &n_swap, &vk_images[0]), "vkGetSwapchainImagesKHR");
   images.resize(n_swap);
   for (int i(0); i < n_swap; ++i)
-    images[i] = new Image(vk_images[0]);
+    images[i] = new Image(vk_images[i], swap_format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 
   // Create a renderpass
@@ -406,23 +409,7 @@ void Swapchain::init() {
   check( vkCreateRenderPass( vk.dev, &renderpassci, NULL, &render_pass), "vkCreateRenderPass");
 
   for (int i(0); i < vk_images.size(); ++i) {
-    VkImageViewCreateInfo viewci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-    viewci.flags = 0;
-    viewci.image = vk_images[ i ];
-    viewci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewci.format = swap_format;
-    viewci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-    viewci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewci.subresourceRange.baseMipLevel = 0;
-    viewci.subresourceRange.levelCount = 1;
-    viewci.subresourceRange.baseArrayLayer = 0;
-    viewci.subresourceRange.layerCount = 1;
-    VkImageView image_view = VK_NULL_HANDLE;
-    vkCreateImageView( vk.dev, &viewci, nullptr, &image_view );
-		
-    views.push_back( image_view );
-
-    VkImageView attachments[ 1 ] = { image_view };
+    VkImageView attachments[ 1 ] = { images[i]->view };
     VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
     fbci.renderPass = render_pass;
     fbci.attachmentCount = 1;
@@ -472,7 +459,6 @@ void Swapchain::end_render_pass() {
   auto &vk = Global::vk();
   vkCmdEndRenderPass( vk.cmd_buffer() );
 }
-                                 
 
 
 VulkanSystem::VulkanSystem() {
@@ -501,18 +487,22 @@ void VulkanSystem::wait_queue() {
 void VulkanSystem::init() {
   cout << "initialising Vulkan System" << endl;
   init_instance();
+init_debug_callback();
   cout << "============" << endl;
   init_device();
-  init_debug_callback();
   init_cmd_pool();
+  swapchain.init();
+
+  
+  
+  
   init_descriptor_sets();
     
 }
 
 void VulkanSystem::setup() {
   cout << "============" << endl;
-  swapchain.init();
-
+  
   init_shaders();
     
   cout << "Done initialising Vulkan System" << endl;
@@ -1150,6 +1140,7 @@ Image &Swapchain::current_img() {
 
 void Swapchain::acquire_image() {
   auto &vk = Global::vk();
+  cout << "acquiring image, frame: " << frame_idx << endl;
   check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
 
     
@@ -1231,6 +1222,7 @@ void VulkanSystem::end_cmd() {
 
 void VulkanSystem::submit_swapchain_cmd() {
   // Submit the command buffer
+  cout << "submitting, sema: " << swapchain.semaphores[ swapchain.frame_idx ] << endl;
   submit(cur_cmd_buffer, cur_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
   cur_cmd_buffer = 0;
   ++swapchain.frame_idx;

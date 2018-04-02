@@ -107,6 +107,24 @@ template void Buffer::map<void>(void **ptr);
 
 
 Image::Image() {}
+
+Image::Image(VkImage img_, VkFormat format_, VkImageAspectFlags aspect_) :
+  img(img_), format(format_), aspect(aspect_) {\
+  auto &vk = Global::vk();
+	VkImageViewCreateInfo img_view_ci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	img_view_ci.flags = 0;
+	img_view_ci.image = img;
+	img_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	img_view_ci.format = format;
+	img_view_ci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+	img_view_ci.subresourceRange.aspectMask = aspect;
+	img_view_ci.subresourceRange.baseMipLevel = 0;
+	img_view_ci.subresourceRange.levelCount = 1;
+	img_view_ci.subresourceRange.baseArrayLayer = 0;
+	img_view_ci.subresourceRange.layerCount = mip_levels;
+	check( vkCreateImageView( vk.dev, &img_view_ci, nullptr, &view ), "vkCreateImageView");  
+}
+
 Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect, int msaa_sample_count) {
   init(width, height, format, usage, aspect, 1, msaa_sample_count);
 }
@@ -115,11 +133,12 @@ Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspec
   init_from_img(path, format, usage, aspect);  
 }
 
-void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count) {
+void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count) {
   cout << "Image Init" << endl;
 	width = width_;
 	height = height_;
     aspect = aspect_;
+    format = format_;
     
 	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
@@ -156,7 +175,7 @@ void Image::init(int width_, int height_, VkFormat format, VkImageUsageFlags usa
 	img_view_ci.flags = 0;
 	img_view_ci.image = img;
 	img_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	img_view_ci.format = imgci.format;
+	img_view_ci.format = format;
 	img_view_ci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
 	img_view_ci.subresourceRange.aspectMask = aspect;
 	img_view_ci.subresourceRange.baseMipLevel = 0;
