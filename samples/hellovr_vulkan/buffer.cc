@@ -378,7 +378,7 @@ void Image::to_transfer_src() {
 
 */
 
-
+///Template implementations for Pos2Tex2
 template
 Buffer::Buffer<Pos2Tex2>(std::vector<Pos2Tex2> &init_data, VkBufferUsageFlags usage, Location loc);
 
@@ -391,6 +391,8 @@ void Buffer::init<Pos2Tex2>(std::vector<Pos2Tex2> &init_data, VkBufferUsageFlags
 template
 void Buffer::init<Pos2Tex2>(Pos2Tex2 init_data[], int size, VkBufferUsageFlags usage, Location loc);
 
+
+///Template implementations for unsigned short
 template
 Buffer::Buffer<unsigned short>(std::vector<unsigned short> &init_data, VkBufferUsageFlags usage, Location loc);
 
@@ -402,3 +404,31 @@ void Buffer::init<unsigned short>(std::vector<unsigned short> &init_data, VkBuff
 
 template
 void Buffer::init<unsigned short>(unsigned short init_data[], int size, VkBufferUsageFlags usage, Location loc);
+
+
+///Template implementations for float
+template
+Buffer::Buffer<float>(std::vector<float> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+Buffer::Buffer<float>(float init_data[], int n_, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<float>(std::vector<float> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<float>(float init_data[], int size, VkBufferUsageFlags usage, Location loc);
+
+
+///Template implementations for vr::RenderModel_Vertex_t
+template
+Buffer::Buffer<vr::RenderModel_Vertex_t>(std::vector<vr::RenderModel_Vertex_t> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+Buffer::Buffer<vr::RenderModel_Vertex_t>(vr::RenderModel_Vertex_t init_data[], int n_, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<vr::RenderModel_Vertex_t>(std::vector<vr::RenderModel_Vertex_t> &init_data, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::init<vr::RenderModel_Vertex_t>(vr::RenderModel_Vertex_t init_data[], int size, VkBufferUsageFlags usage, Location loc);

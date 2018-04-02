@@ -44,10 +44,12 @@ GraphicsObject::GraphicsObject() {
 }
 
 void GraphicsObject::init_buffers() {
+  n_index = indices.size();
+  
   if (n_vertex)
-    vertex_buf.init(sizeof( vr::RenderModel_Vertex_t ) * n_vertex, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, HOST);
+    vertex_buf.init(vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, HOST);
   if (n_index)
-    index_buf.init(sizeof(uint16_t) * n_index, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
+    index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
   
   mvp_left = new Matrix4();
   mvp_right = new Matrix4();
@@ -75,12 +77,12 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
   // Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
   //TODO set eye matrix
 
+  cout << right << " " << mvp << endl;
   if (right)
     memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
   else
     memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-  cout << n_vertex << " " << vertex_buf.n << endl;
-  return;
+  
   if (right)
     vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
   else
@@ -99,11 +101,11 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
 }
 
 void GraphicsObject::add_vertex(float x, float y, float z, float tx, float ty) {
-  v.push_back( x );
-  v.push_back( y );
-  v.push_back( z );
-  v.push_back( tx );
-  v.push_back( ty );
+  vertices.push_back( x );
+  vertices.push_back( y );
+  vertices.push_back( z );
+  vertices.push_back( tx );
+  vertices.push_back( ty );
   n_vertex++;
 }
 
@@ -118,12 +120,12 @@ GraphicsCanvas::GraphicsCanvas(string tex_) : texture(tex_) {
 
 void GraphicsCanvas::init() {
   cout << "init Graphics Canvas" << endl;
-  add_vertex( 0, 1, 0, 0, 1); //Front
-  add_vertex( 1, 1, 0, 1, 1);
-  add_vertex( 1, 0, 0, 1, 0);
-  add_vertex( 1, 0, 0, 1, 0);
-  add_vertex( 0, 0, 0, 0, 0);
-  add_vertex( 0, 1, 0, 0, 1);
+  add_vertex( 0, 0, 1, 0, 1); //Front
+  add_vertex( 1, 0, 1, 1, 1);
+  add_vertex( 1, 1, 1, 1, 0);
+  add_vertex( 1, 1, 1, 1, 0);
+  add_vertex( 0, 1, 1, 0, 0);
+  add_vertex( 0, 0, 1, 0, 1);
 
   init_buffers();
   auto *img = ImageFlywheel::image(texture);

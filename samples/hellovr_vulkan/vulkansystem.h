@@ -198,7 +198,8 @@ struct GraphicsObject {
   
   //Image texture;
   
-  std::vector<float> v;
+  std::vector<float> vertices;
+  std::vector<uint16_t> indices;
   
   GraphicsObject();
   virtual void render(Matrix4 &mvp, bool right);
