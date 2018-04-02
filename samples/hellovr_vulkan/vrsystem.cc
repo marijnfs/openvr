@@ -59,7 +59,9 @@ void VRSystem::init() {
 
 void VRSystem::setup() {
   setup_render_targets();
-  setup_render_models();  
+  setup_render_models();
+
+  //Global::vk().end_submit_cmd();
 }
 
 void VRSystem::setup_render_targets() {
@@ -87,7 +89,7 @@ void VRSystem::render(Scene &scene) {
 	render_stereo_targets(scene);
 	render_companion_window();
 
-	vk.end_submit_cmd();
+	vk.end_submit_swapchain_cmd();
 
 	// Submit to SteamVR
 	vr::VRTextureBounds_t bounds;

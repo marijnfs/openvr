@@ -469,8 +469,9 @@ void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaph
   VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
   submiti.commandBufferCount = 1;
   submiti.pCommandBuffers = &cmd;
-  if (semaphore) {
-    VkPipelineStageFlags dst_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+  VkPipelineStageFlags dst_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+if (semaphore) {
     submiti.waitSemaphoreCount = 1;
     submiti.pWaitSemaphores = &semaphore;
     submiti.pWaitDstStageMask = &dst_mask;
@@ -1036,6 +1037,8 @@ void VulkanSystem::start_cmd() {
 }
 
 void VulkanSystem::end_cmd() {
+  if (cur_cmd_buffer == 0)
+    throw StringException("cmd still 0 when endcommandbuffer called");
   cout << cur_cmd_buffer << endl;
   vkEndCommandBuffer( cur_cmd_buffer );
 }
