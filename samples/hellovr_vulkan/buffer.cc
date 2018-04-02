@@ -109,7 +109,7 @@ template void Buffer::map<void>(void **ptr);
 Image::Image() {}
 
 Image::Image(VkImage img_, VkFormat format_, VkImageAspectFlags aspect_) :
-  img(img_), format(format_), aspect(aspect_) {\
+  img(img_), format(format_), aspect(aspect_) {
   auto &vk = Global::vk();
 	VkImageViewCreateInfo img_view_ci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 	img_view_ci.flags = 0;
@@ -237,6 +237,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 
 	while( mip_width > 1 && mip_height > 1 )
 	{
+      cout << mip_height << " " << mip_width << endl;
 		gen_mipmap_rgba( prev_buffer, cur_buffer, mip_width, mip_height, &mip_width, &mip_height );
 		buf_img_cpy.bufferOffset = cur_buffer - ptr;
 		buf_img_cpy.imageSubresource.mipLevel++;
@@ -248,9 +249,10 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	}
 	buf_size = cur_buffer - ptr;
 
+    cout << img_copies.size() << endl;
 	init(width, height, format, usage, aspect, img_copies.size(), 1, true);
 
-	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, HOST);
 
     //to_transfer_dst();
     barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -266,18 +268,18 @@ void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, Vk
   auto &vk = Global::vk();
   VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 	barrier.image = img;
-	barrier.subresourceRange.aspectMask = aspect;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = mip_levels;
     barrier.srcAccessMask = access_flags;
 	barrier.dstAccessMask = access_flags = dst_access;
+    barrier.oldLayout = layout;
+	barrier.newLayout = layout = new_layout;
+	barrier.subresourceRange.aspectMask = aspect;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mip_levels;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
     barrier.srcQueueFamilyIndex = vk.graphics_queue;
     barrier.dstQueueFamilyIndex = vk.graphics_queue;
         
-    barrier.oldLayout = layout;
-	barrier.newLayout = layout = new_layout;
 
     vkCmdPipelineBarrier( vk.cmd_buffer(), src_stage, dst_stage, 0, 0, NULL, 0, NULL, 1, &barrier );
 

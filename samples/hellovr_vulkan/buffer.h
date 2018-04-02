@@ -17,19 +17,19 @@ struct Buffer {
   size_t n = 0;
   
   Buffer();
-  Buffer(size_t size, VkBufferUsageFlags usage, Location loc = DEVICE);
+  Buffer(size_t size, VkBufferUsageFlags usage, Location loc);
   
   template <typename T>
-  Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc = DEVICE);
+  Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc);
   
   template <typename T>
-  Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc = DEVICE);
+  Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc);
 
   template <typename T>
-  void init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc = DEVICE);
+  void init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc);
   
   template <typename T>
-  void init(T init_data[], int n_, VkBufferUsageFlags usage, Location loc = DEVICE);
+  void init(T init_data[], int n_, VkBufferUsageFlags usage, Location loc);
   
   void init(size_t size, VkBufferUsageFlags usage, Location loc);
 

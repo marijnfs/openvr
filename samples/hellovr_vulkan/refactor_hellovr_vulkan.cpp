@@ -17,6 +17,7 @@
 #include "vulkansystem.h"
 #include "vrsystem.h"
 #include "windowsystem.h"
+#include "flywheel.h"
 
 #include "learningsystem.h"
 
@@ -94,6 +95,10 @@ int main() {
   vr.setup();
   ws.setup();
   vk.setup();
+
+  //preloading images
+  ImageFlywheel::image("stub.png");
+
   vk.end_submit_cmd();
   
   auto &scene = Global::scene();

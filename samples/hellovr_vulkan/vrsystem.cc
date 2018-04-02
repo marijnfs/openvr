@@ -167,8 +167,8 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	ObjectVisitor dummy;
     draw_visitor.right = false;
     cout << "visitng and stuff" << endl;
-    //scene.visit(draw_visitor);
-    scene.visit(dummy);
+    scene.visit(draw_visitor);
+    //scene.visit(dummy);
   	//render stuff
 	
 	left_eye_fb->end_render_pass();
