@@ -103,21 +103,22 @@ int main() {
   
   auto &scene = Global::scene();
   scene.add_canvas("test");
+  scene.add_hmd();
   scene.set_pos("test", Pos(1, 1, 1));
 
-  Timer a_timer(1.);
+  //Timer a_timer(1.);
   uint i(0);
 
 
   Recording recording;
-  while (i++ < 5) {
+  while (i++ < 1000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
     scene.snap(&recording);
 
     vr.render(scene);
-    a_timer.wait();
+    //a_timer.wait();
   }
 
   glm::fvec3 v;

@@ -96,9 +96,9 @@ struct Object {
   void from_mat4(glm::fmat4 m) {
     auto ptr = (float*)glm::value_ptr(m);
     quat = glm::quat_cast(m);
-    p[0] = ptr[13];
-    p[1] = ptr[14];
-    p[2] = ptr[15];
+    p[0] = ptr[12];
+    p[1] = ptr[13];
+    p[2] = ptr[14];
   }
 
   virtual void update() {
@@ -166,7 +166,7 @@ struct Canvas : public Object {
 };
 
 struct HMD : public Object {
-  bool tracked = false;
+  bool tracked = true;
   
   void update();
 
@@ -188,7 +188,7 @@ struct HMD : public Object {
 struct Controller : public Object {
   bool right = true;
   bool clicked = false;
-  bool tracked = false;
+  bool tracked = true;
 
   Controller(){}
  Controller(bool right_) : right(right_) {
@@ -384,6 +384,10 @@ struct Scene {
     if (objects.count(name))
       delete objects[name];
     objects[name] = o;
+  }
+
+  void add_hmd() {
+    add_object("hmd", new HMD());
   }
   
   void add_canvas(std::string name) {

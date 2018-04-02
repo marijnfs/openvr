@@ -16,7 +16,7 @@ struct Global {
 	}
 
   static VulkanSystem &vk() {
-    std::cout << "getting vk ptr" << std::endl;
+    //std::cout << "getting vk ptr" << std::endl;
       //std::cout << "initializing Vulkan System" << std::endl;
       if (!inst().vk_ptr) {
         inst().vk_ptr = new VulkanSystem();
@@ -28,7 +28,7 @@ struct Global {
 	}
 
 	static VRSystem &vr() {
-      std::cout << "getting vr ptr" << std::endl;
+      //std::cout << "getting vr ptr" << std::endl;
       if (!inst().vr_ptr) {
 			inst().vr_ptr = new VRSystem();
 			inst().vr_ptr->init();

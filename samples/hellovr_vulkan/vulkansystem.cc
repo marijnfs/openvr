@@ -976,7 +976,6 @@ void VulkanSystem::init_debug_callback() {
 
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
-  cout << "CMD BUFFER CALLED" << endl;
   if (cur_cmd_buffer)
     return cur_cmd_buffer;
   for (auto &buf : cmd_buffers) {
