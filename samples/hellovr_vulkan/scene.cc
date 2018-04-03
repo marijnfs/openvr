@@ -67,10 +67,10 @@ void Scene::snap(Recording *rec) {
   }
 
   for (auto &kv : variables) {
-    auto &variable = kv.second;
-    if (variable->changed) {
+    auto &variable(*kv.second);
+    if (variable.changed) {
       uint idx = rec->variables.size(); //will be the index of newly added variable
-      rec->variables.push_back(variable->copy());
+      rec->variables.push_back(variable.copy());
       snap.variable_ids.push_back(idx);
       rec->index_map[(void*)&variable] = idx; //to find the index to variable later for referals
     } else {
@@ -84,9 +84,9 @@ void Scene::snap(Recording *rec) {
       uint idx = rec->triggers.size(); //will be the index of newly added trigger
       rec->triggers.push_back(trigger->copy());
       snap.trigger_ids.push_back(idx);
-      rec->index_map[(void*)&trigger] = idx; //to find the index to trigger later for referals
+      rec->index_map[(void*)trigger] = idx; //to find the index to trigger later for referals
     } else {
-      snap.trigger_ids.push_back(rec->index_map[(void*)&trigger]);
+      snap.trigger_ids.push_back(rec->index_map[(void*)trigger]);
     }
   }
 
