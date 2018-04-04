@@ -121,6 +121,8 @@ int main() {
     //a_timer.wait();
   }
 
+  recording.write("test.save");
+  
   glm::fvec3 v;
   glm::fquat q;
   q * v;

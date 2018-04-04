@@ -1,6 +1,8 @@
 #include "scene.h"
 #include "bytes.h"
 #include "serialise.h"
+#include "gzstream.h"
+
 
 void Recording::write(Bytes *bytes, Scene &scene) {
   ::capnp::MallocMessageBuilder cap_message;
@@ -144,7 +146,23 @@ void Recording::read(Bytes &bytes, Scene *scene) {
 }
 
 void Recording::read(std::string filename, Scene *scene) {
+  igzstream if(filename.c_str());
+
+  Bytes b;
+  
+  
+  t.seekg(0, std::ios::end);   
+  b.reserve(t.tellg());
+  t.seekg(0, std::ios::beg);
+  
+  copy(std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>(), &b[0]);
+  
 }
 
 void Recording::write(std::string filename) {
+  Bytes b;
+  write(b);
+
+  igzstream of(filename.c_str());
+  of.write(&b[0], b.size());
 }
