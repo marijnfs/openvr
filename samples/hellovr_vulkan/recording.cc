@@ -3,6 +3,10 @@
 #include "serialise.h"
 #include "gzstream.h"
 
+#include <algorithm>
+#include <iterator>
+
+using namespace std;
 
 void Recording::write(Bytes *bytes, Scene &scene) {
   ::capnp::MallocMessageBuilder cap_message;
@@ -59,12 +63,13 @@ void Recording::read(Bytes &bytes, Scene *scene) {
   for (auto v : rec_variables) {
     Variable *new_var(0);
     switch (v.which()) {
-    case cap::Variable::DISTANCE:
+    case cap::Variable::DISTANCE: {
       auto n1 = v.getDistance().getNameId1();
       auto n2 = v.getDistance().getNameId2();
       new_var = new DistanceVariable(n1, n2);
             
       break;
+    }
       case cap::Variable::FREE:
         new_var = new FreeVariable();
         break;
@@ -76,10 +81,11 @@ void Recording::read(Bytes &bytes, Scene *scene) {
   for (auto t : rec_triggers) {
     Trigger *new_t(0);
     switch (t.which()) {
-    case cap::Trigger::LIMIT:
+    case cap::Trigger::LIMIT: {
       auto n = t.getLimit().getNameId();
       new_t = new LimitTrigger(n, t.getLimit().getLimit());
       break;
+    }
     case cap::Trigger::CLICK:
       new_t = new ClickTrigger();
       break;
@@ -103,8 +109,8 @@ void Recording::read(Bytes &bytes, Scene *scene) {
     case cap::Object::POINT:
       new_ob = new Point();
       break;
-    case cap::Object::SCREEN:
-      new_ob = new Screen(ob.getScreen());
+    case cap::Object::CANVAS:
+      new_ob = new Canvas(ob.getCanvas());
       
       break;
     }
@@ -146,23 +152,21 @@ void Recording::read(Bytes &bytes, Scene *scene) {
 }
 
 void Recording::read(std::string filename, Scene *scene) {
-  igzstream if(filename.c_str());
+  igzstream ifs(filename.c_str());
 
   Bytes b;
-  
-  
-  t.seekg(0, std::ios::end);   
-  b.reserve(t.tellg());
-  t.seekg(0, std::ios::beg);
-  
-  copy(std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>(), &b[0]);
-  
+  ifs.seekg(0, std::ios::end);
+  b.reserve(ifs.tellg());
+  ifs.seekg(0, std::ios::beg);
+      
+  copy(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>(), b.begin());
+  read(b, scene);
 }
 
 void Recording::write(std::string filename) {
   Bytes b;
   write(b);
 
-  igzstream of(filename.c_str());
-  of.write(&b[0], b.size());
+  ogzstream of(filename.c_str());
+  of.write((char*)&b[0], b.size());
 }

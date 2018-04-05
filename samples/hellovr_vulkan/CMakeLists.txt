@@ -25,6 +25,8 @@ cuda_add_executable(${TARGET_NAME}
   framerenderbuffer.cc
   refactor_hellovr_vulkan.cpp
   learningsystem.cc
+  recording.cc
+  gzstream.cc
   )
 cuda_add_cublas_to_target(${TARGET_NAME})
 
