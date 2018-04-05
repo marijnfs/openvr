@@ -3,12 +3,16 @@
 #include "serialise.h"
 #include "gzstream.h"
 
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include <capnp/serialize-packed.h>
+
 #include <algorithm>
 #include <iterator>
 
 using namespace std;
 
-void Recording::write(Bytes *bytes, Scene &scene) {
+void Recording::serialise(Bytes *bytes) {
   ::capnp::MallocMessageBuilder cap_message;
   auto builder = cap_message.initRoot<cap::Recording>();
   
@@ -41,11 +45,14 @@ void Recording::write(Bytes *bytes, Scene &scene) {
       s->serialise(snap_builder[i++]);
   }
 
-  
-  
+  auto cap_data = messageToFlatArray(cap_message);
+  auto cap_bytes = cap_data.asBytes();
+  bytes->resize(cap_bytes.size());
+  memcpy(&(*bytes)[0], &cap_bytes[0], cap_bytes.size());
+  //copy(cap_bytes.begin(), cap_bytes.end(), &bytes[0]);
 }
 
-void Recording::read(Bytes &bytes, Scene *scene) {
+void Recording::deserialise(Bytes &bytes, Scene *scene) {
   ::capnp::FlatArrayMessageReader reader(bytes.kjwp());
   
 
@@ -151,7 +158,7 @@ void Recording::read(Bytes &bytes, Scene *scene) {
 
 }
 
-void Recording::read(std::string filename, Scene *scene) {
+void Recording::load(std::string filename, Scene *scene) {
   igzstream ifs(filename.c_str());
 
   Bytes b;
@@ -160,12 +167,12 @@ void Recording::read(std::string filename, Scene *scene) {
   ifs.seekg(0, std::ios::beg);
       
   copy(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>(), b.begin());
-  read(b, scene);
+  deserialise(b, scene);
 }
 
-void Recording::write(std::string filename) {
+void Recording::save(std::string filename) {
   Bytes b;
-  write(b);
+  serialise(&b);
 
   ogzstream of(filename.c_str());
   of.write((char*)&b[0], b.size());

@@ -219,6 +219,7 @@ struct GraphicsCanvas : public GraphicsObject {
   //void render(Matrix4 &mvp, bool right);
   
   void change_texture(std::string texture_) {
+    std::cout << "current tex: " << texture << " new: " << texture_ << std::endl;
     if (texture == texture_) return;
     texture = texture_;
     auto *img = ImageFlywheel::image(texture);
@@ -238,6 +239,8 @@ struct GraphicsCube : public GraphicsObject {
   
   //virtual void render(Matrix4 &mvp, bool right);
   void change_texture(std::string texture_) {
+    std::cout << "current tex: " << texture << std::endl;
+
     if (texture == texture_) return;
     texture = texture_;
     auto *img = ImageFlywheel::image(texture);
@@ -292,7 +295,7 @@ struct DrawVisitor : public ObjectVisitor {
     auto &gbox = gob<GraphicsCube>(i);
     gbox.change_texture(box.tex_name);
     gbox.change_dim(box.width, box.height, box.depth);
-    
+    std::cout << "drawing box" << std::endl;
     auto mat = mvp * glm_to_mat4(box.to_mat4());
     gbox.render(mat, right);
   }

@@ -128,7 +128,7 @@ struct Object {
 
 struct Box : public Object {
   float width = 0, height = 0, depth = 0;
-  std::string tex_name;
+  std::string tex_name = "stub.png";
   
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
@@ -166,9 +166,9 @@ struct Point : public Object {
 };
 
 struct Canvas : public Object {
-  std::string tex_name;
+  std::string tex_name = "stub.png";
 
-  Canvas(){}
+ Canvas() {}
  Canvas(std::string tex_name_) : tex_name(tex_name_) {}
 
   Object *copy() {
@@ -318,11 +318,11 @@ struct Recording {
   
   std::map<void*, int> index_map; //temporary data
 
-  void read(Bytes &b, Scene *scene);
-  void read(std::string filename, Scene *scene);
+  void deserialise(Bytes &b, Scene *scene);
+  void load(std::string filename, Scene *scene);
 
-  void write(Bytes *b, Scene &scene);
-  void write(std::string filename);
+  void serialise(Bytes *b);
+  void save(std::string filename);
   
   void update();
 };
@@ -423,11 +423,18 @@ struct Scene {
     add_object(name, new Point());
   }
 
+  void add_box(std::string name) {
+    add_object(name, new Box());
+  }
+  
+  
   void add_variable(std::string name, Variable *v) {
     int nameid = register_name(name);
     v->nameid = nameid;
     variables[name] = v;
   }
+
+
   
   void set_pos(std::string name, Pos pos) {
     Object &o = find(name);

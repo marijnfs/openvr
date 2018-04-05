@@ -98,14 +98,16 @@ int main() {
 
   //preloading images
   ImageFlywheel::image("stub.png");
-
+    
   vk.end_submit_cmd();
   
   auto &scene = Global::scene();
   scene.add_canvas("test");
   scene.add_hmd();
-  scene.set_pos("test", Pos(1, 1, 1));
+  //scene.set_pos("test", Pos(1, 1, 1));
 
+  scene.add_box("box");
+  scene.set_pos("box", Pos(-2, 0, 0));
   //Timer a_timer(1.);
   uint i(0);
 
@@ -121,8 +123,10 @@ int main() {
     //a_timer.wait();
   }
 
-  recording.write("test.save");
-  
+  cout << "writing: " << endl;
+  recording.save("test.save");
+  cout << "done: " << endl;
+    
   glm::fvec3 v;
   glm::fquat q;
   q * v;

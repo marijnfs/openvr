@@ -136,7 +136,7 @@ void GraphicsCanvas::init() {
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
 }
 
-GraphicsCube::GraphicsCube() {
+GraphicsCube::GraphicsCube() : texture("stub.png") {
   init();
 }
 
