@@ -229,10 +229,24 @@ struct GraphicsCanvas : public GraphicsObject {
 };
 
 struct GraphicsCube : public GraphicsObject {
+  std::string texture;
+  float width=1, height=1, depth=1;
+  
   GraphicsCube();
+
+  void init();
   
   //virtual void render(Matrix4 &mvp, bool right);
+  void change_texture(std::string texture_) {
+    if (texture == texture_) return;
+    texture = texture_;
+    auto *img = ImageFlywheel::image(texture);
+    desc_left.register_texture(img->view);
+    desc_right.register_texture(img->view);
+  }
 
+  void change_dim(float width_, float height_, float depth_);
+  void set_vertices();
 };
 
 struct DrawVisitor : public ObjectVisitor {
@@ -260,17 +274,27 @@ struct DrawVisitor : public ObjectVisitor {
 
   template <typename T>
     T& gob(int i) {
-    check_size_and_type<GraphicsCanvas>(i);
+    check_size_and_type<T>(i);
     return *dynamic_cast<T*>(gobs[i]);
   }
   
   void visit(Canvas &canvas) {
     auto &gcanvas = gob<GraphicsCanvas>(i);
+    gcanvas.change_texture(canvas.tex_name);
     
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
 
     std::cout << "render canvas" << std::endl;
     gcanvas.render(mat, right);
+  }
+
+  void visit(Box &box) {
+    auto &gbox = gob<GraphicsCube>(i);
+    gbox.change_texture(box.tex_name);
+    gbox.change_dim(box.width, box.height, box.depth);
+    
+    auto mat = mvp * glm_to_mat4(box.to_mat4());
+    gbox.render(mat, right);
   }
   
   void visit(Controller &controller) {

@@ -56,6 +56,7 @@ struct Canvas;
 struct Controller;
 struct Point;
 struct HMD;
+struct Box;
 
 struct ObjectVisitor {
   int i = 0;
@@ -64,6 +65,7 @@ struct ObjectVisitor {
   virtual void visit(Controller &controller) {};
   virtual void visit(Point &point) {};
   virtual void visit(HMD &hmd) {};
+  virtual void visit(Box &box) {};
 };
 
 struct Object {
@@ -122,6 +124,29 @@ struct Object {
     builder.setNameId(nameid);
   }
   
+};
+
+struct Box : public Object {
+  float width = 0, height = 0, depth = 0;
+  std::string tex_name;
+  
+  void serialise(cap::Object::Builder builder) {
+    Object::serialise(builder);
+    auto b = builder.initBox();
+    b.setW(width);
+    b.setH(height);
+    b.setD(depth);
+    b.setTexture(tex_name);
+  }
+
+  Object *copy() {
+    return new Box(*this);
+  }
+  
+  void visit(ObjectVisitor &visitor) {
+    visitor.visit(*this);
+  }
+
 };
 
 struct Point : public Object {

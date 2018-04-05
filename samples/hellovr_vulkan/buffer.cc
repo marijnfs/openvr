@@ -59,6 +59,26 @@ Buffer::Buffer(T init_data[], int n_, VkBufferUsageFlags usage, Location loc) {
 }
 
 template <typename T>
+void Buffer::update(std::vector<T> &init_data) {
+  if (n != init_data.size() * sizeof(T))
+    throw StringException("wrong update size");  
+  
+  auto &vk = Global::vk();
+  void *data(0);
+  cout << n << endl;
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy( data, &init_data[0], n );
+  
+  vkUnmapMemory(vk.dev , memory);
+  
+  VkMappedMemoryRange mem_range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  mem_range.memory = memory;
+  mem_range.size = VK_WHOLE_SIZE;
+  vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
+}
+
+template <typename T>
 void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
   n = init_data.size() * sizeof(T);
   init(n, usage, loc);
@@ -405,6 +425,9 @@ void Buffer::init<unsigned short>(std::vector<unsigned short> &init_data, VkBuff
 template
 void Buffer::init<unsigned short>(unsigned short init_data[], int size, VkBufferUsageFlags usage, Location loc);
 
+template
+void Buffer::update<unsigned short>(std::vector<unsigned short> &init_data);
+
 
 ///Template implementations for float
 template
@@ -419,6 +442,9 @@ void Buffer::init<float>(std::vector<float> &init_data, VkBufferUsageFlags usage
 template
 void Buffer::init<float>(float init_data[], int size, VkBufferUsageFlags usage, Location loc);
 
+template
+void Buffer::update<float>(std::vector<float> &init_data);
+
 
 ///Template implementations for vr::RenderModel_Vertex_t
 template
@@ -432,3 +458,6 @@ void Buffer::init<vr::RenderModel_Vertex_t>(std::vector<vr::RenderModel_Vertex_t
 
 template
 void Buffer::init<vr::RenderModel_Vertex_t>(vr::RenderModel_Vertex_t init_data[], int size, VkBufferUsageFlags usage, Location loc);
+
+template
+void Buffer::update<vr::RenderModel_Vertex_t>(std::vector<vr::RenderModel_Vertex_t> &init_data);

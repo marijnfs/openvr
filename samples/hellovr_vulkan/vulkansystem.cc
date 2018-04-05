@@ -137,14 +137,43 @@ void GraphicsCanvas::init() {
 }
 
 GraphicsCube::GraphicsCube() {
+  init();
+}
+
+void GraphicsCube::init() {
+  set_vertices();
+  
+  init_buffers();
+  auto *img = ImageFlywheel::image(texture);
+
+  cout << "img " << img << endl;
+  
+  desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
+  desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
+}
+
+void GraphicsCube::change_dim(float width_, float height_, float depth_) {
+  if (width == width_ && height == height_ && depth == depth_)
+    return;
+  
+  width = width_;
+  height = height_;
+  depth = depth_;
+
+  set_vertices();
+  vertex_buf.update(vertices);
+}
+
+void GraphicsCube::set_vertices() {
+  vertices.clear();
   Vector4 A = Vector4( 0, 0, 0, 1 );
-  Vector4 B = Vector4( 1, 0, 0, 1 );
-  Vector4 C = Vector4( 1, 1, 0, 1 );
-  Vector4 D = Vector4( 0, 1, 0, 1 );
-  Vector4 E = Vector4( 0, 0, 1, 1 );
-  Vector4 F = Vector4( 1, 0, 1, 1 );
-  Vector4 G = Vector4( 1, 1, 1, 1 );
-  Vector4 H = Vector4( 0, 1, 1, 1 );
+  Vector4 B = Vector4( width, 0, 0, 1 );
+  Vector4 C = Vector4( width, height, 0, 1 );
+  Vector4 D = Vector4( 0, height, 0, 1 );
+  Vector4 E = Vector4( 0, 0, depth, 1 );
+  Vector4 F = Vector4( width, 0, depth, 1 );
+  Vector4 G = Vector4( width, height, depth, 1 );
+  Vector4 H = Vector4( 0, height, depth, 1 );
 
   // triangles instead of quads
   add_vertex( E.x, E.y, E.z, 0, 1); //Front
@@ -189,28 +218,6 @@ GraphicsCube::GraphicsCube() {
   add_vertex( G.x, G.y, G.z, 0, 0);
   add_vertex( F.x, F.y, F.z, 0, 1);
 }
-/*
-  void GraphicsCube::render(Matrix4 &mvp, bool right) {
-  auto &vk = Global::vk();
-  vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[PSO_SCENE]);
-
-  if (right)
-  memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
-  else
-  memcpy(&mvp_left->m, &mvp.m[0], sizeof(Matrix4));
-  
-  
-  if (right)
-  vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_right.desc, 0, nullptr );
-  else
-  vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc_left.desc, 0, nullptr );
-  
-  // Draw
-  VkDeviceSize offsets[ 1 ] = { 0 };
-  vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
-  vkCmdDraw( vk.cmd_buffer(), n_vertex, 1, 0, 0 );
-  }
-*/
 
 // ===== SwapChain =======
 
