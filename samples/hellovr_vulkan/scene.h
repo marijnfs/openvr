@@ -127,7 +127,7 @@ struct Object {
 };
 
 struct Box : public Object {
-  float width = 0, height = 0, depth = 0;
+  float width = 1, height = 1, depth = 1;
   std::string tex_name = "stub.png";
   
   void serialise(cap::Object::Builder builder) {

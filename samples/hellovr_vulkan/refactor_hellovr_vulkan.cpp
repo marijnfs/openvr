@@ -102,7 +102,7 @@ int main() {
   vk.end_submit_cmd();
   
   auto &scene = Global::scene();
-  scene.add_canvas("test");
+  //scene.add_canvas("test");
   scene.add_hmd();
   //scene.set_pos("test", Pos(1, 1, 1));
 
@@ -113,7 +113,7 @@ int main() {
 
 
   Recording recording;
-  while (i++ < 1000) {
+  while (i++ < 10000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
