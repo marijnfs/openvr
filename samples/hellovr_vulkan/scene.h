@@ -88,7 +88,7 @@ struct Object {
   }
 
   void look_at(Pos to, Pos up) {
-    quat = glm::quat_cast(glm::gtc::matrix_transform::lookAt(p, to, up));
+    quat = glm::quat_cast(glm::lookAt(p, to, up));
   }
   
   float angle() {
@@ -266,7 +266,7 @@ struct PrintVisitor : public ObjectVisitor {
 };
 
 struct Trigger {
-  bool changed = false;
+  bool changed = true;
   int nameid = -1;
   int function_nameid = -1;
   
@@ -358,6 +358,11 @@ struct FreeVariable : public Variable {
     Variable::serialise(builder);
     builder.setFree(val);
   }
+
+  void set_value(float val_) {
+    val = val_;
+    changed = true;
+  }
 };
 
 struct Scene {
@@ -386,13 +391,18 @@ struct Scene {
   T &find(std::string name) {
     return *reinterpret_cast<T*>(objects[name]);
   }
-
+  
   Object &find(std::string name) {
     if (!objects.count(name))
       throw "no such object";
     return *objects[name];
   }
 
+  template <typename T>
+  T &variable(std::string name) {
+    return *reinterpret_cast<T*>(variables[name]);
+  }
+  
   void clear() {
     clear_objects();
     clear_triggers();

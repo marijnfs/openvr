@@ -33,7 +33,8 @@ struct FittsWorld {
 
     scene.register_function("onstart", std::bind(&FittsWorld::on_start, *this));
     scene.register_function("onwin", std::bind(&FittsWorld::on_win, *this));
-    scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
+    //scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
+    scene.add_variable("mode", new FreeVariable());
     scene.add_trigger(new ClickTrigger(), "onstart");
   }
 
@@ -75,6 +76,7 @@ struct FittsWorld {
     scene.clear();
 
     int choice = rand() % 3;
+    scene.variable<FreeVariable>("mode").set_value(choice);
     add_points(choice);
 
     
