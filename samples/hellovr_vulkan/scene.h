@@ -96,7 +96,12 @@ struct Object {
   }
 
   glm::mat4 to_mat4() {
-    return glm::translate(glm::toMat4(quat), glm::vec3(p[0], p[1], p[2]));
+    auto m = glm::toMat4(quat);
+    m[3][0] = pos[0];
+    m[3][1] = pos[1];
+    m[3][2] = pos[2];
+  
+    return m;
   }
 
   void from_mat4(glm::fmat4 m) {
@@ -529,7 +534,6 @@ struct Scene {
   
 };
 
-
 struct DistanceVariable : public Variable {
   int oid1 = -1, oid2 = -1;
 
@@ -549,6 +553,25 @@ struct DistanceVariable : public Variable {
   }
 };
 
+struct InBoxTrigger : public Trigger {
+  bool changed = false;
+  int target_id = -1, box_id = -1;
+
+  InBoxTrigger(){}
+ InBoxTrigger(int tid, int bid) : target_id(tid), box_id(bid) {}
+
+  virtual void serialise(cap::Trigger::Builder builder) {
+    Trigger::serialise(builder);
+    auto l = builder.initInBox();
+    l.setNameId1(target_id);
+    l.setNameId2(box_id);    
+  }
+  
+  bool check() {
+    
+  }
+  
+};
 
 struct LimitTrigger : public Trigger {
   bool changed = false;
@@ -566,7 +589,8 @@ struct LimitTrigger : public Trigger {
     l.setLimit(limit);    
   }
   
-  bool check() { }
+  bool check() {
+  }
 };
 
 struct ClickTrigger : public Trigger {

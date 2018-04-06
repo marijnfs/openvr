@@ -166,6 +166,7 @@ void GraphicsCube::change_dim(float width_, float height_, float depth_) {
 
 void GraphicsCube::set_vertices() {
   vertices.clear();
+  n_vertex = 0;
   Vector4 A = Vector4( 0, 0, 0, 1 );
   Vector4 B = Vector4( width, 0, 0, 1 );
   Vector4 C = Vector4( width, height, 0, 1 );
