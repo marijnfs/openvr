@@ -321,39 +321,67 @@ void VRSystem::setup_render_model_for_device(int d) {
   //todo, create graphics object or something for controllers
 }
 
+void VRSystem::request_poses() {
+  //TrackingUniverseSeated
+  //TrackingUniverseRawAndUncalibrated
+  // for somebody asking for the default figure out the time from now to photons.
+  float last_vsync(0);
+  ivrsystem->GetTimeSinceLastVsync( &last_vsync, NULL );
+
+  float freq = ivrsystem->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float );
+  float dur = 1.f / freq;
+  float sync_to_photons = ivrsystem->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float );
+
+  float prediction = dur - last_vsync + sync_to_photons;
+  
+  ivrsystem->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseSeated, prediction, tracked_pose, vr::k_unMaxTrackedDeviceCount);
+}
+
+void VRSystem::wait_frame() {
+  //vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+}
+
 void VRSystem::update_track_pose() {
   int controller_idx(0);
-  
+  cout << "updating track pose " << endl;
+
   vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
-
-	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d )
-	{
-		if ( tracked_pose[d].bPoseIsValid )
-		{
-			tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
-			device_class[d] = ivrsystem->GetTrackedDeviceClass(d);
-            vr::VRControllerState_t cstate;
-            ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, sizeof(vr::TrackedDeviceIndex_t));
-            //todo
-              
-			if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
-			  if (controller_idx == 0) {
-			    right_controller.set_t(tracked_pose_mat4[d]);
-                right_controller.clicked = false; //todo
-              } else {
-			    left_controller.set_t(tracked_pose_mat4[d]);
-                left_controller.clicked = false;
-              }
-			  ++controller_idx;
-			}
-		}
+  //vr::VRCompositor()->GetLastPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  
+  cout << "done" << endl;
+	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d) {
+      if ( tracked_pose[d].bPoseIsValid ) {
+        cout << "updating: " << d << endl;
+        tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
+        device_class[d] = ivrsystem->GetTrackedDeviceClass(d);
+        //todo
+        
+        
+        if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
+          vr::VRControllerState_t cstate;
+          //ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, sizeof(vr::TrackedDeviceIndex_t));
+          ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, 64);
+          cout << "a controller " << cstate.ulButtonPressed << endl;
+          cout << "AXIS: " << cstate.rAxis[vr::k_eControllerAxis_Trigger].x << endl;
+          cout << "AXIS: " << cstate.rAxis[vr::k_EButton_Axis1].x << endl;
+          if (controller_idx == 0) {
+            right_controller.set_t(tracked_pose_mat4[d]);
+            if (cstate.ulButtonPressed & vr::ButtonMaskFromId(vr::k_EButton_Axis1)) throw "";
+            cout << "AXIS: " << cstate.rAxis[vr::k_eControllerAxis_Trigger].x << endl;
+            right_controller.clicked = false; //todo
+          } else {
+            left_controller.set_t(tracked_pose_mat4[d]);
+            left_controller.clicked = false;
+          }
+          ++controller_idx;
+        }
+      }
 	}
-
-	if ( tracked_pose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid )
-	{
-		hmd_pose = tracked_pose_mat4[vr::k_unTrackedDeviceIndex_Hmd];
-		hmd_pose.invert();
-	}
+    
+	if ( tracked_pose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid ) {
+      hmd_pose = tracked_pose_mat4[vr::k_unTrackedDeviceIndex_Hmd];
+      hmd_pose.invert();
+    }
 }
 
 string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDeviceProperty prop) {

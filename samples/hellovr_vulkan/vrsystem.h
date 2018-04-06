@@ -62,8 +62,11 @@ struct VRSystem {
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
   Matrix4 get_hmd_projection( vr::Hmd_Eye eye );
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
-  void update_track_pose();
 
+  void request_poses();
+  void update_track_pose();
+  void wait_frame();
+  
   void render(Scene &scene);
   void render_stereo_targets(Scene &scene);
   void render_companion_window();

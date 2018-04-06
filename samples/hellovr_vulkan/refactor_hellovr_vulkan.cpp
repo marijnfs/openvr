@@ -113,20 +113,22 @@ int main() {
   scene.add_object("controller", new Controller(true));
   //scene.set_pos("test", Pos(1, 1, 1));
 
-  scene.add_box("box");
-  scene.set_pos("box", Pos(-2, 0, 0));
-  scene.find<Box>("box").set_dim(.1, .1, .1);
-  //Timer a_timer(1.);
+  //scene.add_box("box");
+  //scene.set_pos("box", Pos(-2, 0, 0));
+  //scene.find<Box>("box").set_dim(.1, .1, .1);
+  Timer a_timer(1./90);
   uint i(0);
 
   Recording recording;
-  while (i++ < 500) {
+  while (i++ < 3000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
     scene.snap(&recording);
 
     vr.render(scene);
+    vr.wait_frame();
+    //vr.request_poses();
     //a_timer.wait();
   }
 

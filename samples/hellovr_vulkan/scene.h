@@ -100,7 +100,7 @@ struct Object {
     m[3][0] = p[0];
     m[3][1] = p[1];
     m[3][2] = p[2];
-  
+    m[3][3] = 1.0;
     return m;
   }
 
@@ -412,6 +412,14 @@ struct Scene {
     clear_objects();
     clear_triggers();
   }
+
+  void set_tracked(bool tracked) {
+   for (auto kv : objects) {
+      //skip hmd and controller
+     try {dynamic_cast<HMD*>(kv.second)->tracked = tracked;} catch(...) {}
+      try {dynamic_cast<Controller*>(kv.second)->tracked = tracked;} catch(...) {}
+      
+    }}
   
   void clear_objects() {
     for (auto kv : objects) {

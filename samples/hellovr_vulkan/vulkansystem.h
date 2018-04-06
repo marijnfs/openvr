@@ -9,12 +9,12 @@
 #include "flywheel.h"
 #include "util.h"
 
-inline Matrix4 glm_to_mat4(glm::mat4 mat) {
-  auto m = &mat[0];
-  return Matrix4(m[0][0], m[1][0], m[2][0], m[3][0],
-		m[0][1], m[1][1], m[2][1], m[3][1], 
-		m[0][2], m[1][2], m[2][2], m[3][2], 
-          m[0][3], m[1][3], m[2][3], m[3][3]);
+inline Matrix4 glm_to_mat4(glm::mat4 m) {
+  //auto m = &mat[0];
+  return Matrix4(m[0][0], m[0][1], m[0][2], m[0][3],
+		m[1][0], m[1][1], m[1][2], m[1][3], 
+		m[2][0], m[2][1], m[2][2], m[2][3], 
+          m[3][0], m[3][1], m[3][2], m[3][3]);
 }
 
 enum PSO //shader files
@@ -58,6 +58,7 @@ struct Descriptor {
 
 
   Descriptor();
+  ~Descriptor();
   void init();
   void register_texture(VkImageView &view);
   void register_model_texture(VkBuffer &buf, VkImageView &view, VkSampler &sampler);
@@ -196,7 +197,7 @@ struct GraphicsObject {
   Buffer vertex_buf;
   Buffer index_buf;
   
-  Matrix4 *mvp_left, *mvp_right;
+  Matrix4 *mvp_left = 0, *mvp_right = 0;
   Buffer mvp_buffer_left, mvp_buffer_right;
   
   //Image texture;
@@ -205,6 +206,8 @@ struct GraphicsObject {
   std::vector<uint16_t> indices;
   
   GraphicsObject();
+  ~GraphicsObject();
+  
   virtual void render(Matrix4 &mvp, bool right);
     void init_buffers();
   void add_vertex(float x, float y, float z, float tx, float ty);  
@@ -257,10 +260,15 @@ struct GraphicsCube : public GraphicsObject {
 
 struct DrawVisitor : public ObjectVisitor {
   std::vector<GraphicsObject*> gobs;
-
+  
   Matrix4 mvp;
   bool right = false;
 
+  ~DrawVisitor() {
+    for (auto g : gobs)
+      delete g;
+  }
+  
   template <typename T>
     void check_size_and_type(int i) {
     if (i >= gobs.size()) {
@@ -306,8 +314,13 @@ struct DrawVisitor : public ObjectVisitor {
   void visit(Controller &controller) {
     auto &gbox = gob<GraphicsCube>(i);
     //gbox.change_texture();
+        
     gbox.change_dim(.02, .02, .02);
-    auto mat = mvp * glm_to_mat4(controller.to_mat4());
+    auto controller_mat = glm_to_mat4(controller.to_mat4());
+    auto mat = mvp * controller_mat;
+
+    std::cout << "drawing controller " << controller_mat << std::endl;
+ 
     gbox.render(mat, right);
   }
   

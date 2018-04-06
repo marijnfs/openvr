@@ -43,6 +43,11 @@ GraphicsObject::GraphicsObject() {
   
 }
 
+GraphicsObject::~GraphicsObject() {
+  //if (mvp_left) delete mvp_left;
+  //if (mvp_right) delete mvp_right;
+}
+
 void GraphicsObject::init_buffers() {
   n_index = indices.size();
   
@@ -902,6 +907,11 @@ void VulkanSystem::init_shaders() {
 // =========== Descriptors ==============
 Descriptor::Descriptor() {
   init();
+}
+
+Descriptor::~Descriptor() {
+  //auto &vk = Global::vk();
+   
 }
 
 void Descriptor::init() {

@@ -71,6 +71,7 @@ struct Global {
 
   static void shutdown() {
     vk().wait_idle();
+    delete inst().scene_ptr;
     delete inst().vr_ptr;
     delete inst().vk_ptr;
     delete inst().ws_ptr;
