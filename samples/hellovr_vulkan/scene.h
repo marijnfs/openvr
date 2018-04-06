@@ -139,6 +139,12 @@ struct Box : public Object {
     b.setTexture(tex_name);
   }
 
+  void set_dim(float w, float h, float d) {
+    width = w;
+    height = h;
+    depth = d;
+  }
+  
   Object *copy() {
     return new Box(*this);
   }
@@ -371,7 +377,12 @@ struct Scene {
   Object &find(int nameid) {
     return *objects[names[nameid]];
   }
-  
+
+  template <typename T>
+  T &find(std::string name) {
+    return *reinterpret_cast<T*>(objects[name]);
+  }
+
   Object &find(std::string name) {
     if (!objects.count(name))
       throw "no such object";

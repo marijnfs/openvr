@@ -23,7 +23,7 @@
 
 using namespace std;
 
-struct World {
+struct FittsWorld {
   Scene &scene;
 
   void init() {
@@ -31,8 +31,8 @@ struct World {
     scene.add_object("hmd", new HMD());
     scene.add_object("controller", new Controller(true));
 
-    scene.register_function("onstart", std::bind(&World::on_start, *this));
-    scene.register_function("onwin", std::bind(&World::on_win, *this));
+    scene.register_function("onstart", std::bind(&FittsWorld::on_start, *this));
+    scene.register_function("onwin", std::bind(&FittsWorld::on_win, *this));
     scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
     scene.add_trigger(new ClickTrigger(), "onstart");
   }
@@ -108,6 +108,7 @@ int main() {
 
   scene.add_box("box");
   scene.set_pos("box", Pos(-2, 0, 0));
+  scene.find<Box>("box").set_dim(.1, .1, .1);
   //Timer a_timer(1.);
   uint i(0);
 
