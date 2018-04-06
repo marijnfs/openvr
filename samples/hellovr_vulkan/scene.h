@@ -85,6 +85,10 @@ struct Object {
     quat = glm::angleAxis<float>(angle, glm::vec3(x, y, z));
   }
 
+  void look_at(Pos to, Pos up) {
+    quat = glm::quat_cast(glm::gtc::matrix_transform::lookAt(p, to, up));
+  }
+  
   float angle() {
     return glm::angle(quat);
   }
