@@ -67,6 +67,13 @@ struct Controller {
     right @0 : Bool;
     clicked @1 : Bool;
 }
+
+struct Box {
+    w @0 : Float32;
+    h @1 : Float32;
+    d @2 : Float32;
+    texture @3 : Text;
+}
         
 struct Object {
     pos @0 : Pos;
@@ -79,6 +86,7 @@ struct Object {
         controller @4 : Controller;
         point @5 : Void;
         canvas @6 : Text;
+        box @7 : Box;
     }
 }
 

@@ -17,7 +17,7 @@ struct Learner {
     Recording recording;
     Scene scene;
 
-    recording.read(files[0], &scene);
+    recording.load(files[0], &scene);
 
     
   }
