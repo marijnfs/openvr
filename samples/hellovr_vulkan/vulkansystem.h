@@ -68,6 +68,8 @@ struct Descriptor {
 
 
 struct Swapchain {
+  ~Swapchain();
+  
   VkSurfaceKHR surface = 0;
   VkSwapchainKHR swapchain = 0;
 
@@ -151,6 +153,7 @@ struct VulkanSystem {
 
 
   VulkanSystem();
+  ~VulkanSystem();
   
   void init(); //general init
   void init_instance();
@@ -166,7 +169,7 @@ struct VulkanSystem {
 
   void submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0);
   void wait_queue();
-
+  void wait_idle();
 
   void add_desc_set();
 
@@ -304,6 +307,7 @@ struct DrawVisitor : public ObjectVisitor {
     auto &gbox = gob<GraphicsCube>(i);
     //gbox.change_texture();
     gbox.change_dim(.02, .02, .02);
+    auto mat = mvp * glm_to_mat4(controller.to_mat4());
     gbox.render(mat, right);
   }
   

@@ -463,6 +463,30 @@ VulkanSystem::VulkanSystem() {
   
 }
 
+VulkanSystem::~VulkanSystem() {
+  for (auto &cmd_buf : cmd_buffers) {
+    vkFreeCommandBuffers(dev, cmd_pool, 1, &cmd_buf.cmd_buffer);
+    vkDestroyFence(dev, cmd_buf.fence, nullptr);
+  }
+
+  vkDestroyCommandPool(dev, cmd_pool, nullptr);
+
+  vkDestroyPipelineLayout(dev, pipeline_layout, nullptr);
+  vkDestroyDescriptorSetLayout(dev, desc_set_layout, nullptr);
+  for (int i(0); i < PSO_COUNT; ++i) {
+    vkDestroyPipeline(dev, pipelines[i], nullptr);
+    vkDestroyShaderModule(dev, shader_modules_vs[i], nullptr);
+    vkDestroyShaderModule(dev, shader_modules_ps[i], nullptr);
+  }
+  vkDestroyPipelineCache(dev, pipeline_cache, nullptr);
+
+  swapchain.~Swapchain();
+  
+  vkDestroyDevice(dev, nullptr);
+  vkDestroyInstance(inst, nullptr);
+}
+
+
 void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore) {
   VkSubmitInfo submiti = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
   submiti.commandBufferCount = 1;
@@ -480,6 +504,10 @@ if (semaphore) {
 
 void VulkanSystem::wait_queue() {
   vkQueueWaitIdle( queue );
+}
+
+void VulkanSystem::wait_idle() {
+  vkDeviceWaitIdle(dev);
 }
 
 
@@ -952,6 +980,24 @@ void Descriptor::bind() {
   vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
 }
 
+
+Swapchain::~Swapchain() {
+  if (!n_swap)
+    return;
+  auto &vk = Global::vk();
+  
+  for (auto img_ptr : images)
+    vkDestroyImageView(vk.dev, img_ptr->view, nullptr);
+  for (auto fb : framebuffers)
+    vkDestroyFramebuffer(vk.dev, fb, nullptr);
+  for (auto sm : semaphores)
+    vkDestroySemaphore(vk.dev, sm, nullptr);
+
+  vkDestroyRenderPass(vk.dev, render_pass, nullptr);
+  vkDestroySwapchainKHR(vk.dev, swapchain, nullptr);
+  vkDestroySurfaceKHR(vk.inst, surface, nullptr);
+  n_swap = 0;
+}
 
 Image &Swapchain::current_img() {
   return *images[current_swapchain_image];

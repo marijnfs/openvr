@@ -17,6 +17,8 @@ struct WindowSystem {
   //FrameRenderBuffer *framebuffer;
   
   WindowSystem();
+  ~WindowSystem();
+  
   void init();
   void init_window();
   

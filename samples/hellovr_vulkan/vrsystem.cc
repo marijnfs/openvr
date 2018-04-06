@@ -22,6 +22,14 @@ void TrackedController::set_t(Matrix4 &t_) {
 VRSystem::VRSystem() {
 }
 
+VRSystem::~VRSystem() {
+  vr::VR_Shutdown();
+  ivrsystem = 0;
+
+  delete left_eye_fb;
+  delete right_eye_fb;
+}
+
 void VRSystem::init() {
 	cout << "initialising VRSystem" << endl;
 
@@ -492,9 +500,4 @@ uint64_t VRSystem::get_output_device(VkInstance v_inst) {
   return hmd_dev;
 }
 
-
-VRSystem::~VRSystem() {
-  cout << "VR SHUTTING DOWN!" << endl;
-	vr::VR_Shutdown();
-}
 

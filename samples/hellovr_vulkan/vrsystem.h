@@ -54,6 +54,8 @@ struct VRSystem {
   DrawVisitor draw_visitor; //visitor pattern to draw the scene
 
   VRSystem();
+  ~VRSystem();
+  
   void init();
   void setup();
   
@@ -78,8 +80,6 @@ struct VRSystem {
   std::vector<std::string> get_inst_ext_required_verified();
   std::vector<std::string> get_dev_ext_required_verified();
 
-  ~VRSystem();
-
-};
+  };
 
 #endif

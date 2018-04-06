@@ -26,6 +26,8 @@ using namespace std;
 struct FittsWorld {
   Scene &scene;
 
+  FittsWorld() : scene(Global::scene()) {}
+  
   void init() {
     //setup world
     scene.add_object("hmd", new HMD());
@@ -108,6 +110,7 @@ int main() {
   auto &scene = Global::scene();
   //scene.add_canvas("test");
   scene.add_hmd();
+  scene.add_object("controller", new Controller(true));
   //scene.set_pos("test", Pos(1, 1, 1));
 
   scene.add_box("box");
@@ -117,7 +120,7 @@ int main() {
   uint i(0);
 
   Recording recording;
-  while (i++ < 10000) {
+  while (i++ < 500) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
@@ -134,4 +137,6 @@ int main() {
   glm::fvec3 v;
   glm::fquat q;
   q * v;
+
+  Global::shutdown();
 }

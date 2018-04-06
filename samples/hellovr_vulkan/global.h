@@ -69,6 +69,12 @@ struct Global {
 		inst();
 	}
 
+  static void shutdown() {
+    vk().wait_idle();
+    delete inst().vr_ptr;
+    delete inst().vk_ptr;
+    delete inst().ws_ptr;
+  }
   
   	VulkanSystem *vk_ptr = 0;
 	VRSystem *vr_ptr = 0;

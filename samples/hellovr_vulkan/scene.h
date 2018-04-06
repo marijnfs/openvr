@@ -97,9 +97,9 @@ struct Object {
 
   glm::mat4 to_mat4() {
     auto m = glm::toMat4(quat);
-    m[3][0] = pos[0];
-    m[3][1] = pos[1];
-    m[3][2] = pos[2];
+    m[3][0] = p[0];
+    m[3][1] = p[1];
+    m[3][2] = p[2];
   
     return m;
   }

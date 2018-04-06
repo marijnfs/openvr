@@ -1527,7 +1527,7 @@ void CMainApplication::Shutdown()
 	if ( m_pDevice != VK_NULL_HANDLE )
 	{
 		// Idle the device to make sure no work is outstanding
-		vkDeviceWaitIdle( m_pDevice );
+        vkDeviceWaitIdle( m_pDevice );
 	}
 
 	if( m_pHMD )
