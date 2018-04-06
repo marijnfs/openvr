@@ -82,7 +82,7 @@ struct Object {
   
   virtual Object *copy() {return new Object(*this); }
   
-  void set_pos(Pos pos) { p = pos; }
+  void set_pos(Pos pos) { p = pos; changed = true; }
   void from_axis(float x, float y, float z, float angle) { //angle in degrees
     quat = glm::angleAxis<float>(angle, glm::vec3(x, y, z));
   }
@@ -152,8 +152,14 @@ struct Box : public Object {
     width = w;
     height = h;
     depth = d;
+    changed = true;
   }
-  
+
+  void set_texture(std::string name) {
+    changed = true;
+    tex_name = name;
+  }
+
   Object *copy() {
     return new Box(*this);
   }
@@ -196,6 +202,7 @@ struct Canvas : public Object {
   }
 
   void set_texture(std::string name) {
+    changed = true;
     tex_name = name;
   }
 

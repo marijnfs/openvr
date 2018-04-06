@@ -104,7 +104,8 @@ int main() {
 
   //preloading images
   ImageFlywheel::image("stub.png");
-    
+  ImageFlywheel::image("gray.png");
+  ImageFlywheel::image("blue.png");
   vk.end_submit_cmd();
   
   auto &scene = Global::scene();
@@ -113,14 +114,26 @@ int main() {
   scene.add_object("controller", new Controller(true));
   //scene.set_pos("test", Pos(1, 1, 1));
 
-  //scene.add_box("box");
-  //scene.set_pos("box", Pos(-2, 0, 0));
-  //scene.find<Box>("box").set_dim(.1, .1, .1);
+  scene.add_box("box");
+  scene.set_pos("box", Pos(.4, 0, -.4));
+  scene.find<Box>("box").set_dim(.02, .2, .02);
+
+
+  scene.add_box("box2");
+  scene.set_pos("box2", Pos(0, 0, -.4));
+  scene.find<Box>("box2").set_dim(.02, .2, .02);
+  scene.find<Box>("box2").set_texture("blue.png");
+  
+  scene.add_box("box3");
+  scene.set_pos("box3", Pos(-.4, 0, -.4));
+  scene.find<Box>("box3").set_dim(.02, .2, .02);
+  scene.find<Box>("box2").set_texture("gray.png");
+    
   Timer a_timer(1./90);
   uint i(0);
 
   Recording recording;
-  while (i++ < 3000) {
+  while (i++ < 1000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();

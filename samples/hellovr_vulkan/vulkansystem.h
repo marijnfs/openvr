@@ -238,7 +238,7 @@ struct GraphicsCanvas : public GraphicsObject {
 struct GraphicsCube : public GraphicsObject {
   std::string texture;
   float width=1, height=1, depth=1;
-  
+  bool balanced = true;
   GraphicsCube();
 
   void init();

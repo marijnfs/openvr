@@ -172,14 +172,32 @@ void GraphicsCube::change_dim(float width_, float height_, float depth_) {
 void GraphicsCube::set_vertices() {
   vertices.clear();
   n_vertex = 0;
-  Vector4 A = Vector4( 0, 0, 0, 1 );
-  Vector4 B = Vector4( width, 0, 0, 1 );
-  Vector4 C = Vector4( width, height, 0, 1 );
-  Vector4 D = Vector4( 0, height, 0, 1 );
-  Vector4 E = Vector4( 0, 0, depth, 1 );
-  Vector4 F = Vector4( width, 0, depth, 1 );
-  Vector4 G = Vector4( width, height, depth, 1 );
-  Vector4 H = Vector4( 0, height, depth, 1 );
+
+  float left = 0;
+  float right = width;
+  float bottom = 0;
+  float top = height;
+  float near = 0;
+  float far = depth;
+  
+  if (balanced) {
+    float left = -width / 2.0;
+    float right = width / 2.0;
+    float bottom = -height / 2.0;
+    float top = height / 2.0;
+    float near = -depth / 2.0;
+    float far = depth / 2.0;
+  }
+
+
+  Vector4 A = Vector4( left, bottom, near, 1 );
+  Vector4 B = Vector4( right, bottom, near, 1 );
+  Vector4 C = Vector4( right, top, near, 1 );
+  Vector4 D = Vector4( left, top, near, 1 );
+  Vector4 E = Vector4( left, bottom, far, 1 );
+  Vector4 F = Vector4( right, bottom, far, 1 );
+  Vector4 G = Vector4( right, top, far, 1 );
+  Vector4 H = Vector4( left, top, far, 1 );
 
   // triangles instead of quads
   add_vertex( E.x, E.y, E.z, 0, 1); //Front
