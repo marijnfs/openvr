@@ -23,12 +23,17 @@ int main() {
   auto ptr = (float*)glm::value_ptr(m);
 
   glm::quat quat = glm::quat_cast(m);
-  auto m2 = glm::mat4_cast(quat);
+  
   glm::vec3 pos;
-
   pos[0] = ptr[12];
   pos[1] = ptr[13];
   pos[2] = ptr[14];
+
+  //auto m2 = glm::mat4_cast(quat);
+  auto m2 = glm::mat4_cast(quat);
+  m2[3][0] = pos[0];
+  m2[3][1] = pos[1];
+  m2[3][2] = pos[2];
   
   cout << "test " << m << endl;
   cout << m2 << endl;

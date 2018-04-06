@@ -301,6 +301,10 @@ struct DrawVisitor : public ObjectVisitor {
   }
   
   void visit(Controller &controller) {
+    auto &gbox = gob<GraphicsCube>(i);
+    //gbox.change_texture();
+    gbox.change_dim(.02, .02, .02);
+    gbox.render(mat, right);
   }
   
   void visit(Point &point) {

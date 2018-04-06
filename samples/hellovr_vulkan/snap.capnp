@@ -50,6 +50,7 @@ struct Trigger {
     union {
         limit @2 : NameLimit;
         click @3 : Void;
+        inBox @4 : NamePair;
     }
 }
 
