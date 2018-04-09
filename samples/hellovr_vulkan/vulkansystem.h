@@ -315,7 +315,7 @@ struct DrawVisitor : public ObjectVisitor {
     auto &gbox = gob<GraphicsCube>(i);
     //gbox.change_texture();
         
-    gbox.change_dim(.02, .02, .02);
+    gbox.change_dim(.005, .005, .005);
     auto controller_mat = glm_to_mat4(controller.to_mat4());
     auto mat = mvp * controller_mat;
 

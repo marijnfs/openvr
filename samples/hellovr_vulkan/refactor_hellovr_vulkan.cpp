@@ -26,7 +26,7 @@ using namespace std;
 struct FittsWorld {
   Scene &scene;
 
-  FittsWorld() : scene(Global::scene()) {}
+  FittsWorld(Scene &scene_) : scene(scene_) {}
   
   void init() {
     //setup world
@@ -95,10 +95,11 @@ struct FittsWorld {
   }
 };
 
+void test() {
+  Global::scene().clear();
+}
 
 int main() {
-
-
   auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
@@ -134,12 +135,15 @@ int main() {
   scene.set_pos("box3", Pos(-.4, 0, -.4));
   scene.find<Box>("box3").set_dim(.02, .2, .02);
   scene.find<Box>("box2").set_texture("gray.png");
-    
+
+  scene.register_function("test", &test);
+  scene.add_trigger(new InBoxTrigger(scene("box"), scene("controller")), "test");
+                    
+  
   Timer a_timer(1./90);
   uint i(0);
-
   Recording recording;
-  while (i++ < 1000) {
+  while (i++ < 2000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();

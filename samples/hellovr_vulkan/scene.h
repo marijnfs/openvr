@@ -277,6 +277,7 @@ struct PrintVisitor : public ObjectVisitor {
   }
 };
 
+struct Scene;
 struct Trigger {
   bool changed = true;
   int nameid = -1;
@@ -331,7 +332,6 @@ struct Snap {
   
 };
 
-struct Scene;
 struct Recording {
   std::vector<Snap*> snaps;
   std::vector<Object*> objects;
@@ -502,8 +502,8 @@ struct Scene {
 
   int register_name(std::string name) {
     if (name_map.count(name)) return name_map[name];
-    name_map[name] = name_map.size();
     names.push_back(name);
+    return name_map[name] = name_map.size();
   }  
   
   void set_reward(float r_) {
@@ -514,12 +514,7 @@ struct Scene {
     function_map[name] = func;
   }
   
-  void add_trigger(Trigger *t, std::string funcname) {
-    int id = register_name(funcname);
-    
-    t->function_nameid = id;
-    triggers.push_back(t);
-  }
+  void add_trigger(Trigger *t, std::string funcname);
 
   float dist(Pos p1, Pos p2) {
     float d(0);
@@ -578,7 +573,7 @@ struct InBoxTrigger : public Trigger {
   int target_id = -1, box_id = -1;
 
   InBoxTrigger(){}
- InBoxTrigger(int tid, int bid) : target_id(tid), box_id(bid) {}
+ InBoxTrigger(int bid, int tid) : target_id(tid), box_id(bid) {}
 
   virtual void serialise(cap::Trigger::Builder builder) {
     Trigger::serialise(builder);
@@ -587,19 +582,7 @@ struct InBoxTrigger : public Trigger {
     l.setNameId2(box_id);
   }
   
-  bool check(Scene &scene) {
-    auto &box = scene.find<Box>(box_id);
-    auto &target = scene.find(target_id);
-    //todo: account for rotation, now we assume unrotated boxes
-
-    return target.p[0] > box.p[0] - width / 2 &&
-      target.p[0] < box.p[0] + width / 2 &&
-      target.p[1] > box.p[1] - height / 2 &&
-      target.p[1] < box.p[1] + height / 2 &&
-      target.p[2] > box.p[2] - depth / 2 &&
-      target.p[2] < box.p[2] + depth / 2;
-  }
-  
+  bool check(Scene &scene);  
 };
 
 struct LimitTrigger : public Trigger {
@@ -619,7 +602,7 @@ struct LimitTrigger : public Trigger {
   }
   
   bool check(Scene &scene) {
-    return scene.variables[scene.names[nameid]].val > limit;
+    return scene.variables[scene.names[nameid]]->val > limit;
   }
 };
 

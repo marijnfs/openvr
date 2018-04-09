@@ -33,6 +33,17 @@ void HMD::update() {
   }
 }
 
+void Scene::add_trigger(Trigger *t, std::string funcname) {
+  for (auto name : names)
+    std::cout << "n " << name << std::endl;
+  int id = register_name(funcname);
+  cout << id << endl;
+  t->function_nameid = id;
+  triggers.push_back(t);
+  
+}
+
+
 void Scene::step() {
   ++time;
   
@@ -45,9 +56,14 @@ void Scene::step() {
   }
   
   for (auto &t : triggers) {
-    if (t->check())
+    if (t->check(*this)) {
+      auto nameid = t->function_nameid;
+      auto name = names[t->function_nameid];
+      cout << names.size() << endl;
+      cout << "func: " << nameid << " " << name << endl;
       function_map[names[t->function_nameid]]();
-  }  
+    }  
+  }
 }
 
 void Scene::snap(Recording *rec) {
@@ -95,4 +111,24 @@ void Scene::snap(Recording *rec) {
   rec->snaps.push_back(snap_ptr);
   
   //store snap in recording
+}
+
+bool InBoxTrigger::check(Scene &scene) {
+  auto &box = scene.find<Box>(box_id);
+  auto &target = scene.find(target_id);
+  std::cout << box_id << " " << target_id << std::endl;
+  //todo: account for rotation, now we assume unrotated boxes
+  bool in = target.p[0] > box.p[0] - box.width / 2 &&
+    target.p[0] < box.p[0] + box.width / 2 &&
+                  target.p[1] > box.p[1] - box.height / 2 &&
+    target.p[1] < box.p[1] + box.height / 2 &&
+                  target.p[2] > box.p[2] - box.depth / 2 &&
+    target.p[2] < box.p[2] + box.depth / 2;
+  
+  std::cout << "checking " << target.p[0] << " " << box.p[0] << " " << box.width << endl <<
+    "checking " << target.p[1] << " " << box.p[1] <<" " << box.height << endl <<
+    "checking " << target.p[2] << " " << box.p[2] << " " << box.depth << endl << endl;
+                                                     if (in)
+      throw "";
+                                                     return in;
 }

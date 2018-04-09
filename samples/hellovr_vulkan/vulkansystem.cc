@@ -181,12 +181,12 @@ void GraphicsCube::set_vertices() {
   float far = depth;
   
   if (balanced) {
-    float left = -width / 2.0;
-    float right = width / 2.0;
-    float bottom = -height / 2.0;
-    float top = height / 2.0;
-    float near = -depth / 2.0;
-    float far = depth / 2.0;
+    left = -width / 2.0;
+    right = width / 2.0;
+    bottom = -height / 2.0;
+    top = height / 2.0;
+    near = -depth / 2.0;
+    far = depth / 2.0;
   }
 
 

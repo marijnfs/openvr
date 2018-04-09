@@ -73,8 +73,8 @@ struct Global {
     vk().wait_idle();
     delete inst().scene_ptr;
     delete inst().vr_ptr;
-    delete inst().vk_ptr;
     delete inst().ws_ptr;
+    delete inst().vk_ptr;
   }
   
   	VulkanSystem *vk_ptr = 0;
