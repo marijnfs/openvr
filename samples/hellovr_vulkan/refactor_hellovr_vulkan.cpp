@@ -65,6 +65,12 @@ struct FittsWorld {
 
   }
 
+  void on_box() {
+    
+    //check for click
+    
+  }
+  
   void on_win() {
     scene.set_reward(1);
     scene.end_recording();

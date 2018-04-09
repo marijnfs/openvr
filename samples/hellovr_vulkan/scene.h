@@ -275,7 +275,7 @@ struct Trigger {
   int nameid = -1;
   int function_nameid = -1;
   
-  bool check() { return false; }
+  virtual bool check(Scene &scene) { return false; }
 
   virtual Trigger *copy() {
     return new Trigger(*this);
@@ -385,6 +385,11 @@ struct Scene {
   
   Object &find(int nameid) {
     return *objects[names[nameid]];
+  }
+
+  template <typename T>
+  T &find(int name_id) {
+    return *reinterpret_cast<T*>(objects[names[name_id]]);
   }
 
   template <typename T>
@@ -554,11 +559,20 @@ struct InBoxTrigger : public Trigger {
     Trigger::serialise(builder);
     auto l = builder.initInBox();
     l.setNameId1(target_id);
-    l.setNameId2(box_id);    
+    l.setNameId2(box_id);
   }
   
-  bool check() {
-    
+  bool check(Scene &scene) {
+    auto &box = scene.find<Box>(box_id);
+    auto &target = scene.find(target_id);
+    //todo: account for rotation, now we assume unrotated boxes
+
+    return target.p[0] > box.p[0] - width / 2 &&
+      target.p[0] < box.p[0] + width / 2 &&
+      target.p[1] > box.p[1] - height / 2 &&
+      target.p[1] < box.p[1] + height / 2 &&
+      target.p[2] > box.p[2] - depth / 2 &&
+      target.p[2] < box.p[2] + depth / 2;
   }
   
 };
@@ -579,7 +593,8 @@ struct LimitTrigger : public Trigger {
     l.setLimit(limit);    
   }
   
-  bool check() {
+  bool check(Scene &scene) {
+    return scene.variables[scene.names[nameid]].val > limit;
   }
 };
 
@@ -589,7 +604,7 @@ struct ClickTrigger : public Trigger {
   ClickTrigger(){}
  ClickTrigger(uint oid_) : oid(oid_) {}
   
-  bool check() {
+  bool check(Scene &scene) {
     return rand() % 100 == 0;
   }
 
