@@ -7,6 +7,11 @@ WindowSystem::WindowSystem() : width(800), height(800) {
   
 }
 
+WindowSystem::~WindowSystem() {
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+}
+
 void WindowSystem::init() {
 	sdl_check(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER));
 

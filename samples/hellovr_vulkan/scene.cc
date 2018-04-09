@@ -5,7 +5,6 @@
 using namespace std;
 
 void Controller::update() {
-  
   if (tracked) {
     auto &vr = Global::vr();
     if (right) {
@@ -25,9 +24,12 @@ void Controller::update() {
 void HMD::update() {
   if (tracked) {
     auto &vr = Global::vr();
-      from_mat4(vr.hmd_pose);
-      cout << "HMD: [" << p[0] << " " << p[1] << " " << p[2] << "] [" <<
-        quat[0] << " "  << quat[1] << " "  << quat[2] << " "  << quat[3] << "]" << endl;
+    from_mat4(vr.hmd_pose);
+    
+    //vr.hmd_pose = glm_to_mat4(to_mat4()); ///TODO, we need this for replaying
+
+    cout << "HMD: [" << p[0] << " " << p[1] << " " << p[2] << "] [" <<
+      quat[0] << " "  << quat[1] << " "  << quat[2] << " "  << quat[3] << "]" << endl;
   }
 }
 

@@ -82,13 +82,13 @@ struct Object {
   
   virtual Object *copy() {return new Object(*this); }
   
-  void set_pos(Pos pos) { p = pos; }
+  void set_pos(Pos pos) { p = pos; changed = true; }
   void from_axis(float x, float y, float z, float angle) { //angle in degrees
     quat = glm::angleAxis<float>(angle, glm::vec3(x, y, z));
   }
 
   void look_at(Pos to, Pos up) {
-    quat = glm::quat_cast(glm::gtc::matrix_transform::lookAt(p, to, up));
+    quat = glm::quat_cast(glm::lookAt(p, to, up));
   }
   
   float angle() {
@@ -97,10 +97,10 @@ struct Object {
 
   glm::mat4 to_mat4() {
     auto m = glm::toMat4(quat);
-    m[3][0] = pos[0];
-    m[3][1] = pos[1];
-    m[3][2] = pos[2];
-  
+    m[3][0] = p[0];
+    m[3][1] = p[1];
+    m[3][2] = p[2];
+    m[3][3] = 1.0;
     return m;
   }
 
@@ -152,8 +152,14 @@ struct Box : public Object {
     width = w;
     height = h;
     depth = d;
+    changed = true;
   }
-  
+
+  void set_texture(std::string name) {
+    changed = true;
+    tex_name = name;
+  }
+
   Object *copy() {
     return new Box(*this);
   }
@@ -196,6 +202,7 @@ struct Canvas : public Object {
   }
 
   void set_texture(std::string name) {
+    changed = true;
     tex_name = name;
   }
 
@@ -271,7 +278,7 @@ struct PrintVisitor : public ObjectVisitor {
 };
 
 struct Trigger {
-  bool changed = false;
+  bool changed = true;
   int nameid = -1;
   int function_nameid = -1;
   
@@ -363,6 +370,11 @@ struct FreeVariable : public Variable {
     Variable::serialise(builder);
     builder.setFree(val);
   }
+
+  void set_value(float val_) {
+    val = val_;
+    changed = true;
+  }
 };
 
 struct Scene {
@@ -396,17 +408,30 @@ struct Scene {
   T &find(std::string name) {
     return *reinterpret_cast<T*>(objects[name]);
   }
-
+  
   Object &find(std::string name) {
     if (!objects.count(name))
       throw "no such object";
     return *objects[name];
   }
 
+  template <typename T>
+  T &variable(std::string name) {
+    return *reinterpret_cast<T*>(variables[name]);
+  }
+  
   void clear() {
     clear_objects();
     clear_triggers();
   }
+
+  void set_tracked(bool tracked) {
+   for (auto kv : objects) {
+      //skip hmd and controller
+     try {dynamic_cast<HMD*>(kv.second)->tracked = tracked;} catch(...) {}
+      try {dynamic_cast<Controller*>(kv.second)->tracked = tracked;} catch(...) {}
+      
+    }}
   
   void clear_objects() {
     for (auto kv : objects) {

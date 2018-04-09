@@ -54,14 +54,19 @@ struct VRSystem {
   DrawVisitor draw_visitor; //visitor pattern to draw the scene
 
   VRSystem();
+  ~VRSystem();
+  
   void init();
   void setup();
   
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
   Matrix4 get_hmd_projection( vr::Hmd_Eye eye );
   Matrix4 get_view_projection( vr::Hmd_Eye eye );
-  void update_track_pose();
 
+  void request_poses();
+  void update_track_pose();
+  void wait_frame();
+  
   void render(Scene &scene);
   void render_stereo_targets(Scene &scene);
   void render_companion_window();
@@ -78,8 +83,6 @@ struct VRSystem {
   std::vector<std::string> get_inst_ext_required_verified();
   std::vector<std::string> get_dev_ext_required_verified();
 
-  ~VRSystem();
-
-};
+  };
 
 #endif

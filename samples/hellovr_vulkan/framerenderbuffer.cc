@@ -4,6 +4,13 @@
 
 using namespace std;
 
+FrameRenderBuffer::~FrameRenderBuffer() {
+  auto &vk = Global::vk();
+
+  vkDestroyRenderPass(vk.dev, render_pass, nullptr);
+  vkDestroyFramebuffer(vk.dev, framebuffer, nullptr);
+}
+
 void FrameRenderBuffer::start_render_pass() {
 	// Start the renderpass
 	VkRenderPassBeginInfo renderpassci = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };

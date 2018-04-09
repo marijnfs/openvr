@@ -43,6 +43,13 @@ void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
 	check( vkBindBufferMemory( vk.dev, buffer, memory, 0 ), "vkBindBufferMemory" );
 };
 
+Buffer::~Buffer() {
+  auto &vk = Global::vk();
+
+  vkDestroyBuffer(vk.dev, buffer, nullptr);
+  vkFreeMemory(vk.dev, memory, nullptr);
+}
+
 template <typename T>
 void Buffer::map(T **ptr) {
   vkMapMemory( Global::vk().dev, memory, 0, VK_WHOLE_SIZE, 0, (void**)ptr );
@@ -282,6 +289,14 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
     barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     delete [] ptr;
+}
+
+Image::~Image() {
+  auto &vk = Global::vk();
+  vkDestroyImageView(vk.dev, view, nullptr);
+  vkDestroyImage(vk.dev, img, nullptr);
+  vkFreeMemory(vk.dev, mem, nullptr);
+  
 }
 
 void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout) {

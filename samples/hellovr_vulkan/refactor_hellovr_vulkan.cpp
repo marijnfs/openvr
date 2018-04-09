@@ -26,6 +26,8 @@ using namespace std;
 struct FittsWorld {
   Scene &scene;
 
+  FittsWorld() : scene(Global::scene()) {}
+  
   void init() {
     //setup world
     scene.add_object("hmd", new HMD());
@@ -33,7 +35,8 @@ struct FittsWorld {
 
     scene.register_function("onstart", std::bind(&FittsWorld::on_start, *this));
     scene.register_function("onwin", std::bind(&FittsWorld::on_win, *this));
-    scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
+    //scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
+    scene.add_variable("mode", new FreeVariable());
     scene.add_trigger(new ClickTrigger(), "onstart");
   }
 
@@ -81,6 +84,7 @@ struct FittsWorld {
     scene.clear();
 
     int choice = rand() % 3;
+    scene.variable<FreeVariable>("mode").set_value(choice);
     add_points(choice);
 
     
@@ -106,28 +110,44 @@ int main() {
 
   //preloading images
   ImageFlywheel::image("stub.png");
-    
+  ImageFlywheel::image("gray.png");
+  ImageFlywheel::image("blue.png");
   vk.end_submit_cmd();
   
   auto &scene = Global::scene();
   //scene.add_canvas("test");
   scene.add_hmd();
+  scene.add_object("controller", new Controller(true));
   //scene.set_pos("test", Pos(1, 1, 1));
 
   scene.add_box("box");
-  scene.set_pos("box", Pos(-2, 0, 0));
-  scene.find<Box>("box").set_dim(.1, .1, .1);
-  //Timer a_timer(1.);
+  scene.set_pos("box", Pos(.4, 0, -.4));
+  scene.find<Box>("box").set_dim(.02, .2, .02);
+
+
+  scene.add_box("box2");
+  scene.set_pos("box2", Pos(0, 0, -.4));
+  scene.find<Box>("box2").set_dim(.02, .2, .02);
+  scene.find<Box>("box2").set_texture("blue.png");
+  
+  scene.add_box("box3");
+  scene.set_pos("box3", Pos(-.4, 0, -.4));
+  scene.find<Box>("box3").set_dim(.02, .2, .02);
+  scene.find<Box>("box2").set_texture("gray.png");
+    
+  Timer a_timer(1./90);
   uint i(0);
 
   Recording recording;
-  while (i++ < 10000) {
+  while (i++ < 1000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
     scene.snap(&recording);
 
     vr.render(scene);
+    vr.wait_frame();
+    //vr.request_poses();
     //a_timer.wait();
   }
 
@@ -138,4 +158,6 @@ int main() {
   glm::fvec3 v;
   glm::fquat q;
   q * v;
+
+  Global::shutdown();
 }
