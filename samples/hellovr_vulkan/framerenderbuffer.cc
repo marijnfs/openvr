@@ -18,7 +18,7 @@ void FrameRenderBuffer::start_render_pass() {
 	renderpassci.framebuffer = framebuffer;
 	renderpassci.renderArea.offset.x = 0;
 	renderpassci.renderArea.offset.y = 0;
-    cout << "wh:" << width << " " << height << endl;///////////
+    //cout << "wh:" << width << " " << height << endl;///////////
 	renderpassci.renderArea.extent.width = width;
 	renderpassci.renderArea.extent.height = height;
 	renderpassci.clearValueCount = 2;
@@ -31,9 +31,6 @@ void FrameRenderBuffer::start_render_pass() {
 	cv[ 1 ].depthStencil.stencil = 0;
 
 	renderpassci.pClearValues = &cv[ 0 ];
-    cout << "renderpass: " << endl;
-    cout << render_pass << " " << framebuffer << endl;
-    cout << Global::vk().cmd_buffer() << endl;
 	vkCmdBeginRenderPass( Global::vk().cmd_buffer(), &renderpassci, VK_SUBPASS_CONTENTS_INLINE );
 }
 

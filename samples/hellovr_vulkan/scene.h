@@ -234,7 +234,8 @@ struct HMD : public Object {
 
 struct Controller : public Object {
   bool right = true;
-  bool clicked = false;
+  bool pressed = false; //true if pressed
+  bool clicked = false; //true if pressed and previously unpressed (so only one frame)
   bool tracked = true;
 
   Controller(){}
@@ -526,10 +527,9 @@ struct Scene {
   }
 
   void visit(ObjectVisitor &visitor) {
-    std::cout << "visitor " << std::endl;
     visitor.i = 0;
     for (auto &kv : objects) {
-      std::cout << "visiting object " << visitor.i << std::endl;
+      //std::cout << "visiting object " << visitor.i << std::endl;
       kv.second->visit(visitor);
       ++visitor.i;
     }
@@ -613,7 +613,7 @@ struct ClickTrigger : public Trigger {
  ClickTrigger(uint oid_) : oid(oid_) {}
   
   bool check(Scene &scene) {
-    return rand() % 100 == 0;
+    return scene.find<Controller>(oid).clicked;
   }
 
   void serialise(cap::Trigger::Builder builder) {

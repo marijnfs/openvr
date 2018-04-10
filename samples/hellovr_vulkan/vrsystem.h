@@ -13,7 +13,7 @@
 #include <vulkan/vulkan.h>
 struct TrackedController {
   Matrix4 t;
-  bool clicked = false;
+  bool pressed = false;
   
     std::vector<float> get_pos();
   void set_t(Matrix4 &t);

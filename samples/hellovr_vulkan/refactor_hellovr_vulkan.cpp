@@ -26,69 +26,61 @@ using namespace std;
 struct FittsWorld {
   Scene &scene;
 
-  FittsWorld(Scene &scene_) : scene(scene_) {}
+  FittsWorld(Scene &scene_) : scene(scene_) {
+    init();
+  }
   
+
   void init() {
-    //setup world
-    scene.add_object("hmd", new HMD());
+    cout << "Fitts World INIT" << endl;
+    //scene.add_canvas("test");
+    scene.add_hmd();
     scene.add_object("controller", new Controller(true));
-
-    scene.register_function("onstart", std::bind(&FittsWorld::on_start, *this));
-    scene.register_function("onwin", std::bind(&FittsWorld::on_win, *this));
-    //scene.add_variable("dist", new DistanceVariable(scene("target"), scene("controller")));
+    //scene.set_pos("test", Pos(1, 1, 1));
+    
+    scene.register_function("on_in_box", std::bind(&FittsWorld::on_in_box, *this));
+    scene.register_function("on_start", std::bind(&FittsWorld::on_start, *this));
     scene.add_variable("mode", new FreeVariable());
-    scene.add_trigger(new ClickTrigger(), "onstart");
+    scene.add_trigger(new ClickTrigger(scene("controller")), "on_start");
+    cout << "Fitts World Done INIT" << endl;
   }
 
-  void add_points(int choice) {
-    scene.add_canvas("canvas1");
-    scene.add_canvas("canvas2");
-    scene.add_canvas("canvas3");
+  void on_in_box() {
+    cout << "ON IN BOX" << endl;
 
-    scene.set_texture("canvas1", "circle");
-    scene.set_texture("canvas2", "circle");
-    scene.set_texture("canvas3", "circle");
-     
-    scene.set_pos("canvas1", Pos{0, -1, -1});
-    scene.set_pos("canvas2", Pos{0, -1, 0});
-    scene.set_pos("canvas3", Pos{0, -1, 1});
-
-    scene.add_point("target");
-    switch(choice) {
-    case 0: scene.set_pos("target", Pos{0, -1, -1});
-      scene.set_texture("canvas1", "cross");
-      break;
-    case 1: scene.set_pos("target", Pos{0, -1, 0}); break;
-      scene.set_texture("canvas2", "cross");
-      break;
-    case 2: scene.set_pos("target", Pos{0, -1, 1}); break;
-      scene.set_texture("canvas3", "cross");
-      break;
+    if (scene.find<Controller>("controller").clicked == true) {
+      scene.set_reward(1);
+      scene.end_recording();
+      scene.clear();
+      scene.add_trigger(new ClickTrigger(), "on_start");
     }
-
-  }
-
-  void on_box() {
-    
-    //check for click
-    
-  }
-  
-  void on_win() {
-    scene.set_reward(1);
-    scene.end_recording();
-    scene.add_trigger(new ClickTrigger(), "onstart");
   }
   
   void on_start() {
     scene.clear();
 
+    vector<string> boxes = {"box1", "box2", "box3"};
+    
+    scene.add_box("box1");
+    scene.set_pos("box1", Pos(.4, 0, -.4));
+    scene.find<Box>("box1").set_dim(.02, .2, .02);
+
+    scene.add_box("box2");
+    scene.set_pos("box2", Pos(0, 0, -.4));
+    scene.find<Box>("box2").set_dim(.02, .2, .02);
+    scene.find<Box>("box2").set_texture("blue.png");
+    
+    scene.add_box("box3");
+    scene.set_pos("box3", Pos(-.4, 0, -.4));
+    scene.find<Box>("box3").set_dim(.02, .2, .02);
+    scene.find<Box>("box3").set_texture("gray.png");
+
+    cout << "done setting boxes" << endl;
     int choice = rand() % 3;
     scene.variable<FreeVariable>("mode").set_value(choice);
-    add_points(choice);
 
+    scene.add_trigger(new InBoxTrigger(scene(boxes[choice]), scene("controller")), "on_in_box");
     
-    scene.add_trigger(new LimitTrigger(scene("dist"), .1), "onwin");
     scene.set_reward(0);
     scene.start_recording();
     
@@ -113,32 +105,12 @@ int main() {
   ImageFlywheel::image("stub.png");
   ImageFlywheel::image("gray.png");
   ImageFlywheel::image("blue.png");
+
+  auto &scene = Global::scene();
+  FittsWorld world(scene);
   vk.end_submit_cmd();
   
-  auto &scene = Global::scene();
-  //scene.add_canvas("test");
-  scene.add_hmd();
-  scene.add_object("controller", new Controller(true));
-  //scene.set_pos("test", Pos(1, 1, 1));
 
-  scene.add_box("box");
-  scene.set_pos("box", Pos(.4, 0, -.4));
-  scene.find<Box>("box").set_dim(.02, .2, .02);
-
-
-  scene.add_box("box2");
-  scene.set_pos("box2", Pos(0, 0, -.4));
-  scene.find<Box>("box2").set_dim(.02, .2, .02);
-  scene.find<Box>("box2").set_texture("blue.png");
-  
-  scene.add_box("box3");
-  scene.set_pos("box3", Pos(-.4, 0, -.4));
-  scene.find<Box>("box3").set_dim(.02, .2, .02);
-  scene.find<Box>("box2").set_texture("gray.png");
-
-  scene.register_function("test", &test);
-  scene.add_trigger(new InBoxTrigger(scene("box"), scene("controller")), "test");
-                    
   
   Timer a_timer(1./90);
   uint i(0);

@@ -17,6 +17,8 @@ Buffer::Buffer(size_t n_, VkBufferUsageFlags usage, Location loc) : n(n_) {
 
 
 void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
+  if (buffer)
+    destroy();
   n = n_;
 	auto &vk = Global::vk();
 // Create the vertex buffer and fill with data
@@ -35,7 +37,7 @@ void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
         (loc == HOST_COHERENT) ? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT) :
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 		);
-    cout << "buf mem size: " << memreq.size << " " << alloc_info.memoryTypeIndex << endl;
+    //cout << "buf mem size: " << memreq.size << " " << alloc_info.memoryTypeIndex << endl;
 	alloc_info.allocationSize = memreq.size;
 
 	check( vkAllocateMemory( vk.dev, &alloc_info, nullptr, &memory ), "vkCreateBuffer" );
@@ -46,8 +48,17 @@ void Buffer::init(size_t n_, VkBufferUsageFlags usage, Location loc) {
 Buffer::~Buffer() {
   auto &vk = Global::vk();
 
+  destroy();
+}
+
+void Buffer::destroy() {
+  auto &vk = Global::vk();
+  
   vkDestroyBuffer(vk.dev, buffer, nullptr);
   vkFreeMemory(vk.dev, memory, nullptr);
+  buffer = 0;
+  memory = 0;
+  n = 0;
 }
 
 template <typename T>
@@ -72,7 +83,7 @@ void Buffer::update(std::vector<T> &init_data) {
   
   auto &vk = Global::vk();
   void *data(0);
-  cout << n << endl;
+  //cout << n << endl;
   check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
   
   memcpy( data, &init_data[0], n );
@@ -92,7 +103,7 @@ void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location 
   
   auto &vk = Global::vk();
   void *data(0);
-  cout << n << endl;
+  //cout << n << endl;
   check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
   
   memcpy( data, &init_data[0], n );
@@ -110,7 +121,7 @@ void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location lo
   n = size * sizeof(T); //size in bytes
   init(n, usage, loc);
 
-  cout << n << endl;
+  //cout << n << endl;
   auto &vk = Global::vk();
   void *data(0);
   check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
@@ -264,7 +275,7 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 
 	while( mip_width > 1 && mip_height > 1 )
 	{
-      cout << mip_height << " " << mip_width << endl;
+      //cout << mip_height << " " << mip_width << endl;
 		gen_mipmap_rgba( prev_buffer, cur_buffer, mip_width, mip_height, &mip_width, &mip_height );
 		buf_img_cpy.bufferOffset = cur_buffer - ptr;
 		buf_img_cpy.imageSubresource.mipLevel++;
@@ -276,10 +287,9 @@ void Image::init_from_img(string img_path, VkFormat format, VkImageUsageFlags us
 	}
 	buf_size = cur_buffer - ptr;
 
-    cout << img_copies.size() << endl;
 	init(width, height, format, usage, aspect, img_copies.size(), 1, true);
 
-	Buffer staging_buffer(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, HOST);
+	staging_buffer.init(ptr, buf_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, HOST);
 
     //to_transfer_dst();
     barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

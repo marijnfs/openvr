@@ -360,7 +360,9 @@ void VRSystem::update_track_pose() {
         if (device_class[d] == vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
           vr::VRControllerState_t cstate;
           //ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, sizeof(vr::TrackedDeviceIndex_t));
-          ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, 64);
+          if (!ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, 64))
+            throw "no info";
+          
           cout << "a controller " << cstate.ulButtonPressed << endl;
           cout << "AXIS: " << cstate.rAxis[vr::k_eControllerAxis_Trigger].x << endl;
           cout << "AXIS: " << cstate.rAxis[vr::k_EButton_Axis1].x << endl;
@@ -368,10 +370,10 @@ void VRSystem::update_track_pose() {
             right_controller.set_t(tracked_pose_mat4[d]);
             if (cstate.ulButtonPressed & vr::ButtonMaskFromId(vr::k_EButton_Axis1)) throw "";
             cout << "AXIS: " << cstate.rAxis[vr::k_eControllerAxis_Trigger].x << endl;
-            right_controller.clicked = false; //todo
+            right_controller.pressed = false; //todo
           } else {
             left_controller.set_t(tracked_pose_mat4[d]);
-            left_controller.clicked = false;
+            left_controller.pressed = false;
           }
           ++controller_idx;
         }

@@ -9,12 +9,17 @@ void Controller::update() {
     auto &vr = Global::vr();
     if (right) {
       from_mat4(vr.right_controller.t);
+      if (vr.right_controller.pressed && !pressed)
+        clicked = true;
+      pressed = vr.right_controller.pressed;
     } else {
       from_mat4(vr.left_controller.t);
+      if (vr.left_controller.pressed && !pressed)
+        clicked = true;
+      pressed = vr.left_controller.pressed;
     }
-    //auto &vr = Global::vr();
     
-    //grab position from vrsystem if tracked
+    
   }
 
   //if (acted) { //somehow get it from actions
@@ -34,10 +39,7 @@ void HMD::update() {
 }
 
 void Scene::add_trigger(Trigger *t, std::string funcname) {
-  for (auto name : names)
-    std::cout << "n " << name << std::endl;
   int id = register_name(funcname);
-  cout << id << endl;
   t->function_nameid = id;
   triggers.push_back(t);
   
@@ -59,8 +61,6 @@ void Scene::step() {
     if (t->check(*this)) {
       auto nameid = t->function_nameid;
       auto name = names[t->function_nameid];
-      cout << names.size() << endl;
-      cout << "func: " << nameid << " " << name << endl;
       function_map[names[t->function_nameid]]();
     }  
   }
@@ -117,6 +117,7 @@ bool InBoxTrigger::check(Scene &scene) {
   auto &box = scene.find<Box>(box_id);
   auto &target = scene.find(target_id);
   std::cout << box_id << " " << target_id << std::endl;
+  std::cout << scene.objects.size() << std::endl;
   //todo: account for rotation, now we assume unrotated boxes
   bool in = target.p[0] > box.p[0] - box.width / 2 &&
     target.p[0] < box.p[0] + box.width / 2 &&

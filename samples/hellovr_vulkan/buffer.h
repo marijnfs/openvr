@@ -12,13 +12,14 @@ enum Location {
 };
 
 struct Buffer {
-  VkBuffer buffer;
-  VkDeviceMemory memory;
+  VkBuffer buffer = 0;
+  VkDeviceMemory memory = 0;
   size_t n = 0;
   
   Buffer();
   Buffer(size_t size, VkBufferUsageFlags usage, Location loc);
   ~Buffer();
+  void destroy();
   
   template <typename T>
   Buffer(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc);
@@ -63,6 +64,8 @@ struct Image {
     unsigned width = 0, height = 0;
     int mip_levels = 1;
 
+  Buffer staging_buffer;
+  
   Image(VkImage img_, VkFormat format_, VkImageAspectFlags aspect_);
   
     Image();
