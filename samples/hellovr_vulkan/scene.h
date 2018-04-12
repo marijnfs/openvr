@@ -374,11 +374,26 @@ struct Snap {
       auto l = builder.initVariableIds(variable_ids.size());
       for (size_t i(0); i < variable_ids.size(); ++i)
         l.set(i, variable_ids[i]);
-    }
-    
-    
+    }    
   }
   
+  void deserialise(cap::Snap::Reader reader) {
+    t = reader.getTimestamp();
+    reward = reader.getReward();
+    object_ids.reserve(reader.getObjectIds().size());
+    trigger_ids.reserve(reader.getTriggerIds().size());
+    variable_ids.reserve(reader.getVariableIds().size());
+
+    for (auto n : reader.getObjectIds())
+      object_ids.push_back(n);
+    
+    for (auto n : reader.getTriggerIds())
+      trigger_ids.push_back(n);
+    
+    for (auto n : reader.getVariableIds())
+      variable_ids.push_back(n);    
+  }
+
 };
 
 struct Recording {
