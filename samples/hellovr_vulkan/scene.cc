@@ -127,9 +127,84 @@ bool InBoxTrigger::check(Scene &scene) {
     target.p[2] < box.p[2] + box.depth / 2;
   
   std::cout << "checking " << target.p[0] << " " << box.p[0] << " " << box.width << endl <<
-    "checking " << target.p[1] << " " << box.p[1] <<" " << box.height << endl <<
+    "checking " << target.p[1] << " " << box.p[1] << " " << box.height << endl <<
     "checking " << target.p[2] << " " << box.p[2] << " " << box.depth << endl << endl;
                                                      if (in)
       throw "";
                                                      return in;
+}
+
+Object *read_object(cap::Object::Reader reader) {
+  Object *o = 0;
+  
+  switch (reader.which()) {
+  case cap::Object::HMD:
+    o = new HMD();
+    o->deserialise(reader);
+    break;
+  case cap::Object::CONTROLLER:
+    o = new Controller();
+    o->deserialise(reader);
+    break;
+  case cap::Object::POINT:
+    o = new Point();
+    o->deserialise(reader);
+    break;
+  case cap::Object::CANVAS:
+    o = new Canvas();
+    o->deserialise(reader);
+    break;
+  case cap::Object::BOX:
+    o = new Box();
+    o->deserialise(reader);
+    break;
+    
+    //hmd @3 : Void;
+    //  controller @4 : Controller;
+    //  point @5 : Void;
+    //  canvas @6 : Text;
+    //   box @7 : Box;
+
+  }
+  return o;
+}
+
+Variable *read_variable(cap::Variable::Reader reader) {
+  Variable *v = 0;
+  switch (reader.which()) {
+  case cap::Variable::DISTANCE:
+    v = new DistanceVariable();
+    v->deserialise(reader);
+    break;
+  case cap::Variable::FREE:
+    v = new FreeVariable();
+    v->deserialise(reader);
+    break;
+  //  distance @2 : NamePair;
+  //     free @3 : Float32;
+  }
+  return v;
+}
+
+Trigger *read_trigger(cap::Trigger::Reader reader) {
+  Trigger *t = 0;
+  switch (reader.which()) {
+  case cap::Trigger::LIMIT:
+    t = new LimitTrigger();
+    t->deserialise(reader);
+    break;
+  case cap::Trigger::CLICK:
+    t = new ClickTrigger();
+    t->deserialise(reader);
+    break;
+  case cap::Trigger::IN_BOX:
+    t = new InBoxTrigger();
+    t->deserialise(reader);
+    break;    
+  }
+  return t;
+  //limit @2 : NameLimit;
+  //     click @3 : Void;
+  //     inBox @4 : NamePair;
+
 }
