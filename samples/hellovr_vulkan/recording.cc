@@ -2,6 +2,7 @@
 #include "bytes.h"
 #include "serialise.h"
 #include "gzstream.h"
+#include "util.h"
 
 #include <capnp/message.h>
 #include <capnp/serialize.h>
@@ -12,21 +13,23 @@
 
 using namespace std;
 
-void Recording::load_scene(int i, Scene *scene) {
-  scene->clear(false);
+void Recording::load_scene(int i, Scene *scene_ptr) {
+  Scene &scene(*scene_ptr);
+  
+  scene.clear();
   auto &snap = *snaps[i];
 
   //todo
-  t = snap.t;
-  reward = snap.reward;
+  scene.time = snap.time;
+  scene.reward = snap.reward;
   
   for (auto o : snap.object_ids) {
-    string name = scene.names[objects[o]->name_id];
+    string name = scene.names[objects[o]->nameid];
     scene.objects[name] = objects[o];
   }
 
   for (auto v : snap.variable_ids) {
-    string name = scene.names[variables[v]->name_id];
+    string name = scene.names[variables[v]->nameid];
     scene.variables[name] = variables[v];
   }
 
@@ -35,15 +38,14 @@ void Recording::load_scene(int i, Scene *scene) {
   
 }
 
-void Recording::serialise(Bytes *bytes) {
+void Recording::serialise(Bytes *bytes, Scene &scene) {
   ::capnp::MallocMessageBuilder cap_message;
   auto builder = cap_message.initRoot<cap::Recording>();
   
-
   {
     int i(0);
-    auto name_builder = builder.initNames(names.size());
-    for (auto n : names)
+    auto name_builder = builder.initNames(scene.names.size());
+    for (auto n : scene.names)
       name_builder.set(i++, n);
   }
   //for (int i(0); i < scene.objects.size(); ++i)
@@ -141,19 +143,25 @@ void Recording::deserialise(Bytes &bytes, Scene *scene) {
 
 void Recording::load(std::string filename, Scene *scene) {
   igzstream ifs(filename.c_str());
-
+  if (!ifs)
+    throw StringException("couldn't open file");
   Bytes b;
-  ifs.seekg(0, std::ios::end);
-  b.reserve(ifs.tellg());
-  ifs.seekg(0, std::ios::beg);
+  //ifs.seekg(0, std::ios::end);
+  //int end = ifs.tellg();
+  //cout << "tellg: " << end << endl;
+  //if (end < 0)
+  // throw StringException("couldn't read file");
+    
+  //b.reserve(end);
+  //ifs.seekg(0, std::ios::beg);
       
-  copy(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>(), b.begin());
+  copy(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>(), back_insert_iterator<Bytes>(b));
   deserialise(b, scene);
 }
 
-void Recording::save(std::string filename) {
+void Recording::save(std::string filename, Scene &scene) {
   Bytes b;
-  serialise(&b);
+  serialise(&b, scene);
 
   ogzstream of(filename.c_str());
   of.write((char*)&b[0], b.size());

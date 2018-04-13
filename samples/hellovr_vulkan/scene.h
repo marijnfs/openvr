@@ -350,14 +350,14 @@ struct Snap {
   // world state vars
   // reward
 
-  uint t = 0;
+  uint time = 0;
   float reward = 0;
   std::vector<uint> object_ids;
   std::vector<uint> trigger_ids;
   std::vector<uint> variable_ids;
 
   void serialise(cap::Snap::Builder builder) {
-    builder.setTimestamp(t);
+    builder.setTimestamp(time);
     builder.setReward(reward);
 
     {
@@ -378,7 +378,7 @@ struct Snap {
   }
   
   void deserialise(cap::Snap::Reader reader) {
-    t = reader.getTimestamp();
+    time = reader.getTimestamp();
     reward = reader.getReward();
     object_ids.reserve(reader.getObjectIds().size());
     trigger_ids.reserve(reader.getTriggerIds().size());
@@ -407,8 +407,8 @@ struct Recording {
   void deserialise(Bytes &b, Scene *scene);
   void load(std::string filename, Scene *scene);
 
-  void serialise(Bytes *b);
-  void save(std::string filename);
+  void serialise(Bytes *b, Scene &scene);
+  void save(std::string filename, Scene &scene);
 
   int add_object(Object *o);
   int add_variable(Variable *v);
@@ -442,6 +442,12 @@ struct Variable {
 Variable *read_variable(cap::Variable::Reader reader);
 
 struct FreeVariable : public Variable {
+
+  void set_value(float val_) {
+    val = val_;
+    changed = true;
+  }
+  
   void serialise(cap::Variable::Builder builder) {
     Variable::serialise(builder);
     builder.setFree(val);
@@ -452,10 +458,7 @@ struct FreeVariable : public Variable {
     val = reader.getFree();
   }
 
-  void set_value(float val_) {
-    val = val_;
-    changed = true;
-  }
+  Variable *copy() {return new FreeVariable(*this);}
 };
 
 struct Scene {
@@ -664,6 +667,8 @@ struct DistanceVariable : public Variable {
     oid1 = d.getNameId1();
     oid2 = d.getNameId2();
   }
+
+  Variable *copy() {return new DistanceVariable(*this);}
 };
 
 struct InBoxTrigger : public Trigger {
@@ -687,6 +692,8 @@ struct InBoxTrigger : public Trigger {
     box_id = l.getNameId2();
   }
 
+  Trigger *copy() { return new InBoxTrigger(*this); }
+  
   bool check(Scene &scene);  
 };
 
@@ -709,6 +716,8 @@ struct LimitTrigger : public Trigger {
   bool check(Scene &scene) {
     return scene.variables[scene.names[nameid]]->val > limit;
   }
+
+  Trigger *copy() { return new LimitTrigger(*this); }
 };
 
 struct ClickTrigger : public Trigger {
@@ -731,6 +740,7 @@ struct ClickTrigger : public Trigger {
     //reader.getClick();
   }
 
+  Trigger *copy() { return new ClickTrigger(*this); }
 };
 
 

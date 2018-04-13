@@ -69,7 +69,7 @@ void Scene::step() {
 void Scene::snap(Recording *rec) {
   Snap *snap_ptr = new Snap();
   Snap &snap(*snap_ptr);
-  snap.t = time;
+  snap.time = time;
   snap.reward = reward;
     
   for (auto &kv : objects) {
@@ -123,30 +123,32 @@ bool InBoxTrigger::check(Scene &scene) {
 }
 
 Object *read_object(cap::Object::Reader reader) {
-  Object *o = 0;
-  
   switch (reader.which()) {
-  case cap::Object::HMD:
-    o = new HMD();
+  case cap::Object::HMD: {
+    auto o = new HMD();
     o->deserialise(reader);
-    break;
-  case cap::Object::CONTROLLER:
-    o = new Controller();
+    return o;
+  }
+  case cap::Object::CONTROLLER: {
+    auto o = new Controller();
     o->deserialise(reader);
-    break;
-  case cap::Object::POINT:
-    o = new Point();
+    return o;
+  }
+  case cap::Object::POINT: {
+    auto o = new Point();
     o->deserialise(reader);
-    break;
-  case cap::Object::CANVAS:
-    o = new Canvas();
+    return o;
+  }
+  case cap::Object::CANVAS: {
+    auto o = new Canvas();
     o->deserialise(reader);
-    break;
-  case cap::Object::BOX:
-    o = new Box();
+    return o;
+  }
+  case cap::Object::BOX: {
+    auto o = new Box();
     o->deserialise(reader);
-    break;
-    
+    return o;
+  }
     //hmd @3 : Void;
     //  controller @4 : Controller;
     //  point @5 : Void;
@@ -154,43 +156,44 @@ Object *read_object(cap::Object::Reader reader) {
     //   box @7 : Box;
 
   }
-  return o;
 }
 
 Variable *read_variable(cap::Variable::Reader reader) {
-  Variable *v = 0;
   switch (reader.which()) {
-  case cap::Variable::DISTANCE:
-    v = new DistanceVariable();
+  case cap::Variable::DISTANCE: {
+    auto v = new DistanceVariable();
     v->deserialise(reader);
-    break;
-  case cap::Variable::FREE:
-    v = new FreeVariable();
+    return v;
+  }
+  case cap::Variable::FREE: {
+    auto v = new FreeVariable();
     v->deserialise(reader);
-    break;
+    return v;
+  }
   //  distance @2 : NamePair;
   //     free @3 : Float32;
   }
-  return v;
 }
 
 Trigger *read_trigger(cap::Trigger::Reader reader) {
-  Trigger *t = 0;
   switch (reader.which()) {
-  case cap::Trigger::LIMIT:
-    t = new LimitTrigger();
+  case cap::Trigger::LIMIT: {
+    auto t = new LimitTrigger();
     t->deserialise(reader);
-    break;
-  case cap::Trigger::CLICK:
-    t = new ClickTrigger();
+    return t;
+  }    
+  case cap::Trigger::CLICK: {
+    auto t = new ClickTrigger();
     t->deserialise(reader);
-    break;
-  case cap::Trigger::IN_BOX:
-    t = new InBoxTrigger();
-    t->deserialise(reader);
-    break;    
+
+     return t;
   }
-  return t;
+  case cap::Trigger::IN_BOX: {
+    auto t = new InBoxTrigger();
+    t->deserialise(reader);
+    return t;
+  }
+  }
   //limit @2 : NameLimit;
   //     click @3 : Void;
   //     inBox @4 : NamePair;

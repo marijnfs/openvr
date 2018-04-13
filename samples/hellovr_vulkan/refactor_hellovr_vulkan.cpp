@@ -41,6 +41,7 @@ struct FittsWorld {
     scene.register_function("on_in_box", std::bind(&FittsWorld::on_in_box, *this));
     scene.register_function("on_start", std::bind(&FittsWorld::on_start, *this));
     scene.add_variable("mode", new FreeVariable());
+    scene.variable<FreeVariable>("mode").set_value(1);
     scene.add_trigger(new ClickTrigger(scene("controller")), "on_start");
     cout << "Fitts World Done INIT" << endl;
   }
@@ -92,7 +93,7 @@ void test() {
   Global::scene().clear();
 }
 
-int main() {
+int record() {
   auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
@@ -129,12 +130,63 @@ int main() {
   }
 
   cout << "writing: " << endl;
-  recording.save("test.save");
+  recording.save("test.save", scene);
   cout << "done: " << endl;
-    
-  glm::fvec3 v;
-  glm::fquat q;
-  q * v;
 
   Global::shutdown();
+}
+
+int replay() {
+  auto &ws = Global::ws();
+  auto &vr = Global::vr();
+  auto &vk = Global::vk();
+
+  
+  vr.setup();
+  ws.setup();
+  vk.setup();
+
+  //preloading images
+  ImageFlywheel::image("stub.png");
+  ImageFlywheel::image("gray.png");
+  ImageFlywheel::image("blue.png");
+
+  auto &scene = Global::scene();
+  FittsWorld world(scene);
+  vk.end_submit_cmd();
+  
+
+  
+  Timer a_timer(1./90);
+  uint i(1000);
+  Recording recording;
+  recording.load("test.save", &scene);
+  cout << "recording size: " << recording.size() << endl;
+  recording.load_scene(i, &scene);
+  for (auto o : scene.objects)
+    cout << o.first << " " << scene.names[o.second->nameid] << endl;
+
+  for (auto v : scene.variables)
+    cout << v.first << " " << v.second->val << " " << scene.names[v.second->nameid] << endl;
+  for (auto t : scene.triggers)
+    cout << scene.names[t->function_nameid] << endl;
+  return 0;
+  while (i++ < 2000) {
+    //cout << i << endl;
+    vr.update_track_pose();
+    scene.step();
+    scene.snap(&recording);
+
+    vr.render(scene);
+    vr.wait_frame();
+    //vr.request_poses();
+    //a_timer.wait();
+  }
+
+  Global::shutdown();
+}
+
+int main() {
+      //record();
+      replay();
 }
