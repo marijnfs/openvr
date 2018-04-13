@@ -51,7 +51,8 @@ struct FittsWorld {
     if (scene.find<Controller>("controller").clicked == true) {
       scene.set_reward(1);
       scene.end_recording();
-      scene.clear();
+      scene.clear_objects();
+      scene.clear_triggers();
       scene.add_trigger(new ClickTrigger(), "on_start");
     }
   }

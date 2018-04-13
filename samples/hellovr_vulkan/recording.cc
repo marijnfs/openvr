@@ -12,6 +12,9 @@
 
 using namespace std;
 
+void Recording::load_scene(int i, Scene *scene) {
+}
+
 void Recording::serialise(Bytes *bytes) {
   ::capnp::MallocMessageBuilder cap_message;
   auto builder = cap_message.initRoot<cap::Recording>();
@@ -26,6 +29,7 @@ void Recording::serialise(Bytes *bytes) {
   
   {
     int i(0);
+
     auto var_builder = builder.initVariables(variables.size());
     for (auto v : variables)
       v->serialise(var_builder[i++]);
@@ -52,12 +56,34 @@ void Recording::serialise(Bytes *bytes) {
   //copy(cap_bytes.begin(), cap_bytes.end(), &bytes[0]);
 }
 
+int Recording::add_object(Object *o) {
+  int idx = objects.size();
+  objects.push_back(o);
+  index_map[(void*)o] = idx;
+  return idx;
+}
+
+int Recording::add_variable(Variable *v) {
+  int idx = variables.size();
+  variables.push_back(v);
+  index_map[(void*)v] = idx;
+  return idx;
+}
+
+int Recording::add_trigger(Trigger *t) {
+  int idx = triggers.size();
+  triggers.push_back(t);
+  index_map[(void*)t] = idx;
+  return idx;
+}
+
 void Recording::deserialise(Bytes &bytes, Scene *scene) {
   ::capnp::FlatArrayMessageReader reader(bytes.kjwp());
   variables.clear();
   objects.clear();
   triggers.clear();
   snaps.clear();
+  index_map.clear();
   
   auto rec = reader.getRoot<cap::Recording>();
 
@@ -68,11 +94,11 @@ void Recording::deserialise(Bytes &bytes, Scene *scene) {
   auto rec_snaps = rec.getSnaps();
 
   for (auto n : rec_names)
-    scene->names.push_back(n);
+    scene->register_name(n);
 
   for (auto v : rec_variables)
     variables.push_back(read_variable(v));
-  
+
   for (auto t : rec_triggers)
     triggers.push_back(read_trigger(t));
   
@@ -82,6 +108,7 @@ void Recording::deserialise(Bytes &bytes, Scene *scene) {
   for (auto rsnap : rec_snaps) {
     auto snap = new Snap();
     snap->deserialise(rsnap);
+    snaps.push_back(snap);
   }
 
 }

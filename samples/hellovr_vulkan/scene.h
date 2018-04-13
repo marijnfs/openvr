@@ -409,8 +409,15 @@ struct Recording {
 
   void serialise(Bytes *b);
   void save(std::string filename);
+
+  int add_object(Object *o);
+  int add_variable(Variable *v);
+  int add_trigger(Trigger *t);
+
+  int size() { return snaps.size(); }
+  void load_scene(int i, Scene *scene);
   
-  void update();
+  //void update();
 };
 
 //struct Scene;
@@ -494,10 +501,12 @@ struct Scene {
   }
   
   void clear() {
-    clear_objects();
+    clear_objects(false);
     clear_triggers();
+    clear_variables();
   }
 
+  
   void set_tracked(bool tracked) {
    for (auto kv : objects) {
       //skip hmd and controller
@@ -506,11 +515,13 @@ struct Scene {
       
     }}
   
-  void clear_objects() {
+  void clear_objects(bool filter_hmd_controller = true) {
     for (auto kv : objects) {
       //skip hmd and controller
-      try {dynamic_cast<HMD*>(kv.second);} catch(...) {continue;}
-      try {dynamic_cast<Controller*>(kv.second);} catch(...) {continue;}
+      if (filter_hmd_controller) {
+        try {dynamic_cast<HMD*>(kv.second);} catch(...) {continue;}
+        try {dynamic_cast<Controller*>(kv.second);} catch(...) {continue;}
+      }
       
       delete kv.second;
       objects.erase(kv.first);
@@ -523,6 +534,12 @@ struct Scene {
     triggers.clear();
   }
 
+  void clear_variables() {
+    for (auto kv : variables)
+      delete kv.second;
+    variables.clear();
+  }
+  
   void step();
   void snap(Recording *rec);
 
@@ -577,7 +594,7 @@ struct Scene {
     if (name_map.count(name)) return name_map[name];
     names.push_back(name);
     return name_map[name] = name_map.size();
-  }  
+  }
   
   void set_reward(float r_) {
     reward = r_;
