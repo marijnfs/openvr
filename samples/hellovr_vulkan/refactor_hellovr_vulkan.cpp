@@ -50,11 +50,13 @@ struct FittsWorld {
     cout << "ON IN BOX" << endl;
 
     if (scene.find<Controller>("controller").clicked == true) {
+      on_start();
       scene.set_reward(1);
-      scene.end_recording();
-      scene.clear_objects();
-      scene.clear_triggers();
-      scene.add_trigger(new ClickTrigger(), "on_start");
+      
+      //scene.end_recording();
+      //scene.clear_objects();
+      //scene.clear_triggers();
+      //scene.add_trigger(new ClickTrigger(), "on_start");
     }
   }
   
@@ -65,21 +67,24 @@ struct FittsWorld {
     vector<string> boxes = {"box1", "box2", "box3"};
     
     scene.add_box("box1");
-    scene.set_pos("box1", Pos(.4, 0, -.4));
+    scene.set_pos("box1", Pos(.2, 0.2, -.1));
     scene.find<Box>("box1").set_dim(.02, .2, .02);
-
+    scene.find<Box>("box1").set_texture("gray.png");
+    
     scene.add_box("box2");
-    scene.set_pos("box2", Pos(0, 0, -.4));
+    scene.set_pos("box2", Pos(0, 0.2, -.1));
     scene.find<Box>("box2").set_dim(.02, .2, .02);
-    scene.find<Box>("box2").set_texture("blue.png");
+    scene.find<Box>("box2").set_texture("gray.png");
     
     scene.add_box("box3");
-    scene.set_pos("box3", Pos(-.4, 0, -.4));
+    scene.set_pos("box3", Pos(-.2, 0.2, -.1));
     scene.find<Box>("box3").set_dim(.02, .2, .02);
     scene.find<Box>("box3").set_texture("gray.png");
 
     cout << "done setting boxes" << endl;
     int choice = rand() % 3;
+    
+    scene.find<Box>(boxes[choice]).set_texture("blue.png");
     scene.variable<FreeVariable>("mode").set_value(choice);
 
     scene.add_trigger(new InBoxTrigger(scene(boxes[choice]), scene("controller")), "on_in_box");
@@ -159,7 +164,7 @@ int replay() {
 
   
   Timer a_timer(1./90);
-  uint i(1000);
+  uint i(0);
   Recording recording;
   recording.load("test.save", &scene);
   cout << "recording size: " << recording.size() << endl;
@@ -172,7 +177,7 @@ int replay() {
   for (auto t : scene.triggers)
     cout << scene.names[t->function_nameid] << endl;
   */                                           
-  while (i++ < recording.size()) {
+  while (i < recording.size()) {
     //cout << i << endl;
     //vr.update_track_pose();
     //scene.step();
@@ -183,6 +188,7 @@ int replay() {
     cout << "scene " << i << " item: " << scene.objects.size() << endl;
     vr.render(scene);
     vr.wait_frame();
+    ++i;
     //vr.request_poses();
     //a_timer.wait();
   }
@@ -191,6 +197,6 @@ int replay() {
 }
 
 int main() {
-  record();
-  //replay();
+  //record();
+  replay();
 }
