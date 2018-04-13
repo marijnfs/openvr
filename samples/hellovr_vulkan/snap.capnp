@@ -67,6 +67,7 @@ struct Recording {
 struct Controller {
     right @0 : Bool;
     clicked @1 : Bool;
+    pressed @2 : Bool;
 }
 
 struct Box {

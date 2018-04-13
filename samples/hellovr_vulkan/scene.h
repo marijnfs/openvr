@@ -43,13 +43,12 @@ inline std::vector<char> read_all_bytes(std::string filename)
 {
   std::ifstream ifs(filename.c_str(), std::ios::binary | std::ios::ate);
   std::ifstream::pos_type pos = ifs.tellg();
-
-  std::vector<char>  result(pos);
+  std::vector<char> data(pos);
   
   ifs.seekg(0, std::ios::beg);
-  ifs.read(&result[0], pos);
+  ifs.read(&data[0], pos);
 
-  return result;
+  return data;
 }
 
 struct Canvas;
@@ -132,8 +131,24 @@ struct Object {
 
     builder.setNameId(nameid);
   }
-  
+
+  virtual void deserialise(cap::Object::Reader reader) {
+    nameid = reader.getNameId();
+
+    auto q = reader.getQuat();
+    quat[0] = q.getA();
+    quat[1] = q.getB();
+    quat[2] = q.getC();
+    quat[3] = q.getD();
+
+    auto p_ = reader.getPos();
+    p[0] = p_.getX();
+    p[1] = p_.getY();
+    p[2] = p_.getZ();    
+  }
 };
+
+Object *read_object(cap::Object::Reader reader);
 
 struct Box : public Object {
   float width = 1, height = 1, depth = 1;
@@ -148,6 +163,16 @@ struct Box : public Object {
     b.setTexture(tex_name);
   }
 
+  void deserialise(cap::Object::Reader reader) {
+    Object::deserialise(reader);
+    auto b = reader.getBox();
+
+    width = b.getW();
+    height = b.getH();
+    depth = b.getD();
+    tex_name = b.getTexture();
+  }
+  
   void set_dim(float w, float h, float d) {
     width = w;
     height = h;
@@ -199,6 +224,11 @@ struct Canvas : public Object {
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
     builder.setCanvas(tex_name);
+  }
+
+  void deserialise(cap::Object::Reader reader) {
+    Object::deserialise(reader);
+    tex_name = reader.getCanvas();
   }
 
   void set_texture(std::string name) {
@@ -257,7 +287,18 @@ struct Controller : public Object {
     auto c = builder.initController();
     c.setRight(right);
     c.setClicked(clicked);
+    c.setPressed(pressed);
   }
+
+  void deserialise(cap::Object::Reader reader) {
+    Object::deserialise(reader);
+    
+    auto c = reader.getController();
+    right = c.getRight();
+    clicked = c.getClicked();
+    pressed = c.getPressed();
+  }
+
 };
 
 struct PrintVisitor : public ObjectVisitor {
@@ -294,8 +335,15 @@ struct Trigger {
     builder.setNameId(nameid);
     builder.setFunctionNameId(function_nameid);
   }
+  
+  virtual void deserialise(cap::Trigger::Reader reader) {
+    nameid = reader.getNameId();
+    function_nameid = reader.getFunctionNameId();
+  }
 };
 
+Trigger *read_trigger(cap::Trigger::Reader reader);
+  
 struct Snap {
   //state
   // all objects, with their states
@@ -326,11 +374,26 @@ struct Snap {
       auto l = builder.initVariableIds(variable_ids.size());
       for (size_t i(0); i < variable_ids.size(); ++i)
         l.set(i, variable_ids[i]);
-    }
-    
-    
+    }    
   }
   
+  void deserialise(cap::Snap::Reader reader) {
+    t = reader.getTimestamp();
+    reward = reader.getReward();
+    object_ids.reserve(reader.getObjectIds().size());
+    trigger_ids.reserve(reader.getTriggerIds().size());
+    variable_ids.reserve(reader.getVariableIds().size());
+
+    for (auto n : reader.getObjectIds())
+      object_ids.push_back(n);
+    
+    for (auto n : reader.getTriggerIds())
+      trigger_ids.push_back(n);
+    
+    for (auto n : reader.getVariableIds())
+      variable_ids.push_back(n);    
+  }
+
 };
 
 struct Recording {
@@ -363,13 +426,23 @@ struct Variable {
   virtual void serialise(cap::Variable::Builder builder) {
     builder.setNameId(nameid);
   }
-
+  
+  virtual void deserialise(cap::Variable::Reader reader) {
+    nameid = reader.getNameId();
+  }
 };
+
+Variable *read_variable(cap::Variable::Reader reader);
 
 struct FreeVariable : public Variable {
   void serialise(cap::Variable::Builder builder) {
     Variable::serialise(builder);
     builder.setFree(val);
+  }
+
+  virtual void deserialise(cap::Variable::Reader reader) {
+    Variable::deserialise(reader);
+    val = reader.getFree();
   }
 
   void set_value(float val_) {
@@ -385,10 +458,9 @@ struct Scene {
   
   std::map<std::string, Object*> objects;
   std::map<std::string, Variable*> variables;
-  
   std::vector<Trigger*> triggers;
-  std::map<std::string, void_function> function_map;
 
+  std::map<std::string, void_function> function_map;
   std::map<std::string, int> name_map;
   std::vector<std::string> names;
   
@@ -552,6 +624,8 @@ struct Scene {
 struct DistanceVariable : public Variable {
   int oid1 = -1, oid2 = -1;
 
+  DistanceVariable() {}
+  
  DistanceVariable(int oid1_, int oid2_) :
     oid1(oid1_), oid2(oid2_)
   {}
@@ -565,6 +639,13 @@ struct DistanceVariable : public Variable {
     auto b = builder.initDistance();
     b.setNameId1(oid1);
     b.setNameId2(oid2);
+  }
+
+  void deserialise(cap::Variable::Reader reader) {
+    Variable::deserialise(reader);
+    auto d = reader.getDistance();
+    oid1 = d.getNameId1();
+    oid2 = d.getNameId2();
   }
 };
 
@@ -581,7 +662,14 @@ struct InBoxTrigger : public Trigger {
     l.setNameId1(target_id);
     l.setNameId2(box_id);
   }
-  
+
+  virtual void deserialise(cap::Trigger::Reader reader) {
+    Trigger::deserialise(reader);
+    auto l = reader.getInBox();
+    target_id = l.getNameId1();
+    box_id = l.getNameId2();
+  }
+
   bool check(Scene &scene);  
 };
 
@@ -595,7 +683,7 @@ struct LimitTrigger : public Trigger {
  LimitTrigger(int id, float limit_) : nameid(id), limit(limit_) {}
 
   virtual void serialise(cap::Trigger::Builder builder) {
-    Trigger::serialise(builder);
+    Trigger::deserialise(builder);
     auto l = builder.initLimit();
     l.setNameId(nameid);
     l.setLimit(limit);    
@@ -618,9 +706,14 @@ struct ClickTrigger : public Trigger {
 
   void serialise(cap::Trigger::Builder builder) {
     Trigger::serialise(builder);
-    builder.setClick();
+    //builder.setClick();
   }
-  
+
+  void deserialise(cap::Trigger::Reader reader) {
+    Trigger::deserialise(reader);
+    //reader.getClick();
+  }
+
 };
 
 
