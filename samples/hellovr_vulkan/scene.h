@@ -69,9 +69,6 @@ struct ObjectVisitor {
 };
 
 struct Object {
-  //Buffer pos; 
-
-
   bool changed = true;
   int nameid = -1;
   
@@ -85,6 +82,7 @@ struct Object {
   void set_pos(Pos pos) { p = pos; changed = true; }
   void from_axis(float x, float y, float z, float angle) { //angle in degrees
     quat = glm::angleAxis<float>(angle, glm::vec3(x, y, z));
+    changed = true;
   }
 
   void look_at(Pos to, Pos up) {
@@ -117,6 +115,8 @@ struct Object {
 
   virtual void visit(ObjectVisitor &visitor) {
   }
+
+  
   
   virtual void serialise(cap::Object::Builder builder) {
     auto q = builder.initQuat();
