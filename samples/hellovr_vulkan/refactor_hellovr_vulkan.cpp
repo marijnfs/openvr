@@ -59,7 +59,8 @@ struct FittsWorld {
   }
   
   void on_start() {
-    scene.clear();
+    scene.clear_objects();
+    scene.clear_triggers();
 
     vector<string> boxes = {"box1", "box2", "box3"};
     
@@ -183,13 +184,13 @@ int replay() {
     vr.render(scene);
     vr.wait_frame();
     //vr.request_poses();
-    a_timer.wait();
+    //a_timer.wait();
   }
 
   Global::shutdown();
 }
 
 int main() {
-  //record();
-  replay();
+  record();
+  //replay();
 }

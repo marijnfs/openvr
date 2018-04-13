@@ -61,7 +61,8 @@ void Scene::step() {
     if (t->check(*this)) {
       auto nameid = t->function_nameid;
       auto name = names[t->function_nameid];
-      function_map[names[t->function_nameid]]();
+      cout << nameid << " " << name << endl;
+      function_map[name]();
     }  
   }
 }
@@ -102,7 +103,13 @@ void Scene::snap(Recording *rec) {
 }
 
 bool InBoxTrigger::check(Scene &scene) {
+  cout << scene.names[box_id] << " " << scene.names[target_id] << endl;
+
+  cout << scene.names << endl;
+  for (auto kv : scene.objects)
+    cout << kv.first << " ";
   auto &box = scene.find<Box>(box_id);
+  
   auto &target = scene.find(target_id);
   std::cout << box_id << " " << target_id << std::endl;
   std::cout << scene.objects.size() << std::endl;
@@ -114,12 +121,7 @@ bool InBoxTrigger::check(Scene &scene) {
                   target.p[2] > box.p[2] - box.depth / 2 &&
     target.p[2] < box.p[2] + box.depth / 2;
   
-  std::cout << "checking " << target.p[0] << " " << box.p[0] << " " << box.width << endl <<
-    "checking " << target.p[1] << " " << box.p[1] << " " << box.height << endl <<
-    "checking " << target.p[2] << " " << box.p[2] << " " << box.depth << endl << endl;
-                                                     if (in)
-      throw "";
-                                                     return in;
+  return in;
 }
 
 Object *read_object(cap::Object::Reader reader) {

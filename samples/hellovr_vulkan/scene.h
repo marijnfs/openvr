@@ -7,6 +7,7 @@
 #include <functional>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
@@ -522,10 +523,10 @@ struct Scene {
     for (auto kv : objects) {
       //skip hmd and controller
       if (filter_hmd_controller) {
-        try {dynamic_cast<HMD*>(kv.second);} catch(...) {continue;}
-        try {dynamic_cast<Controller*>(kv.second);} catch(...) {continue;}
+        if (dynamic_cast<HMD*>(kv.second) != NULL) continue;
+        if (dynamic_cast<Controller*>(kv.second) != NULL) continue;
       }
-      
+
       delete kv.second;
       objects.erase(kv.first);
     }

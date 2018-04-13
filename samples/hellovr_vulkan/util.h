@@ -56,6 +56,18 @@ Timer(float interval_) : interval(interval_) {
   }
 };
 
+template <typename T>
+inline std::ostream &operator<<(std::ostream &out, std::vector<T> in) {
+  out << "[";
+  typename std::vector<T>::const_iterator it = in.begin(), end = in.end();
+  for (; it != end; ++it)
+    if (it == in.begin())
+      out << *it;
+    else
+      out << " " << *it;
+  return out << "]";
+}
+
 inline void ThreadSleep( unsigned long nMilliseconds )
 {
 #if defined(_WIN32)
