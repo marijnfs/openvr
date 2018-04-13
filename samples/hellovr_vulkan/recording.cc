@@ -13,23 +13,49 @@
 using namespace std;
 
 void Recording::load_scene(int i, Scene *scene) {
+  scene->clear(false);
+  auto &snap = *snaps[i];
+
+  //todo
+  t = snap.t;
+  reward = snap.reward;
+  
+  for (auto o : snap.object_ids) {
+    string name = scene.names[objects[o]->name_id];
+    scene.objects[name] = objects[o];
+  }
+
+  for (auto v : snap.variable_ids) {
+    string name = scene.names[variables[v]->name_id];
+    scene.variables[name] = variables[v];
+  }
+
+  for (auto t : snap.trigger_ids)
+    scene.triggers.push_back(triggers[t]);
+  
 }
 
 void Recording::serialise(Bytes *bytes) {
   ::capnp::MallocMessageBuilder cap_message;
   auto builder = cap_message.initRoot<cap::Recording>();
   
-  auto object_builder = builder.initObjects(objects.size());
+
+  {
+    int i(0);
+    auto name_builder = builder.initNames(names.size());
+    for (auto n : names)
+      name_builder.set(i++, n);
+  }
   //for (int i(0); i < scene.objects.size(); ++i)
   {
     int i(0);
+    auto object_builder = builder.initObjects(objects.size());
     for (auto o : objects)
       o->serialise(object_builder[i++]);
   }
   
   {
     int i(0);
-
     auto var_builder = builder.initVariables(variables.size());
     for (auto v : variables)
       v->serialise(var_builder[i++]);
@@ -97,13 +123,13 @@ void Recording::deserialise(Bytes &bytes, Scene *scene) {
     scene->register_name(n);
 
   for (auto v : rec_variables)
-    variables.push_back(read_variable(v));
+    add_variable(read_variable(v));
 
   for (auto t : rec_triggers)
-    triggers.push_back(read_trigger(t));
+    add_trigger(read_trigger(t));
   
   for (auto ob : rec_objects)
-    objects.push_back(read_object(ob));
+    add_object(read_object(ob));
 
   for (auto rsnap : rec_snaps) {
     auto snap = new Snap();

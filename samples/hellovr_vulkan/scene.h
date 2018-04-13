@@ -322,7 +322,7 @@ struct PrintVisitor : public ObjectVisitor {
 struct Scene;
 struct Trigger {
   bool changed = true;
-  int nameid = -1;
+  //int nameid = -1;
   int function_nameid = -1;
   
   virtual bool check(Scene &scene) { return false; }
@@ -332,12 +332,12 @@ struct Trigger {
   }
 
   virtual void serialise(cap::Trigger::Builder builder) {
-    builder.setNameId(nameid);
+    //builder.setNameId(nameid);
     builder.setFunctionNameId(function_nameid);
   }
   
   virtual void deserialise(cap::Trigger::Reader reader) {
-    nameid = reader.getNameId();
+    //nameid = reader.getNameId();
     function_nameid = reader.getFunctionNameId();
   }
 };
