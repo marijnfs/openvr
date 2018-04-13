@@ -21,7 +21,10 @@
 
 #include <iostream>
 #include <iomanip>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "Vectors.h"
 
 ///////////////////////////////////////////////////////////////////////////
@@ -146,6 +149,14 @@ public:
             float m08, float m09, float m10, float m11, // 3rd column
             float m12, float m13, float m14, float m15);// 4th column
 
+    Matrix4(glm::mat4 mat) {
+      auto ptr = (float*)glm::value_ptr(mat);
+      set(ptr[0], ptr[1], ptr[2], ptr[3],
+              ptr[4], ptr[5], ptr[6], ptr[7],
+              ptr[8], ptr[9], ptr[10], ptr[11],
+              ptr[12], ptr[13], ptr[14], ptr[15]);
+    }
+    
     void        set(const float src[16]);
     void        set(float m00, float m01, float m02, float m03, // 1st column
                     float m04, float m05, float m06, float m07, // 2nd column

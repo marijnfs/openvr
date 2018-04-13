@@ -338,15 +338,15 @@ void VRSystem::request_poses() {
 }
 
 void VRSystem::wait_frame() {
-  //vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
 }
 
 void VRSystem::update_track_pose() {
   int controller_idx(0);
   cout << "updating track pose " << endl;
 
-  vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
-  //vr::VRCompositor()->GetLastPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  //vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
+  vr::VRCompositor()->GetLastPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
   
   cout << "done" << endl;
 	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d) {

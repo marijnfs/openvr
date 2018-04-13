@@ -162,7 +162,7 @@ int replay() {
   Recording recording;
   recording.load("test.save", &scene);
   cout << "recording size: " << recording.size() << endl;
-  recording.load_scene(i, &scene);
+  /*
   for (auto o : scene.objects)
     cout << o.first << " " << scene.names[o.second->nameid] << endl;
 
@@ -170,23 +170,26 @@ int replay() {
     cout << v.first << " " << v.second->val << " " << scene.names[v.second->nameid] << endl;
   for (auto t : scene.triggers)
     cout << scene.names[t->function_nameid] << endl;
-  return 0;
-  while (i++ < 2000) {
+  */                                           
+  while (i++ < recording.size()) {
     //cout << i << endl;
-    vr.update_track_pose();
-    scene.step();
-    scene.snap(&recording);
+    //vr.update_track_pose();
+    //scene.step();
+    //scene.snap(&recording);
 
+    recording.load_scene(i, &scene);
+    vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
+    cout << "scene " << i << " item: " << scene.objects.size() << endl;
     vr.render(scene);
     vr.wait_frame();
     //vr.request_poses();
-    //a_timer.wait();
+    a_timer.wait();
   }
 
   Global::shutdown();
 }
 
 int main() {
-      //record();
-      replay();
+  //record();
+  replay();
 }
