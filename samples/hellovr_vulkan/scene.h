@@ -503,6 +503,11 @@ struct Scene {
   T &variable(std::string name) {
     return *reinterpret_cast<T*>(variables[name]);
   }
+
+  void clear_scene() {
+    clear_objects();
+    clear_triggers();
+  }
   
   void clear() {
     clear_objects(false);
@@ -673,7 +678,7 @@ struct DistanceVariable : public Variable {
 };
 
 struct InBoxTrigger : public Trigger {
-  bool changed = false;
+  bool changed = true;
   int target_id = -1, box_id = -1;
 
   InBoxTrigger(){}
@@ -698,24 +703,40 @@ struct InBoxTrigger : public Trigger {
   bool check(Scene &scene);  
 };
 
+struct NextTrigger : public Trigger {
+
+  void serialise(cap::Trigger::Builder builder) {
+    Trigger::serialise(builder);
+    builder.setNext();
+  }
+
+  bool check(Scene &scene) { return true; }
+};
+  
 struct LimitTrigger : public Trigger {
-  bool changed = false;
-  int nameid = -1; //var name
+  int varnameid = -1; //var name
   float limit = 0;
   
   LimitTrigger(){}
   
- LimitTrigger(int id, float limit_) : nameid(id), limit(limit_) {}
+ LimitTrigger(int varid, float limit_) : varnameid(varid), limit(limit_) {}
 
-  virtual void serialise(cap::Trigger::Builder builder) {
-    Trigger::deserialise(builder);
+  void serialise(cap::Trigger::Builder builder) {
+    Trigger::serialise(builder);
     auto l = builder.initLimit();
-    l.setNameId(nameid);
+    l.setNameId(varnameid);
     l.setLimit(limit);    
   }
-  
+
+  void deserialise(cap::Trigger::Reader reader) {
+    Trigger::deserialise(reader);
+    auto l = reader.getLimit();
+    varnameid = l.getNameId();
+    limit = l.getLimit();
+  }
+
   bool check(Scene &scene) {
-    return scene.variables[scene.names[nameid]]->val > limit;
+    return scene.variables[scene.names[varnameid]]->val > limit;
   }
 
   Trigger *copy() { return new LimitTrigger(*this); }
@@ -733,7 +754,7 @@ struct ClickTrigger : public Trigger {
 
   void serialise(cap::Trigger::Builder builder) {
     Trigger::serialise(builder);
-    //builder.setClick();
+    builder.setClick();
   }
 
   void deserialise(cap::Trigger::Reader reader) {

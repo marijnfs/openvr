@@ -5,6 +5,7 @@
 using namespace std;
 
 void Controller::update() {
+  clicked = false;
   if (tracked) {
     auto &vr = Global::vr();
     if (right) {
@@ -17,13 +18,8 @@ void Controller::update() {
       if (vr.left_controller.pressed && !pressed)
         clicked = true;
       pressed = vr.left_controller.pressed;
-    }
-    
-    
+    }    
   }
-
-  //if (acted) { //somehow get it from actions
-  // }
 }
 
 void HMD::update() {
@@ -49,15 +45,14 @@ void Scene::add_trigger(Trigger *t, std::string funcname) {
 void Scene::step() {
   ++time;
   
-  for (auto &kv : objects) {
+  for (auto &kv : objects)
     kv.second->update();
-  }
   
-  for (auto &kv : variables) {
+  for (auto &kv : variables)
     kv.second->update(*this);
-  }
-  
-  for (auto &t : triggers) {
+
+  auto triggers_cpy = triggers; //triggers might adjust itself
+  for (auto &t : triggers_cpy) {
     if (t->check(*this)) {
       auto nameid = t->function_nameid;
       auto name = names[t->function_nameid];
@@ -75,25 +70,28 @@ void Scene::snap(Recording *rec) {
     
   for (auto &kv : objects) {
     auto &object(*kv.second);
-    if (object.changed)//store a copy
+    if (object.changed) {//store a copy
       snap.object_ids.push_back(rec->add_object(object.copy()));
-    else //refer to stored copy
+      object.changed = false;
+    } else //refer to stored copy
       snap.object_ids.push_back(rec->index_map[(void*)&object]);
   }
 
   for (auto &kv : variables) {
     auto &variable(*kv.second);
-    if (variable.changed)
+    if (variable.changed) {
       snap.variable_ids.push_back(rec->add_variable(variable.copy()));
-    else
+      variable.changed = false;
+    } else
       snap.variable_ids.push_back(rec->index_map[(void*)&variable]);
   }
 
 
   for (auto &trigger : triggers) {
-    if (trigger->changed)
+    if (trigger->changed) {
       snap.trigger_ids.push_back(rec->add_trigger(trigger->copy()));
-    else
+      trigger->changed = false;
+    } else
       snap.trigger_ids.push_back(rec->index_map[(void*)trigger]);
   }
 
@@ -187,11 +185,15 @@ Trigger *read_trigger(cap::Trigger::Reader reader) {
   case cap::Trigger::CLICK: {
     auto t = new ClickTrigger();
     t->deserialise(reader);
-
-     return t;
+    return t;
   }
   case cap::Trigger::IN_BOX: {
     auto t = new InBoxTrigger();
+    t->deserialise(reader);
+    return t;
+  }
+  case cap::Trigger::NEXT: {
+    auto t = new NextTrigger();
     t->deserialise(reader);
     return t;
   }

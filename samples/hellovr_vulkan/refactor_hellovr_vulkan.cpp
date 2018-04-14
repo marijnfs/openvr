@@ -25,7 +25,7 @@ using namespace std;
 
 struct FittsWorld {
   Scene &scene;
-
+  int choice = -1;
   FittsWorld(Scene &scene_) : scene(scene_) {
     init();
   }
@@ -50,9 +50,11 @@ struct FittsWorld {
     cout << "ON IN BOX" << endl;
 
     if (scene.find<Controller>("controller").clicked == true) {
-      on_start();
+      scene.clear_scene();
       scene.set_reward(1);
-      
+
+      scene.add_trigger(new NextTrigger(), "on_start");
+
       //scene.end_recording();
       //scene.clear_objects();
       //scene.clear_triggers();
@@ -61,28 +63,32 @@ struct FittsWorld {
   }
   
   void on_start() {
+    scene.set_reward(0);
     scene.clear_objects();
     scene.clear_triggers();
 
     vector<string> boxes = {"box1", "box2", "box3"};
     
     scene.add_box("box1");
-    scene.set_pos("box1", Pos(.2, 0.2, -.1));
+    scene.set_pos("box1", Pos(.1, 0.9, -.1));
     scene.find<Box>("box1").set_dim(.02, .2, .02);
     scene.find<Box>("box1").set_texture("gray.png");
     
     scene.add_box("box2");
-    scene.set_pos("box2", Pos(0, 0.2, -.1));
+    scene.set_pos("box2", Pos(0, 0.9, -.1));
     scene.find<Box>("box2").set_dim(.02, .2, .02);
     scene.find<Box>("box2").set_texture("gray.png");
     
     scene.add_box("box3");
-    scene.set_pos("box3", Pos(-.2, 0.2, -.1));
+    scene.set_pos("box3", Pos(-.1, 0.9, -.1));
     scene.find<Box>("box3").set_dim(.02, .2, .02);
     scene.find<Box>("box3").set_texture("gray.png");
 
     cout << "done setting boxes" << endl;
-    int choice = rand() % 3;
+    int new_choice = rand() % 3;
+    while (new_choice == choice)
+      new_choice = rand() % 3;
+    choice = new_choice;
     
     scene.find<Box>(boxes[choice]).set_texture("blue.png");
     scene.variable<FreeVariable>("mode").set_value(choice);

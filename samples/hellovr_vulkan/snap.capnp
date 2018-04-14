@@ -51,6 +51,7 @@ struct Trigger {
         limit @2 : NameLimit;
         click @3 : Void;
         inBox @4 : NamePair;
+        next @5 : Void;
     }
 }
 
