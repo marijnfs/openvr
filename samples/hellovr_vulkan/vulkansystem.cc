@@ -504,7 +504,8 @@ VulkanSystem::~VulkanSystem() {
   vkDestroyPipelineCache(dev, pipeline_cache, nullptr);
 
   destroy_debug_callback();
-  swapchain.~Swapchain();
+
+  swapchain.destroy();
   
   vkDestroyDevice(dev, nullptr);
   vkDestroyInstance(inst, nullptr);
@@ -1009,8 +1010,10 @@ void Descriptor::bind() {
   vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &desc, 0, nullptr );
 }
 
-
-Swapchain::~Swapchain() {
+void Swapchain::destroy() { //Needs to be called explicitly
+  static int bla(0);
+  cout << "swapchain destructor called n times: " << bla++ << endl;
+  cout << swapchain << endl;
   if (!n_swap)
     return;
   auto &vk = Global::vk();
@@ -1026,6 +1029,9 @@ Swapchain::~Swapchain() {
   vkDestroySwapchainKHR(vk.dev, swapchain, nullptr);
   vkDestroySurfaceKHR(vk.inst, surface, nullptr);
   n_swap = 0;
+}
+
+Swapchain::~Swapchain() {
 }
 
 Image &Swapchain::current_img() {

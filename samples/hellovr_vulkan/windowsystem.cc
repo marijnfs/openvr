@@ -8,8 +8,11 @@ WindowSystem::WindowSystem() : width(800), height(800) {
 }
 
 WindowSystem::~WindowSystem() {
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  if (window) {
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    window = 0;
+  }
 }
 
 void WindowSystem::init() {
@@ -62,6 +65,11 @@ void WindowSystem::setup() {
     //framebuffer = new FrameRenderBuffer();
     // framebuffer->init(width, height);
 	cout << " done with buffers" << endl;
+}
+
+void WindowSystem::destroy_buffers() {
+  vertex_buf.destroy();
+  index_buf.destroy();
 }
 
 void WindowSystem::show_message(string str) {

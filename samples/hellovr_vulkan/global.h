@@ -73,14 +73,16 @@ struct Global {
     vk().wait_idle();
     delete inst().scene_ptr;
     delete inst().vr_ptr;
-    delete inst().ws_ptr;
+    
+    ws().destroy_buffers();
     delete inst().vk_ptr;
+    delete inst().ws_ptr;
   }
   
-  	VulkanSystem *vk_ptr = 0;
-	VRSystem *vr_ptr = 0;
-	WindowSystem *ws_ptr = 0;
-	Scene *scene_ptr = 0;
+  VulkanSystem *vk_ptr = 0;
+  VRSystem *vr_ptr = 0;
+  WindowSystem *ws_ptr = 0;
+  Scene *scene_ptr = 0;
   Script *script_ptr = 0;
 };
 

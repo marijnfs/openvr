@@ -91,6 +91,7 @@ struct Swapchain {
 
   
   void init();
+  void destroy();
   //void to_present(int i);
   //void to_colour_optimal(int i);
   //void to_present_optimal(int i);

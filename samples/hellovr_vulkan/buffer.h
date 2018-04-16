@@ -35,7 +35,6 @@ struct Buffer {
   
   void init(size_t size, VkBufferUsageFlags usage, Location loc);
 
-
   template <typename T>
   void update(std::vector<T> &init_data);
   

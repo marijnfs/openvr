@@ -53,12 +53,13 @@ Buffer::~Buffer() {
 
 void Buffer::destroy() {
   auto &vk = Global::vk();
-  
-  vkDestroyBuffer(vk.dev, buffer, nullptr);
-  vkFreeMemory(vk.dev, memory, nullptr);
-  buffer = 0;
-  memory = 0;
-  n = 0;
+  if (buffer) {
+    vkDestroyBuffer(vk.dev, buffer, nullptr);
+    vkFreeMemory(vk.dev, memory, nullptr);
+    buffer = 0;
+    memory = 0;
+    n = 0;
+  }
 }
 
 template <typename T>

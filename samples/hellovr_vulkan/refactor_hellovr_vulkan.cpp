@@ -209,6 +209,6 @@ int replay() {
 }
 
 int main() {
-  record();
-  //replay();
+  //record();
+  replay();
 }

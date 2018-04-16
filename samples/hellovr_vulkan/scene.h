@@ -76,6 +76,7 @@ struct Object {
   fquat quat;
   
   Object() : p(3) {}
+  virtual ~Object() {}
   
   virtual Object *copy() {return new Object(*this); }
   
@@ -154,6 +155,8 @@ Object *read_object(cap::Object::Reader reader);
 struct Box : public Object {
   float width = 1, height = 1, depth = 1;
   std::string tex_name = "stub.png";
+
+  ~Box() {}
   
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
@@ -197,6 +200,8 @@ struct Box : public Object {
 };
 
 struct Point : public Object {
+  ~Point() {}
+  
   void serialise(cap::Object::Builder builder) {
     Object::serialise(builder);
     builder.setPoint();
@@ -217,7 +222,8 @@ struct Canvas : public Object {
 
  Canvas() {}
  Canvas(std::string tex_name_) : tex_name(tex_name_) {}
-
+ ~Canvas() {}
+ 
   Object *copy() {
     return new Canvas(*this);
   }
@@ -245,6 +251,8 @@ struct Canvas : public Object {
 
 struct HMD : public Object {
   bool tracked = true;
+
+  ~HMD() {}
   
   void update();
 
@@ -270,8 +278,8 @@ struct Controller : public Object {
   bool tracked = true;
 
   Controller(){}
- Controller(bool right_) : right(right_) {
-  }
+ Controller(bool right_) : right(right_) {}
+  ~Controller() {}
 
   Object *copy() {
     return new Controller(*this);
@@ -426,6 +434,8 @@ struct Variable {
   bool changed = true;
   int nameid = -1;
   float val = 0;
+
+  virtual ~Variable() {}
   
   virtual void update(Scene &scene) { }
   virtual float value() {return val;}
@@ -444,6 +454,8 @@ struct Variable {
 Variable *read_variable(cap::Variable::Reader reader);
 
 struct FreeVariable : public Variable {
+  ~FreeVariable() {}
+  
   void set_value(float val_) {
     val = val_;
     changed = true;
@@ -525,6 +537,7 @@ struct Scene {
     }}
   
   void clear_objects(bool filter_hmd_controller = true) {
+    std::vector<std::string> to_delete;
     for (auto kv : objects) {
       //skip hmd and controller
       if (filter_hmd_controller) {
@@ -532,20 +545,25 @@ struct Scene {
         if (dynamic_cast<Controller*>(kv.second) != NULL) continue;
       }
 
-      delete kv.second;
-      objects.erase(kv.first);
+      //delete kv.second;
+      to_delete.push_back(kv.first);
     }
+
+    for (auto d : to_delete)
+      objects.erase(d);
   }
 
   void clear_triggers() {
-    for (auto t : triggers)
-      delete t;
+    //for (auto t : triggers)
+    //delete t;
     triggers.clear();
   }
 
   void clear_variables() {
-    for (auto kv : variables)
-      delete kv.second;
+    ////not deleting at the moment because objects might be owned by recording
+    
+    //for (auto kv : variables) 
+    //delete kv.second;
     variables.clear();
   }
   
@@ -555,8 +573,8 @@ struct Scene {
   void add_object(std::string name, Object *o) {
     int nameid = register_name(name);
     o->nameid = nameid;
-    if (objects.count(name))
-      delete objects[name];
+    //if (objects.count(name))
+    // delete objects[name];
     objects[name] = o;
   }
 
@@ -581,8 +599,8 @@ struct Scene {
     int nameid = register_name(name);
     std::cout << "NAMEID " << nameid << std::endl;
     v->nameid = nameid;
-    if (variables.count(name))
-      delete variables[name];
+    //if (variables.count(name))
+    // delete variables[name];
     variables[name] = v;
   }
 
@@ -660,6 +678,8 @@ struct DistanceVariable : public Variable {
     oid1(oid1_), oid2(oid2_)
   {}
 
+    ~DistanceVariable() {}
+    
   void update(Scene &scene) {
     val = scene.dist(scene.find(oid1).p, scene.find(oid2).p);
   }

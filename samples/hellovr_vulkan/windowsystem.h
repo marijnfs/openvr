@@ -9,7 +9,7 @@
 #include "framerenderbuffer.h"
 
 struct WindowSystem {
-  SDL_Window *window;
+  SDL_Window *window = 0;
   uint32_t width, height;
 
   Buffer vertex_buf, index_buf;
@@ -23,7 +23,8 @@ struct WindowSystem {
   void init_window();
   
   void setup();
-  
+
+  void destroy_buffers();
   void show_message(std::string str);
 };
 
