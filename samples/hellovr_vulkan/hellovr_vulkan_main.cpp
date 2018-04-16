@@ -1581,7 +1581,7 @@ void CMainApplication::Shutdown()
 
 		if ( m_pDebugReportCallback != VK_NULL_HANDLE )
 		{
-			g_pVkDestroyDebugReportCallbackEXT( m_pInstance, m_pDebugReportCallback, nullptr );
+          g_pVkDestroyDebugReportCallbackEXT( m_pInstance, m_pDebugReportCallback, nullptr );
 		}
 
 		for ( size_t nSwapchainIndex = 0; nSwapchainIndex < m_pSwapchainFramebuffers.size(); nSwapchainIndex++ )

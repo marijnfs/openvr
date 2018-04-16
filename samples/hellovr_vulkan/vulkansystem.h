@@ -165,7 +165,9 @@ struct VulkanSystem {
   void init_shaders();
   void init_texture_maps();
   void init_debug_callback();
-  
+
+  void destroy_debug_callback();
+    
   void setup();
 
   void submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0);
@@ -313,7 +315,7 @@ struct DrawVisitor : public ObjectVisitor {
   
   void visit(Controller &controller) {
     auto &gbox = gob<GraphicsCube>(i);
-    //gbox.change_texture();
+    gbox.change_texture("red.png");
         
     gbox.change_dim(.005, .005, .005);
     auto controller_mat = glm_to_mat4(controller.to_mat4());

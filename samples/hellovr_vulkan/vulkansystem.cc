@@ -503,6 +503,7 @@ VulkanSystem::~VulkanSystem() {
   }
   vkDestroyPipelineCache(dev, pipeline_cache, nullptr);
 
+  destroy_debug_callback();
   swapchain.~Swapchain();
   
   vkDestroyDevice(dev, nullptr);
@@ -1034,7 +1035,10 @@ Image &Swapchain::current_img() {
 void Swapchain::acquire_image() {
   auto &vk = Global::vk();
   cout << "acquiring image, frame: " << frame_idx << endl;
-  check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");
+  try {
+    cout << "sw: " << swapchain << " " << current_swapchain_image << endl;
+    check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");} catch(...){}
+    return;
 
     
 }
@@ -1058,6 +1062,11 @@ void VulkanSystem::init_debug_callback() {
   }
 }
 
+void VulkanSystem::destroy_debug_callback() {
+  auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(inst, "vkDestroyDebugReportCallbackEXT");
+  if (func != nullptr)
+    func(inst, callback, nullptr);
+}
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
   if (cur_cmd_buffer)

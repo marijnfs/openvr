@@ -67,6 +67,8 @@ struct FittsWorld {
     scene.clear_objects();
     scene.clear_triggers();
 
+    
+    
     vector<string> boxes = {"box1", "box2", "box3"};
     
     scene.add_box("box1");
@@ -119,6 +121,7 @@ int record() {
   ImageFlywheel::image("stub.png");
   ImageFlywheel::image("gray.png");
   ImageFlywheel::image("blue.png");
+  ImageFlywheel::image("red.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -129,7 +132,7 @@ int record() {
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
-  while (i++ < 2000) {
+  while (i++ < 1000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
@@ -162,6 +165,7 @@ int replay() {
   ImageFlywheel::image("stub.png");
   ImageFlywheel::image("gray.png");
   ImageFlywheel::image("blue.png");
+  ImageFlywheel::image("red.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -190,6 +194,8 @@ int replay() {
     //scene.snap(&recording);
 
     recording.load_scene(i, &scene);
+    for (auto o : scene.objects)
+      cout << o.first << endl;
     vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
     cout << "scene " << i << " item: " << scene.objects.size() << endl;
     vr.render(scene);
@@ -203,6 +209,6 @@ int replay() {
 }
 
 int main() {
-  //record();
-  replay();
+  record();
+  //replay();
 }

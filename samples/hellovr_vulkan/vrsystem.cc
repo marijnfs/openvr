@@ -91,14 +91,14 @@ void VRSystem::render(Scene &scene) {
 	auto &vk = Global::vk();
 
     cout << "rendering: " << endl;
-	vk.swapchain.acquire_image();
-    
+    vk.swapchain.acquire_image();
+
 	// RENDERING
 	render_stereo_targets(scene);
 	render_companion_window();
 
 	vk.end_submit_swapchain_cmd();
-
+    //return;
 	// Submit to SteamVR
 	vr::VRTextureBounds_t bounds;
 	bounds.uMin = 0.0f;

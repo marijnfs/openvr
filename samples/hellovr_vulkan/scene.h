@@ -436,6 +436,7 @@ struct Variable {
   }
   
   virtual void deserialise(cap::Variable::Reader reader) {
+    std::cout << "DESIR" << std::endl;
     nameid = reader.getNameId();
   }
 };
@@ -443,7 +444,6 @@ struct Variable {
 Variable *read_variable(cap::Variable::Reader reader);
 
 struct FreeVariable : public Variable {
-
   void set_value(float val_) {
     val = val_;
     changed = true;
@@ -579,7 +579,10 @@ struct Scene {
   
   void add_variable(std::string name, Variable *v) {
     int nameid = register_name(name);
+    std::cout << "NAMEID " << nameid << std::endl;
     v->nameid = nameid;
+    if (variables.count(name))
+      delete variables[name];
     variables[name] = v;
   }
 
@@ -601,8 +604,9 @@ struct Scene {
 
   int register_name(std::string name) {
     if (name_map.count(name)) return name_map[name];
+    int id = names.size();
     names.push_back(name);
-    return name_map[name] = name_map.size();
+    return name_map[name] = id;
   }
   
   void set_reward(float r_) {
@@ -710,6 +714,8 @@ struct NextTrigger : public Trigger {
     builder.setNext();
   }
 
+  Trigger *copy() { return new NextTrigger(*this); }
+  
   bool check(Scene &scene) { return true; }
 };
   

@@ -24,11 +24,19 @@ void Recording::load_scene(int i, Scene *scene_ptr) {
   scene.reward = snap.reward;
   
   for (auto o : snap.object_ids) {
+    cout << o << ":" << endl;
     string name = scene.names[objects[o]->nameid];
     scene.objects[name] = objects[o];
   }
 
+  for (auto v : variables)
+    cout << "] " << v->nameid << endl;
+  
   for (auto v : snap.variable_ids) {
+    cout << v << endl;
+    cout << scene.names << endl;
+    cout << variables.size() << endl;
+    cout << variables[v]->nameid << endl;
     string name = scene.names[variables[v]->nameid];
     scene.variables[name] = variables[v];
   }
@@ -124,9 +132,13 @@ void Recording::deserialise(Bytes &bytes, Scene *scene) {
   for (auto n : rec_names)
     scene->register_name(n);
 
-  for (auto v : rec_variables)
+  for (auto v : rec_variables) {
     add_variable(read_variable(v));
+  }
 
+  for (auto v : variables)
+    cout << v->nameid << endl;
+  
   for (auto t : rec_triggers)
     add_trigger(read_trigger(t));
   

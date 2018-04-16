@@ -18,15 +18,17 @@ void Controller::update() {
       if (vr.left_controller.pressed && !pressed)
         clicked = true;
       pressed = vr.left_controller.pressed;
-    }    
+    }
+    changed = true;
   }
 }
 
 void HMD::update() {
   if (tracked) {
     auto &vr = Global::vr();
-    from_mat4(vr.hmd_pose);
     
+    from_mat4(vr.hmd_pose);
+    changed = true;
     //vr.hmd_pose = glm_to_mat4(to_mat4()); ///TODO, we need this for replaying
 
     cout << "HMD: [" << p[0] << " " << p[1] << " " << p[2] << "] [" <<
@@ -71,7 +73,10 @@ void Scene::snap(Recording *rec) {
   for (auto &kv : objects) {
     auto &object(*kv.second);
     if (object.changed) {//store a copy
-      snap.object_ids.push_back(rec->add_object(object.copy()));
+      auto obj_cpy = object.copy();
+      auto id = rec->add_object(obj_cpy);
+      snap.object_ids.push_back(id);
+      rec->index_map[(void*)&object] = id;
       object.changed = false;
     } else //refer to stored copy
       snap.object_ids.push_back(rec->index_map[(void*)&object]);
@@ -80,19 +85,26 @@ void Scene::snap(Recording *rec) {
   for (auto &kv : variables) {
     auto &variable(*kv.second);
     if (variable.changed) {
-      snap.variable_ids.push_back(rec->add_variable(variable.copy()));
+      auto var_cpy = variable.copy();
+      auto id = rec->add_variable(var_cpy);
+      snap.variable_ids.push_back(id);
+      rec->index_map[(void*)&variable] = id;
       variable.changed = false;
     } else
       snap.variable_ids.push_back(rec->index_map[(void*)&variable]);
   }
 
 
-  for (auto &trigger : triggers) {
-    if (trigger->changed) {
-      snap.trigger_ids.push_back(rec->add_trigger(trigger->copy()));
-      trigger->changed = false;
+  for (auto &trigger_ptr : triggers) {
+    Trigger &trigger(*trigger_ptr);
+    if (trigger.changed) {
+      auto var_cpy = trigger.copy();
+      auto id = rec->add_trigger(var_cpy);
+      snap.trigger_ids.push_back(id);
+      rec->index_map[(void*)&trigger] = id;
+      trigger.changed = false;
     } else
-      snap.trigger_ids.push_back(rec->index_map[(void*)trigger]);
+      snap.trigger_ids.push_back(rec->index_map[(void*)&trigger]);
   }
 
   rec->snaps.push_back(snap_ptr);
