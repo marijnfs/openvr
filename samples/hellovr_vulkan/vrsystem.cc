@@ -86,19 +86,33 @@ void VRSystem::setup_render_targets() {
 	
 }
 
+void VRSystem::image_to_cpu() {
+  auto &vk = Global::vk();
+}
 
-void VRSystem::render(Scene &scene) {
-	auto &vk = Global::vk();
+void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
+  auto &vk = Global::vk();
 
-    cout << "rendering: " << endl;
-    vk.swapchain.acquire_image();
+  cout << "rendering: " << endl;
 
-	// RENDERING
-	render_stereo_targets(scene);
-	render_companion_window();
+  if (!headless) {
+    vk.swapchain.acquire_image(); //
+    
+    // RENDERING
+    render_stereo_targets(scene);
+    render_companion_window();
+    vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
+    image_to_cpu(); //later remove?
+    submit_to_hmd();
+  } else {
+    // RENDERING
+    render_stereo_targets(scene);
+    image_to_cpu();
+    vk.end_submit_cmd();  //could try without swapchain if headless
+  }
+}
 
-	vk.end_submit_swapchain_cmd();
-    //return;
+void VRSystem::submit_to_hmd() {
 	// Submit to SteamVR
 	vr::VRTextureBounds_t bounds;
 	bounds.uMin = 0.0f;
@@ -135,8 +149,6 @@ void VRSystem::render(Scene &scene) {
 	pi.pSwapchains = &vk.swapchain.swapchain;
 	pi.pImageIndices = &vk.swapchain.current_swapchain_image;
 	vkQueuePresentKHR( vk.queue, &pi );
-
-	vk.swapchain.frame_idx = ( vk.swapchain.frame_idx + 1 ) % vk.swapchain.images.size();
 }
 
 void VRSystem::render_stereo_targets(Scene &scene) {
@@ -166,21 +178,16 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 
     cout << "starting render pass" << endl;
     left_eye_fb->start_render_pass();
-        
-	//TODO:  have to set eye position
-
-	auto proj_left = get_view_projection(vr::Eye_Left);
-	memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
-
-	//ObjectVisitor dummy;
+    
+    auto proj_left = get_view_projection(vr::Eye_Left);
+    memcpy(&draw_visitor.mvp, &proj_left, sizeof(Matrix4));
+    
+    //render stuff
     draw_visitor.right = false;
-    cout << "visitng and stuff" << endl;
     scene.visit(draw_visitor);
-    //scene.visit(dummy);
-  	//render stuff
-	
-	left_eye_fb->end_render_pass();
-	
+    
+    left_eye_fb->end_render_pass();
+    
     left_eye_fb->img.barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 
@@ -198,19 +205,20 @@ void VRSystem::render_stereo_targets(Scene &scene) {
     
 
 
-	auto proj_right = get_view_projection(vr::Eye_Right);
+    auto proj_right = get_view_projection(vr::Eye_Right);
     memcpy(&draw_visitor.mvp, &proj_right, sizeof(Matrix4));
 	
+    //render stuff
     draw_visitor.right = true;
     scene.visit(draw_visitor);
     
-  	//render stuff
-	right_eye_fb->end_render_pass();
+    
+    right_eye_fb->end_render_pass();
     right_eye_fb->img.barrier(VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void VRSystem::render_companion_window() {
-	auto &ws = Global::ws();
+  auto &ws = Global::ws();
     auto &vk = Global::vk();
     
     auto &sc = vk.swapchain;
@@ -230,27 +238,27 @@ void VRSystem::render_companion_window() {
     sc.begin_render_pass(ws.width, ws.height);
 
     
-	// Set viewport/scissor
-	VkViewport viewport = { 0.0f, 0.0f, (float ) ws.width, ( float ) ws.height, 0.0f, 1.0f };
-	vkCmdSetViewport( vk.cmd_buffer(), 0, 1, &viewport );
-	VkRect2D scissor = { 0, 0, ws.width, ws.height };
-	vkCmdSetScissor( vk.cmd_buffer(), 0, 1, &scissor );
+    // Set viewport/scissor
+    VkViewport viewport = { 0.0f, 0.0f, (float ) ws.width, ( float ) ws.height, 0.0f, 1.0f };
+    vkCmdSetViewport( vk.cmd_buffer(), 0, 1, &viewport );
+    VkRect2D scissor = { 0, 0, ws.width, ws.height };
+    vkCmdSetScissor( vk.cmd_buffer(), 0, 1, &scissor );
+    
+    // Bind the pipeline and descriptor set
+    vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_COMPANION ] );
+    vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb->desc.desc, 0, nullptr );
 
-    	// Bind the pipeline and descriptor set
-	vkCmdBindPipeline( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipelines[ PSO_COMPANION ] );
-	vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &left_eye_fb->desc.desc, 0, nullptr );
-
-	// Draw left eye texture to companion window
-	VkDeviceSize nOffsets[ 1 ] = { 0 };
-	vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &ws.vertex_buf.buffer, &nOffsets[ 0 ] );
-	vkCmdBindIndexBuffer( vk.cmd_buffer(), ws.index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
-	vkCmdDrawIndexed( vk.cmd_buffer(), ws.index_buf.size() / 2, 1, 0, 0, 0 );
-
-	// Draw right eye texture to companion window
-	vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &right_eye_fb->desc.desc, 0, nullptr );
-	vkCmdDrawIndexed( vk.cmd_buffer(), ws.index_buf.size() / 2, 1, ws.index_buf.size() / 2, 0, 0 );
-
-	// End the renderpass
+    // Draw left eye texture to companion window
+    VkDeviceSize nOffsets[ 1 ] = { 0 };
+    vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &ws.vertex_buf.buffer, &nOffsets[ 0 ] );
+    vkCmdBindIndexBuffer( vk.cmd_buffer(), ws.index_buf.buffer, 0, VK_INDEX_TYPE_UINT16 );
+    vkCmdDrawIndexed( vk.cmd_buffer(), ws.index_buf.size() / 2, 1, 0, 0, 0 );
+    
+    // Draw right eye texture to companion window
+    vkCmdBindDescriptorSets( vk.cmd_buffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout, 0, 1, &right_eye_fb->desc.desc, 0, nullptr );
+    vkCmdDrawIndexed( vk.cmd_buffer(), ws.index_buf.size() / 2, 1, ws.index_buf.size() / 2, 0, 0 );
+    
+    // End the renderpass
     sc.end_render_pass();
     sc.current_img().barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,

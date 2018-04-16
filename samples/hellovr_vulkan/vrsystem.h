@@ -67,10 +67,14 @@ struct VRSystem {
   void update_track_pose();
   void wait_frame();
   
-  void render(Scene &scene);
+  void render(Scene &scene, bool headless = false);
   void render_stereo_targets(Scene &scene);
   void render_companion_window();
 
+  void image_to_cpu();
+  void submit_to_hmd();
+
+  
   void setup_render_models();
   void setup_render_model_for_device(int d);
   void setup_render_targets();

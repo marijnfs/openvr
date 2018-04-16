@@ -100,7 +100,8 @@ struct Swapchain {
   Image &current_img();
   void begin_render_pass(uint32_t width, uint32_t height);
   void end_render_pass();
-  
+
+  void inc_frame();
 };
 
 struct VulkanSystem {

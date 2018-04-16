@@ -27,8 +27,7 @@ void FencedCommandBuffer::reset() {
 
 void FencedCommandBuffer::init() {
   auto &vk = Global::vk();
-  cout << "cmdpool:" << vk.cmd_pool << endl;
-  VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+   VkCommandBufferAllocateInfo cmd_buffer_alloc_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
   cmd_buffer_alloc_info.commandBufferCount = 1;
   cmd_buffer_alloc_info.commandPool = vk.cmd_pool;
   cmd_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -82,7 +81,6 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
   // Update the persistently mapped pointer to the CB data with the latest matrix, TODO: SET THIS SOMEWHERE
   //TODO set eye matrix
 
-  cout << right << " " << mvp << endl;
   if (right)
     memcpy(&mvp_right->m, &mvp.m[0], sizeof(Matrix4));
   else
@@ -95,7 +93,7 @@ void GraphicsObject::render(Matrix4 &mvp, bool right) {
 
   // Draw
   VkDeviceSize offsets[ 1 ] = { 0 };
-  cout << "nv: " << n_vertex << endl;
+ 
   vkCmdBindVertexBuffers( vk.cmd_buffer(), 0, 1, &vertex_buf.buffer, &offsets[ 0 ] );
   if (!index_buf.size())
     vkCmdDraw( vk.cmd_buffer(), n_vertex, 1, 0, 0 );
@@ -134,8 +132,6 @@ void GraphicsCanvas::init() {
 
   init_buffers();
   auto *img = ImageFlywheel::image(texture);
-
-  cout << "img " << img << endl;
   
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
@@ -150,8 +146,6 @@ void GraphicsCube::init() {
   
   init_buffers();
   auto *img = ImageFlywheel::image(texture);
-
-  cout << "img " << img << endl;
   
   desc_left.register_model_texture(mvp_buffer_left.buffer, img->view, img->sampler);
   desc_right.register_model_texture(mvp_buffer_right.buffer, img->view, img->sampler);
@@ -481,6 +475,9 @@ void Swapchain::end_render_pass() {
   vkCmdEndRenderPass( vk.cmd_buffer() );
 }
 
+void Swapchain::inc_frame() {
+  frame_idx = (frame_idx + 1) % images.size();
+}
 
 VulkanSystem::VulkanSystem() {
   
@@ -564,9 +561,6 @@ void VulkanSystem::init_instance() {
   app_info.pEngineName = nullptr;
   app_info.engineVersion = 1;
   app_info.apiVersion = VK_MAKE_VERSION( 1, 0, 0 );
-
-  cout << "getting ext" << endl;
-  cout << &Global::vr() << endl;
 
   vector<char*> enabled_layer_names;
     
@@ -944,8 +938,6 @@ void Descriptor::init() {
   desc_inf.descriptorSetCount = 1;
   desc_inf.pSetLayouts = &vk.desc_set_layout;
   vkAllocateDescriptorSets( vk.dev, &desc_inf, &desc );
-
-  cout << "DESC created: " << desc << endl;
 }
 
 void Descriptor::register_texture(VkImageView &view) {
@@ -1040,9 +1032,8 @@ Image &Swapchain::current_img() {
 
 void Swapchain::acquire_image() {
   auto &vk = Global::vk();
-  cout << "acquiring image, frame: " << frame_idx << endl;
+  //cout << "acquiring image, frame: " << frame_idx << endl;
   try {
-    cout << "sw: " << swapchain << " " << current_swapchain_image << endl;
     check( vkAcquireNextImageKHR( vk.dev, swapchain, UINT64_MAX, semaphores[ frame_idx ], VK_NULL_HANDLE, &current_swapchain_image ), "vkAcquireNextImageKHR");} catch(...){}
     return;
 
@@ -1118,23 +1109,20 @@ void VulkanSystem::start_cmd() {
   // Start the command buffer
   VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
   cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  cout << cur_cmd_buffer << endl;
   vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
 }
 
 void VulkanSystem::end_cmd() {
   if (cur_cmd_buffer == 0)
     throw StringException("cmd still 0 when endcommandbuffer called");
-  cout << cur_cmd_buffer << endl;
   vkEndCommandBuffer( cur_cmd_buffer );
 }
 
 void VulkanSystem::submit_swapchain_cmd() {
   // Submit the command buffer
-  cout << "submitting, sema: " << swapchain.semaphores[ swapchain.frame_idx ] << endl;
   submit(cur_cmd_buffer, cur_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
   cur_cmd_buffer = 0;
-  ++swapchain.frame_idx;
+  swapchain.inc_frame();
 }
 
 
@@ -1148,3 +1136,4 @@ void VulkanSystem::end_submit_cmd() {
   submit(cur_cmd_buffer, cur_fence);
   cur_cmd_buffer = 0;
 }
+
