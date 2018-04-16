@@ -26,6 +26,12 @@ struct ImageFlywheel {
     return ImageFlywheel::wheel[name];
   }
 
+
+  static void destroy() {
+    for (auto &kv : ImageFlywheel::wheel)
+      delete kv.second;
+    ImageFlywheel::wheel.clear();
+  }
 };
 
 #endif

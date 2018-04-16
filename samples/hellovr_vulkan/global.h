@@ -70,11 +70,15 @@ struct Global {
 	}
 
   static void shutdown() {
-    vk().wait_idle();
+    vk().wait_idle(); //wait for VR to finish
+
+    //Destroy stuff
     delete inst().scene_ptr;
     delete inst().vr_ptr;
-    
+
+    ImageFlywheel::destroy():
     ws().destroy_buffers();
+    
     delete inst().vk_ptr;
     delete inst().ws_ptr;
   }
