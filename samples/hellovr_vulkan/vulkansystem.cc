@@ -44,8 +44,8 @@ GraphicsObject::GraphicsObject() {
 }
 
 GraphicsObject::~GraphicsObject() {
-  //if (mvp_left) delete mvp_left;
-  //if (mvp_right) delete mvp_right;
+  if (mvp_left) delete mvp_left;
+  if (mvp_right) delete mvp_right;
 }
 
 void GraphicsObject::init_buffers() {

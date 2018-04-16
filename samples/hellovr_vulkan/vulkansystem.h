@@ -209,7 +209,7 @@ struct GraphicsObject {
   std::vector<uint16_t> indices;
   
   GraphicsObject();
-  ~GraphicsObject();
+  virtual ~GraphicsObject();
   
   virtual void render(Matrix4 &mvp, bool right);
     void init_buffers();
