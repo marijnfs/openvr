@@ -71,9 +71,10 @@ struct VRSystem {
   void render_stereo_targets(Scene &scene);
   void render_companion_window();
 
-  void image_to_cpu();
+  void copy_image_to_cpu();
   void submit_to_hmd();
 
+  void to_present();
   
   void setup_render_models();
   void setup_render_model_for_device(int d);

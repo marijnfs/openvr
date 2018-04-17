@@ -76,7 +76,7 @@ struct Global {
     delete inst().scene_ptr;
     delete inst().vr_ptr;
 
-    ImageFlywheel::destroy():
+    ImageFlywheel::destroy();
     ws().destroy_buffers();
     
     delete inst().vk_ptr;

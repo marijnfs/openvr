@@ -67,24 +67,28 @@ struct FittsWorld {
     scene.clear_objects();
     scene.clear_triggers();
 
-    
-    
     vector<string> boxes = {"box1", "box2", "box3"};
+
+    float x_seperation(.1);
+    float distance(.05);
+    float base_height(.9);
+    float box_width_depth(.03);
+    float box_height(.2);
     
     scene.add_box("box1");
-    scene.set_pos("box1", Pos(.1, 0.9, -.1));
-    scene.find<Box>("box1").set_dim(.02, .2, .02);
-    scene.find<Box>("box1").set_texture("gray.png");
+    scene.set_pos("box1", Pos(x_seperation, base_height, -distance));
+    scene.find<Box>("box1").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box1").set_texture("white-checker.png");
     
     scene.add_box("box2");
-    scene.set_pos("box2", Pos(0, 0.9, -.1));
-    scene.find<Box>("box2").set_dim(.02, .2, .02);
-    scene.find<Box>("box2").set_texture("gray.png");
+    scene.set_pos("box2", Pos(0, base_height, -distance));
+    scene.find<Box>("box2").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box2").set_texture("white-checker.png");
     
     scene.add_box("box3");
-    scene.set_pos("box3", Pos(-.1, 0.9, -.1));
-    scene.find<Box>("box3").set_dim(.02, .2, .02);
-    scene.find<Box>("box3").set_texture("gray.png");
+    scene.set_pos("box3", Pos(-x_seperation, base_height, -distance));
+    scene.find<Box>("box3").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box3").set_texture("white-checker.png");
 
     cout << "done setting boxes" << endl;
     int new_choice = rand() % 3;
@@ -92,7 +96,7 @@ struct FittsWorld {
       new_choice = rand() % 3;
     choice = new_choice;
     
-    scene.find<Box>(boxes[choice]).set_texture("blue.png");
+    scene.find<Box>(boxes[choice]).set_texture("blue-checker.png");
     scene.variable<FreeVariable>("mode").set_value(choice);
 
     scene.add_trigger(new InBoxTrigger(scene(boxes[choice]), scene("controller")), "on_in_box");
@@ -132,7 +136,7 @@ int record() {
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
-  while (i++ < 1000) {
+  while (i++ < 10000) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
@@ -147,7 +151,7 @@ int record() {
   cout << "writing: " << endl;
   recording.save("test.save", scene);
   cout << "done: " << endl;
-
+  recording.release();
   Global::shutdown();
 }
 
@@ -166,6 +170,9 @@ int replay() {
   ImageFlywheel::image("gray.png");
   ImageFlywheel::image("blue.png");
   ImageFlywheel::image("red.png");
+  ImageFlywheel::image("white-checker.png");
+  ImageFlywheel::image("blue-checker.png");
+  ImageFlywheel::image("red-checker.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);

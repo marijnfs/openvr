@@ -43,8 +43,16 @@ GraphicsObject::GraphicsObject() {
 }
 
 GraphicsObject::~GraphicsObject() {
-  if (mvp_left) delete mvp_left;
-  if (mvp_right) delete mvp_right;
+  if (mvp_left) {
+    mvp_buffer_left.unmap();
+    //delete mvp_left;
+  }
+  if (mvp_right) {
+    mvp_buffer_right.unmap();
+    //delete mvp_right;
+  }
+  mvp_left = 0;
+  mvp_right = 0;
 }
 
 void GraphicsObject::init_buffers() {
@@ -55,8 +63,8 @@ void GraphicsObject::init_buffers() {
   if (n_index)
     index_buf.init(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, HOST);
   
-  mvp_left = new Matrix4();
-  mvp_right = new Matrix4();
+  //mvp_left = new Matrix4();
+  //mvp_right = new Matrix4();
 
   mvp_buffer_left.init(sizeof(Matrix4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_COHERENT);
   mvp_buffer_right.init(sizeof(Matrix4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_COHERENT);
@@ -479,6 +487,13 @@ void Swapchain::inc_frame() {
   frame_idx = (frame_idx + 1) % images.size();
 }
 
+void Swapchain::to_present() {
+  current_img().barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
 VulkanSystem::VulkanSystem() {
   
 }
@@ -490,7 +505,8 @@ VulkanSystem::~VulkanSystem() {
   }
 
   vkDestroyCommandPool(dev, cmd_pool, nullptr);
-
+  vkDestroyDescriptorPool(dev, desc_pool, nullptr);
+  
   vkDestroyPipelineLayout(dev, pipeline_layout, nullptr);
   vkDestroyDescriptorSetLayout(dev, desc_set_layout, nullptr);
   for (int i(0); i < PSO_COUNT; ++i) {

@@ -425,6 +425,8 @@ struct Recording {
 
   int size() { return snaps.size(); }
   void load_scene(int i, Scene *scene);
+
+  void release();
   
   //void update();
 };
@@ -791,6 +793,8 @@ struct ClickTrigger : public Trigger {
   Trigger *copy() { return new ClickTrigger(*this); }
 };
 
-
+inline std::ostream &operator<<(std::ostream &out, Pos &pos) {
+  return out << pos[0] << " " << pos[1] << " " << pos[2] << std::endl;
+}
 
 #endif

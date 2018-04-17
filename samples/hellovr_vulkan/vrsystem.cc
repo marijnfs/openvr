@@ -86,8 +86,11 @@ void VRSystem::setup_render_targets() {
 	
 }
 
-void VRSystem::image_to_cpu() {
+void VRSystem::copy_image_to_cpu() {
   auto &vk = Global::vk();
+
+  left_eye_fb->img.copy_to_buffer();
+  right_eye_fb->img.copy_to_buffer();
 }
 
 void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
@@ -101,19 +104,22 @@ void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
     // RENDERING
     render_stereo_targets(scene);
     render_companion_window();
+    //copy_image_to_cpu(); //later remove?
+    to_present();
     vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
-    image_to_cpu(); //later remove?
     submit_to_hmd();
   } else {
     // RENDERING
     render_stereo_targets(scene);
-    image_to_cpu();
+    copy_image_to_cpu();
     vk.end_submit_cmd();  //could try without swapchain if headless
+
   }
 }
 
 void VRSystem::submit_to_hmd() {
-	// Submit to SteamVR
+  auto &vk = Global::vk();
+  // Submit to SteamVR
 	vr::VRTextureBounds_t bounds;
 	bounds.uMin = 0.0f;
 	bounds.uMax = 1.0f;
@@ -260,21 +266,22 @@ void VRSystem::render_companion_window() {
     
     // End the renderpass
     sc.end_render_pass();
-    sc.current_img().barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    left_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    right_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
     //sc.to_present_optimal(sc.current_swapchain_image);
     //left_eye_fb->img.to_transfer_src();
     //right_eye_fb->img.to_transfer_src();
+}
+
+void VRSystem::to_present() {
+  Global::vk().swapchain.to_present();
+  left_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  right_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
+                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 }
 
 Matrix4 VRSystem::get_eye_transform( vr::Hmd_Eye eye )

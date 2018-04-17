@@ -89,7 +89,7 @@ struct Swapchain {
   //VkRenderPass renderpass, companion_renderpass;
 
 
-  
+  void to_present();
   void init();
   void destroy();
   //void to_present(int i);
@@ -229,12 +229,11 @@ struct GraphicsCanvas : public GraphicsObject {
   //void render(Matrix4 &mvp, bool right);
   
   void change_texture(std::string texture_) {
-    std::cout << "current tex: " << texture << " new: " << texture_ << std::endl;
     if (texture == texture_) return;
     texture = texture_;
     auto *img = ImageFlywheel::image(texture);
     desc_left.register_texture(img->view);
-    desc_right.register_texture(img->view);
+   desc_right.register_texture(img->view);
   }
   
 };
@@ -249,8 +248,6 @@ struct GraphicsCube : public GraphicsObject {
   
   //virtual void render(Matrix4 &mvp, bool right);
   void change_texture(std::string texture_) {
-    std::cout << "current tex: " << texture << std::endl;
-
     if (texture == texture_) return;
     texture = texture_;
     auto *img = ImageFlywheel::image(texture);
@@ -302,7 +299,7 @@ struct DrawVisitor : public ObjectVisitor {
     
     auto mat = mvp * glm_to_mat4(canvas.to_mat4());
 
-    std::cout << "render canvas" << std::endl;
+    //std::cout << "render canvas" << std::endl;
     gcanvas.render(mat, right);
   }
 
@@ -310,20 +307,20 @@ struct DrawVisitor : public ObjectVisitor {
     auto &gbox = gob<GraphicsCube>(i);
     gbox.change_texture(box.tex_name);
     gbox.change_dim(box.width, box.height, box.depth);
-    std::cout << "drawing box" << std::endl;
+    //std::cout << "drawing box" << std::endl;
     auto mat = mvp * glm_to_mat4(box.to_mat4());
     gbox.render(mat, right);
   }
   
   void visit(Controller &controller) {
     auto &gbox = gob<GraphicsCube>(i);
-    gbox.change_texture("red.png");
+    gbox.change_texture("red-checker.png");
         
     gbox.change_dim(.005, .005, .005);
     auto controller_mat = glm_to_mat4(controller.to_mat4());
     auto mat = mvp * controller_mat;
-
-    std::cout << "drawing controller " << controller_mat << std::endl;
+    
+    std::cout << "controller: " << controller.p << std::endl;
  
     gbox.render(mat, right);
   }

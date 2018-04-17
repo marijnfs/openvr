@@ -31,8 +31,6 @@ void HMD::update() {
     changed = true;
     //vr.hmd_pose = glm_to_mat4(to_mat4()); ///TODO, we need this for replaying
 
-    cout << "HMD: [" << p[0] << " " << p[1] << " " << p[2] << "] [" <<
-      quat[0] << " "  << quat[1] << " "  << quat[2] << " "  << quat[3] << "]" << endl;
   }
 }
 
@@ -58,7 +56,6 @@ void Scene::step() {
     if (t->check(*this)) {
       auto nameid = t->function_nameid;
       auto name = names[t->function_nameid];
-      cout << nameid << " " << name << endl;
       function_map[name]();
     }  
   }
@@ -113,16 +110,9 @@ void Scene::snap(Recording *rec) {
 }
 
 bool InBoxTrigger::check(Scene &scene) {
-  cout << scene.names[box_id] << " " << scene.names[target_id] << endl;
-
-  cout << scene.names << endl;
-  for (auto kv : scene.objects)
-    cout << kv.first << " ";
   auto &box = scene.find<Box>(box_id);
   
   auto &target = scene.find(target_id);
-  std::cout << box_id << " " << target_id << std::endl;
-  std::cout << scene.objects.size() << std::endl;
   //todo: account for rotation, now we assume unrotated boxes
   bool in = target.p[0] > box.p[0] - box.width / 2 &&
     target.p[0] < box.p[0] + box.width / 2 &&

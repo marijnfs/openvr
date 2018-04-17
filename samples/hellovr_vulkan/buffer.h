@@ -40,7 +40,8 @@ struct Buffer {
   
   template <typename T>
   void map(T **ptr);
-
+  void unmap();
+  
   size_t size() { return n; }
 };
 
@@ -77,6 +78,8 @@ struct Image {
 
   void barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout);
 
+  void copy_to_buffer();
+  
   //void to_colour_optimal();
   //void to_depth_optimal();
   //void to_read_optimal();
