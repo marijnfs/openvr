@@ -126,7 +126,7 @@ struct VulkanSystem {
   VkDescriptorSetLayout desc_set_layout = 0;
   std::vector<VkDescriptorSet> desc_sets;
 
-  bool validation = true;
+  bool validation = false;
   VkDebugReportCallbackEXT callback = 0;
   
   //Buffer scene_constant_buffer[2]; //for both eyes

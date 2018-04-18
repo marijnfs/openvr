@@ -7,6 +7,7 @@
 #include <deque>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 #include "shared/lodepng.h"
 #include "shared/Matrices.h"
@@ -38,7 +39,8 @@ struct ExperimentStep {
 
   float long_side = 0;
   float short_side = 0;
-  
+
+  ExperimentStep(){}
   ExperimentStep(Orientation o, float xdir_, float ydir_, float zdir_, int n_clicks_, float long_side_, float short_side_) :
     orientation(o), xdir(xdir_), ydir(ydir_), zdir(zdir_), n_clicks(n_clicks_),
     long_side(long_side_), short_side(short_side_)
@@ -51,22 +53,77 @@ struct FittsWorld {
   int step = 0;
   int choice = 0;
   
-  vector<ExperimentStep> steps = {
-    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .02),
-    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .04),
-    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .02),
-    ExperimentStep(Horizontal, 0, .1, 0, 8, .2, .02),
-    ExperimentStep(Horizontal, 0, 0, .1, 8, .2, .01),
-    ExperimentStep(Laying, 0, .1, 0, 8, .2, .02)
-  };
+  vector<ExperimentStep> steps;
+  
   
 
   FittsWorld(Scene &scene_) : scene(scene_) {
+    srand(123123);
+    init_experiments();
     init();
-    srand(123321);
   }
   
-
+  void init_experiments() {
+    //ExperimentStep(Orientation o, float xdir_, float ydir_, float zdir_, int n_clicks_, float long_side_, float short_side_) :
+    vector<float> multipliers = {1.0, 2.0, 4.0};
+    int n_clicks(10);
+    float long_side(.2);
+    float short_side(.01);
+    float dist(.02);
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Vertical, dist * m + short_side * m2, 0, 0, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Vertical, 0., 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Vertical, dist * m + short_side * m2, 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Vertical, dist * m + short_side * m2, 0, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    ////Horizontal
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Horizontal, 0, dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Horizontal, 0., 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Horizontal, 0, dist * m + short_side * m2, dist * m + short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+      steps.push_back(ExperimentStep(Horizontal, 0, dist * m + short_side * m2, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2));
+    
+    //Laying
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Laying, dist * m + short_side * m2, 0, 0, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Laying, 0., dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+        steps.push_back(ExperimentStep(Laying, dist * m + short_side * m2, dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2));
+    
+    for (auto m : multipliers)
+      for (auto m2 : multipliers)
+      steps.push_back(ExperimentStep(Laying, dist * m + short_side * m2, -dist * m - short_side * m2, 0, n_clicks, long_side, short_side * m2));
+    random_shuffle(steps.begin(), steps.end());
+    
+    steps.resize(steps.size() / 2);///TODO
+  }
+    
   void init() {
     cout << "Fitts World INIT" << endl;
     //scene.add_canvas("test");

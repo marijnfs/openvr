@@ -516,7 +516,8 @@ VulkanSystem::~VulkanSystem() {
   }
   vkDestroyPipelineCache(dev, pipeline_cache, nullptr);
 
-  destroy_debug_callback();
+  if (validation)
+    destroy_debug_callback();
 
   swapchain.destroy();
   
@@ -552,7 +553,8 @@ void VulkanSystem::wait_idle() {
 void VulkanSystem::init() {
   cout << "initialising Vulkan System" << endl;
   init_instance();
-init_debug_callback();
+  if (validation)
+    init_debug_callback();
   cout << "============" << endl;
   init_device();
   init_cmd_pool();
@@ -584,6 +586,7 @@ void VulkanSystem::init_instance() {
   cout << "n_ext: " << inst_req.size() << endl;
 
   vector<VkLayerProperties> layer_properties;
+  
   if (validation) {
     vector<string> instance_validation_layers =
       {
