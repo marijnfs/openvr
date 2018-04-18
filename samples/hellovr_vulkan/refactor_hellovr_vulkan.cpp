@@ -72,22 +72,23 @@ struct FittsWorld {
     float x_seperation(.1);
     float distance(.05);
     float base_height(.9);
-    float box_width_depth(.03);
+    float box_width(.03);
+    float box_depth(.03);
     float box_height(.2);
     
     scene.add_box("box1");
     scene.set_pos("box1", Pos(x_seperation, base_height, -distance));
-    scene.find<Box>("box1").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box1").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box1").set_texture("white-checker.png");
     
     scene.add_box("box2");
     scene.set_pos("box2", Pos(0, base_height, -distance));
-    scene.find<Box>("box2").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box2").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box2").set_texture("white-checker.png");
     
     scene.add_box("box3");
     scene.set_pos("box3", Pos(-x_seperation, base_height, -distance));
-    scene.find<Box>("box3").set_dim(box_width_depth, box_height, box_width_depth);
+    scene.find<Box>("box3").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box3").set_texture("white-checker.png");
 
     cout << "done setting boxes" << endl;
