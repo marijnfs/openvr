@@ -204,3 +204,19 @@ Trigger *read_trigger(cap::Trigger::Reader reader) {
     throw StringException("unknown variable");
   }
 }
+
+Pose(Scene &scene) {
+  base = scene.find<HMD>("hmd").p;
+  baseq = scene.find<HMD>("hmd").quat;
+
+  auto c_pos = scene.find<HMD>("controller").p;
+  auto v = c_pos - base;
+  arm_length = l2Norm(v);
+
+  v /= arm_length;
+  
+}
+
+Action::Action(Snap &cur, Snap &next) {
+  
+}

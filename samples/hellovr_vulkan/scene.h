@@ -68,13 +68,6 @@ struct ObjectVisitor {
   virtual void visit(Box &box) {};
 };
 
-struct State {
-  std::vector<float> s;
-};
-
-struct Action {
-  std::vector<float> a;
-};
 
 struct Object {
   bool changed = true;
@@ -830,6 +823,31 @@ struct ClickTrigger : public Trigger {
 
   Trigger *copy() { return new ClickTrigger(*this); }
 };
+
+struct Pose {
+  Pos base;
+  fquat baseq;
+  
+  fquat armq;
+  float arm_length = 0;
+  
+  
+  Pose(Scene &scene);
+};
+
+
+struct State {
+  std::vector<float> s;
+
+};
+
+struct Action {
+  std::vector<float> a;
+
+  Action(Snap &cur, Snap &next);
+Action(std::vector<float> a_) : a(a_) {}
+};
+
 
 inline std::ostream &operator<<(std::ostream &out, Pos &pos) {
   return out << pos[0] << " " << pos[1] << " " << pos[2] << std::endl;
