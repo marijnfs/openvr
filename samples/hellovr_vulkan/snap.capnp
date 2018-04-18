@@ -31,6 +31,7 @@ struct Variable {
     union {
         distance @2 : NamePair;
         free @3 : Float32;
+        mark @4 : Float32;
     }
 }
 

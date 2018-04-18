@@ -23,11 +23,47 @@
 
 using namespace std;
 
+enum Orientation {
+  Horizontal = 0,
+  Vertical = 1,
+  Laying = 2
+};
+
+struct ExperimentStep {
+  Orientation orientation = Horizontal;
+  float xdir = 0;
+  float ydir = 0;
+  float zdir = 0;
+  int n_clicks = 0;
+
+  float long_side = 0;
+  float short_side = 0;
+  
+  ExperimentStep(Orientation o, float xdir_, float ydir_, float zdir_, int n_clicks_, float long_side_, float short_side_) :
+    orientation(o), xdir(xdir_), ydir(ydir_), zdir(zdir_), n_clicks(n_clicks_),
+    long_side(long_side_), short_side(short_side_)
+  {}
+};
+
 struct FittsWorld {
   Scene &scene;
-  int choice = -1;
+  int click = 0;
+  int step = 0;
+  int choice = 0;
+  
+  vector<ExperimentStep> steps = {
+    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .02),
+    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .04),
+    ExperimentStep(Vertical, .1, 0, 0, 8, .2, .02),
+    ExperimentStep(Horizontal, 0, .1, 0, 8, .2, .02),
+    ExperimentStep(Horizontal, 0, 0, .1, 8, .2, .01),
+    ExperimentStep(Laying, 0, .1, 0, 8, .2, .02)
+  };
+  
+
   FittsWorld(Scene &scene_) : scene(scene_) {
     init();
+    srand(123321);
   }
   
 
@@ -37,12 +73,27 @@ struct FittsWorld {
     scene.add_hmd();
     scene.add_object("controller", new Controller(true));
     //scene.set_pos("test", Pos(1, 1, 1));
+
+    scene.add_variable("step", new FreeVariable());
+    scene.add_variable("click", new FreeVariable());
+
+    scene.add_variable("orientation", new FreeVariable());
+    scene.add_variable("xdir", new FreeVariable());
+    scene.add_variable("ydir", new FreeVariable());
+    scene.add_variable("zdir", new FreeVariable());
+
+    scene.add_variable("long_side", new FreeVariable());
+    scene.add_variable("short_side", new FreeVariable());
+    
+    scene.add_variable("choice", new FreeVariable());
+
+    scene.add_variable("start", new MarkVariable());
+    scene.add_variable("end", new MarkVariable());
     
     scene.register_function("on_in_box", std::bind(&FittsWorld::on_in_box, *this));
     scene.register_function("on_start", std::bind(&FittsWorld::on_start, *this));
-    scene.add_variable("mode", new FreeVariable());
-    scene.variable<FreeVariable>("mode").set_value(1);
     scene.add_trigger(new ClickTrigger(scene("controller")), "on_start");
+
     cout << "Fitts World Done INIT" << endl;
   }
 
@@ -54,7 +105,7 @@ struct FittsWorld {
       scene.set_reward(1);
 
       scene.add_trigger(new NextTrigger(), "on_start");
-
+      scene.variable<MarkVariable>("end").set_value(1);
       //scene.end_recording();
       //scene.clear_objects();
       //scene.clear_triggers();
@@ -63,43 +114,73 @@ struct FittsWorld {
   }
   
   void on_start() {
+    click++;
+    if (click >= steps[step].n_clicks) {
+      step++;
+      click = 0;
+    }
+    if (step >= steps.size()) {
+      scene.stop = true;
+      return;
+    }
+
+    ExperimentStep &cur_step(steps[step]);
+
+    int new_choice = rand() % 3;
+    while (new_choice == choice)
+      new_choice = rand() % 3;
+    choice = new_choice;
+
+    //store experiment vars;
+    scene.variable<FreeVariable>("step").set_value(step);
+    scene.variable<FreeVariable>("click").set_value(click);
+    scene.variable<FreeVariable>("orientation").set_value(cur_step.orientation);
+
+    scene.variable<FreeVariable>("long_side").set_value(cur_step.long_side);
+    scene.variable<FreeVariable>("short_side").set_value(cur_step.short_side);
+
+    scene.variable<FreeVariable>("xdir").set_value(cur_step.xdir);
+    scene.variable<FreeVariable>("ydir").set_value(cur_step.ydir);
+    scene.variable<FreeVariable>("zdir").set_value(cur_step.zdir);
+
+    scene.variable<FreeVariable>("choice").set_value(choice);
+    scene.variable<MarkVariable>("start").set_value(1);
+    //scene.variable<FreeVariable>("start").set_value(1);
+        
     scene.set_reward(0);
     scene.clear_objects();
     scene.clear_triggers();
 
     vector<string> boxes = {"box1", "box2", "box3"};
 
-    float x_seperation(.1);
-    float distance(.05);
-    float base_height(.9);
-    float box_width(.03);
-    float box_depth(.03);
-    float box_height(.2);
+    float long_side(cur_step.long_side), short_side(cur_step.short_side);
+    
+    float x(0);
+    float y(.9);
+    float z(-.05);
+    
+    float box_width(cur_step.orientation == Horizontal ? long_side : short_side);
+    float box_height(cur_step.orientation == Vertical ? long_side : short_side);
+    float box_depth(cur_step.orientation == Laying ? long_side : short_side);
     
     scene.add_box("box1");
-    scene.set_pos("box1", Pos(x_seperation, base_height, -distance));
+    scene.set_pos("box1", Pos(x - cur_step.xdir, y - cur_step.ydir, z - cur_step.zdir));
     scene.find<Box>("box1").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box1").set_texture("white-checker.png");
     
     scene.add_box("box2");
-    scene.set_pos("box2", Pos(0, base_height, -distance));
+    scene.set_pos("box2", Pos(x, y, z));
     scene.find<Box>("box2").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box2").set_texture("white-checker.png");
     
     scene.add_box("box3");
-    scene.set_pos("box3", Pos(-x_seperation, base_height, -distance));
+    scene.set_pos("box3", Pos(x + cur_step.xdir, y + cur_step.ydir, z + cur_step.zdir));
     scene.find<Box>("box3").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box3").set_texture("white-checker.png");
 
     cout << "done setting boxes" << endl;
-    int new_choice = rand() % 3;
-    while (new_choice == choice)
-      new_choice = rand() % 3;
-    choice = new_choice;
     
-    scene.find<Box>(boxes[choice]).set_texture("blue-checker.png");
-    scene.variable<FreeVariable>("mode").set_value(choice);
-
+    scene.find<Box>(boxes[choice]).set_texture("blue-checker.png");        
     scene.add_trigger(new InBoxTrigger(scene(boxes[choice]), scene("controller")), "on_in_box");
     
     scene.set_reward(0);
@@ -137,7 +218,7 @@ int record() {
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
-  while (i++ < 10000) {
+  while (!scene.stop) {
     //cout << i << endl;
     vr.update_track_pose();
     scene.step();
@@ -150,7 +231,7 @@ int record() {
   }
 
   cout << "writing: " << endl;
-  recording.save("test.save", scene);
+  recording.save("test.rec", scene);
   cout << "done: " << endl;
   recording.release();
   Global::shutdown();
@@ -184,7 +265,7 @@ int replay() {
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
-  recording.load("test.save", &scene);
+  recording.load("test.rec", &scene);
   cout << "recording size: " << recording.size() << endl;
   /*
   for (auto o : scene.objects)
@@ -217,6 +298,6 @@ int replay() {
 }
 
 int main() {
-  //record();
-  replay();
+  record();
+  //replay();
 }

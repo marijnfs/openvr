@@ -151,12 +151,8 @@ Object *read_object(cap::Object::Reader reader) {
     o->deserialise(reader);
     return o;
   }
-    //hmd @3 : Void;
-    //  controller @4 : Controller;
-    //  point @5 : Void;
-    //  canvas @6 : Text;
-    //   box @7 : Box;
-
+  default:
+    throw StringException("unknown variable");
   }
 }
 
@@ -172,8 +168,13 @@ Variable *read_variable(cap::Variable::Reader reader) {
     v->deserialise(reader);
     return v;
   }
-  //  distance @2 : NamePair;
-  //     free @3 : Float32;
+  case cap::Variable::MARK: {
+    auto v = new MarkVariable();
+    v->deserialise(reader);
+    return v;
+  }
+  default:
+    throw StringException("unknown variable");
   }
 }
 
@@ -199,9 +200,7 @@ Trigger *read_trigger(cap::Trigger::Reader reader) {
     t->deserialise(reader);
     return t;
   }
+  default:
+    throw StringException("unknown variable");
   }
-  //limit @2 : NameLimit;
-  //     click @3 : Void;
-  //     inBox @4 : NamePair;
-
 }

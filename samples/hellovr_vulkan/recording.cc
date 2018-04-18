@@ -29,6 +29,7 @@ void Recording::load_scene(int i, Scene *scene_ptr) {
   }
   
   for (auto v : snap.variable_ids) {
+    cout << scene.names << " " << v << " " << variables[v] << endl;
     string name = scene.names[variables[v]->nameid];
     scene.variables[name] = variables[v];
   }

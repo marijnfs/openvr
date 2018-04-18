@@ -68,6 +68,14 @@ struct ObjectVisitor {
   virtual void visit(Box &box) {};
 };
 
+struct State {
+  std::vector<float> s;
+};
+
+struct Action {
+  std::vector<float> a;
+};
+
 struct Object {
   bool changed = true;
   int nameid = -1;
@@ -448,7 +456,7 @@ struct Variable {
   }
   
   virtual void deserialise(cap::Variable::Reader reader) {
-    std::cout << "DESIR" << std::endl;
+    std::cout << "DESIRIALISE" << std::endl;
     nameid = reader.getNameId();
   }
 };
@@ -459,6 +467,7 @@ struct FreeVariable : public Variable {
   ~FreeVariable() {}
   
   void set_value(float val_) {
+    if (val == val_) return;
     val = val_;
     changed = true;
   }
@@ -468,7 +477,7 @@ struct FreeVariable : public Variable {
     builder.setFree(val);
   }
 
-  virtual void deserialise(cap::Variable::Reader reader) {
+  void deserialise(cap::Variable::Reader reader) {
     Variable::deserialise(reader);
     val = reader.getFree();
   }
@@ -476,10 +485,40 @@ struct FreeVariable : public Variable {
   Variable *copy() {return new FreeVariable(*this);}
 };
 
+//variable that sets itself back to 0 after storing
+struct MarkVariable : public Variable {
+  ~MarkVariable() {}
+  
+  void set_value(float val_) {
+    val = val_;
+    changed = true;
+  }
+  
+  void update(Scene &scene) {
+    if (val) {
+      val = 0;
+      changed = true;
+    }
+  }
+  
+  void serialise(cap::Variable::Builder builder) {
+    Variable::serialise(builder);
+    builder.setMark(val);
+  }
+
+  void deserialise(cap::Variable::Reader reader) {
+    Variable::deserialise(reader);
+    val = reader.getMark();
+  }
+
+  Variable *copy() {return new MarkVariable(*this);}
+};
+
 struct Scene {
   uint time = 0;
   float reward = 0;
   bool record = false;
+  bool stop = false;
   
   std::map<std::string, Object*> objects;
   std::map<std::string, Variable*> variables;
@@ -668,7 +707,6 @@ struct Scene {
 
     record = false;
   }
-  
 };
 
 struct DistanceVariable : public Variable {

@@ -5,7 +5,7 @@ set(TARGET_NAME hellovr_vulkan)
 #  hellovr_vulkan.cpp
 #)
 
-add_definitions("-g")
+add_definitions("-O3")
 
 link_directories(/usr/local/cuda/lib64)
 find_package(CUDA QUIET REQUIRED)
