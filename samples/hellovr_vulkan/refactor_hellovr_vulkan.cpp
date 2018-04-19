@@ -271,10 +271,11 @@ int record(string filename) {
   
   
   //preloading images
-  ImageFlywheel::image("stub.png");
-  ImageFlywheel::image("gray.png");
-  ImageFlywheel::image("blue.png");
-  ImageFlywheel::image("red.png");
+  ImageFlywheel::preload();
+  //ImageFlywheel::image("stub.png");
+  //ImageFlywheel::image("gray.png");
+  //ImageFlywheel::image("blue.png");
+  //ImageFlywheel::image("red.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -323,13 +324,14 @@ int replay(string filename) {
   vk.setup();
 
   //preloading images
-  ImageFlywheel::image("stub.png");
-  ImageFlywheel::image("gray.png");
-  ImageFlywheel::image("blue.png");
-  ImageFlywheel::image("red.png");
-  ImageFlywheel::image("white-checker.png");
-  ImageFlywheel::image("blue-checker.png");
-  ImageFlywheel::image("red-checker.png");
+  ImageFlywheel::preload();
+  //ImageFlywheel::image("stub.png");
+  //ImageFlywheel::image("gray.png");
+  //ImageFlywheel::image("blue.png");
+  //ImageFlywheel::image("red.png");
+  //ImageFlywheel::image("white-checker.png");
+  //ImageFlywheel::image("blue-checker.png");
+  //ImageFlywheel::image("red-checker.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -385,13 +387,14 @@ int learn(string filename) {
   vk.setup();
 
   //preloading images
-  ImageFlywheel::image("stub.png");
-  ImageFlywheel::image("gray.png");
-  ImageFlywheel::image("blue.png");
-  ImageFlywheel::image("red.png");
-  ImageFlywheel::image("white-checker.png");
-  ImageFlywheel::image("blue-checker.png");
-  ImageFlywheel::image("red-checker.png");
+  ImageFlywheel::preload();
+  //ImageFlywheel::image("stub.png");
+  //ImageFlywheel::image("gray.png");
+  //ImageFlywheel::image("blue.png");
+  //ImageFlywheel::image("red.png");
+  //ImageFlywheel::image("white-checker.png");
+  //ImageFlywheel::image("blue-checker.png");
+  //ImageFlywheel::image("red-checker.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);

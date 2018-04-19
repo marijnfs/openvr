@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "script.h"
+#include "walk.h"
 
 using namespace std;
 
@@ -30,7 +31,12 @@ int register_callback(lua_State *L) {
 }
 
 int main() {
-
+  for (auto f : walk("/home/marijnfs/img", ".png")) {
+    cout << f << endl;
+    int pos = f.rfind("/");
+    cout << f.substr(pos+1) << endl;
+  }
+  return 0;
   
   script.register_func("test", test);
   script.register_func("register_callback", register_callback);

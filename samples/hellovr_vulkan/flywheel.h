@@ -15,6 +15,16 @@ struct ImageFlywheel {
   ImageFlywheel();
 
 
+  static void preload() {
+    std::cout << "Preloading images" << std::endl;
+    for (auto f : walk("/home/marijnfs/img", ".png")) {
+      cout << f << endl;
+      int pos = f.rfind("/");
+      auto name = f.substr(pos+1);
+      ImageFlywheel::image(name);
+    }
+  }
+  
   static Image* image(std::string name) {
     if (!ImageFlywheel::wheel.count(name)) {
       std::string path("/home/marijnfs/img/");
