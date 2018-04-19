@@ -392,6 +392,12 @@ int analyse(string filename) {
     cout << scene.names[t->function_nameid] << endl;
   */                                           
   int clicked(0);
+  Pos start_pos;
+  int start_frame(0);
+  int start_clicks(0);
+
+  ofstream datafile(filename + ".data");
+  datafile << "ORIENTATION WIDTH XDIR YDIR ZDIR STARTX STARTY STARTZ ENDX ENDY ENDZ NFRAMES" << endl;
   while (i < recording.size()) {
     //cout << i << endl;
     //vr.update_track_pose();
@@ -400,13 +406,32 @@ int analyse(string filename) {
 
     
     recording.load_scene(i, &scene);
+    
     try {
-      if (scene.variable<MarkVariable>("start").val > 0) {
-        cout << "short side: " << scene.variable<MarkVariable>("short_side").val << endl;
-        cout << "a start at " << i << endl;
-      }
       if (scene.find<Controller>("controller").clicked)
         clicked++;
+
+      if (scene.variable<MarkVariable>("start").val > 0) {
+        start_frame = i;
+        start_clicks = clicked;
+        start_pos = scene.find<Controller>("controller").p;
+      }
+      
+      if (scene.variable<MarkVariable>("end").val > 0) {
+        Pos cur_pos = scene.find<Controller>("controller").p;
+        datafile << scene.variable<FreeVariable>("orientation").val << " "
+             << scene.variable<FreeVariable>("short_side").val << " "
+             << scene.variable<FreeVariable>("xdir").val << " "
+             << scene.variable<FreeVariable>("ydir").val << " " 
+             << scene.variable<FreeVariable>("zdir").val << " "
+             << start_pos.x << " "
+             << start_pos.y << " "
+             << start_pos.z << " "
+             << cur_pos.x << " "
+             << cur_pos.y << " "
+             << cur_pos.z << " "
+             << (i - start_frame) << endl;
+      }
     } catch(...) {}
     
     //cout << "scene " << i << " items: " << scene.objects.size() << endl;
