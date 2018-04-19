@@ -32,13 +32,16 @@ void Script::init() {
   luaL_openlibs(L);             /* opens the basic library */
 }
 
-void Script::run() {
+void Script::run(string filename) {
+  luaL_dofile(L, filename.c_str());
+}
+
+void Script::run_interactive() {
   string s;
   int error;
   
   while (getline(cin, s)) {
     error = luaL_loadbuffer(L, s.c_str(), s.size(), "line");
-    cout << "sdf" << endl;
     lua_pcall(L, 0, 0, 0);
 
     if (error) {
@@ -46,4 +49,15 @@ void Script::run() {
       lua_pop(L, 1);  /* pop error message from the stack */
     }
   }
+}
+
+void Script::call_callback() {
+  for (auto f : funcs) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, f);
+    lua_pcall(L, 0, LUA_MULTRET, 0);
+  }
+}
+
+int test(lua_State *L) {
+  cout << "test func" << endl;
 }

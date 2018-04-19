@@ -4,6 +4,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "script.h"
 
 using namespace std;
 
@@ -14,7 +15,28 @@ std::ostream &operator<<(std::ostream &out, glm::mat4 m) {
              << m[0][3] << " " << m[1][3] << " " << m[2][3] << " " << m[3][3] << endl;
 }
 
+Script script;
+
+int register_callback(lua_State *L) {
+  int n = lua_gettop(L);
+  if (n != 2)
+    cout << "not right amount of args" << endl;
+  
+  auto name = lua_tostring(L, 1);
+  int r = luaL_ref(L, LUA_REGISTRYINDEX);
+  cout << "r: " << r << endl;
+  script.funcs.push_back(r);
+  return 0;
+}
+
 int main() {
+
+  
+  script.register_func("test", test);
+  script.register_func("register_callback", register_callback);
+  script.run_interactive();
+  script.call_callback();
+  
   glm::fmat4 m(1.);
   
   m = glm::translate(m, glm::vec3(2., -1, .3));
