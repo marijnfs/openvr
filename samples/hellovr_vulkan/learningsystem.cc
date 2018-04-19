@@ -7,10 +7,10 @@
 #include "log.h"
 #include "divide.h"
 #include "trainer.h"
+#include "util.h"
+#include "utilvr.h"
 
 using namespace std;
-
-
 
 void test(int argc, char **argv) {
 	srand(time(0));

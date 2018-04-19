@@ -1,6 +1,8 @@
 #include "buffer.h"
 
 #include "util.h"
+#include "utilvr.h"
+
 #include "global.h"
 
 #include "shared/lodepng.h"

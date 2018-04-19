@@ -277,14 +277,11 @@ struct DrawVisitor : public ObjectVisitor {
       gobs[i] = new T();
       return;
     }
-    try {
-      dynamic_cast<T*>(gobs[i]);
-    } catch (...) {
+    
+    if (dynamic_cast<T*>(gobs[i]) == NULL) {
       delete gobs[i];
       gobs[i] = new T();
     }
-        
-      
   }
 
   template <typename T>
@@ -320,7 +317,7 @@ struct DrawVisitor : public ObjectVisitor {
     auto controller_mat = glm_to_mat4(controller.to_mat4());
     auto mat = mvp * controller_mat;
     
-    std::cout << "controller: " << controller.p << std::endl;
+    //std::cout << "controller: " << controller.p << std::endl;
  
     gbox.render(mat, right);
   }

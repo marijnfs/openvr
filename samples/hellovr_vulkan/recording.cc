@@ -29,7 +29,6 @@ void Recording::load_scene(int i, Scene *scene_ptr) {
   }
   
   for (auto v : snap.variable_ids) {
-    cout << scene.names << " " << v << " " << variables[v] << endl;
     string name = scene.names[variables[v]->nameid];
     scene.variables[name] = variables[v];
   }
@@ -162,11 +161,13 @@ void Recording::load(std::string filename, Scene *scene) {
 }
 
 void Recording::save(std::string filename, Scene &scene) {
+  cout << "SAVING TO " << filename << endl;
   Bytes b;
   serialise(&b, scene);
 
   ogzstream of(filename.c_str());
   of.write((char*)&b[0], b.size());
+  cout << "Done SAVING" << endl;
 }
 
 void Recording::release() {

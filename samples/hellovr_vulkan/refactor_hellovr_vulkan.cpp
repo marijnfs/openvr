@@ -14,6 +14,7 @@
 #include "shared/pathtools.h"
 
 #include "util.h"
+#include "utilvr.h"
 #include "global.h"
 #include "vulkansystem.h"
 #include "vrsystem.h"
@@ -151,11 +152,16 @@ struct FittsWorld {
     scene.register_function("on_start", std::bind(&FittsWorld::on_start, *this));
     scene.add_trigger(new ClickTrigger(scene("controller")), "on_start");
 
+    scene.add_box("startbox");
+    scene.set_pos("startbox", Pos(0, .9, -.05));
+    scene.find<Box>("startbox").set_dim(.05, .05, .05);
+    scene.find<Box>("startbox").set_texture("white-checker.png");
+
     cout << "Fitts World Done INIT" << endl;
   }
 
   void on_in_box() {
-    cout << "ON IN BOX" << endl;
+    //cout << "ON IN BOX" << endl;
 
     if (scene.find<Controller>("controller").clicked == true) {
       scene.clear_scene();
@@ -174,6 +180,7 @@ struct FittsWorld {
     click++;
     if (click >= steps[step].n_clicks) {
       step++;
+      cout << step << "/" << steps.size() << endl;
       click = 0;
     }
     if (step >= steps.size()) {
@@ -235,8 +242,6 @@ struct FittsWorld {
     scene.find<Box>("box3").set_dim(box_width, box_height, box_depth);
     scene.find<Box>("box3").set_texture("white-checker.png");
 
-    cout << "done setting boxes" << endl;
-    
     scene.find<Box>(boxes[choice]).set_texture("blue-checker.png");        
     scene.add_trigger(new InBoxTrigger(scene(boxes[choice]), scene("controller")), "on_in_box");
     
@@ -250,9 +255,9 @@ void test() {
   Global::scene().clear();
 }
 
-int record(vector<string> args) {
-  if (args.size() < 1 || exists(args[0]))
-    throw StringException("save file exists!");
+int record(string filename) {
+  if (exists(filename))
+    throw StringException("file already exists");
 
   auto &ws = Global::ws();
   auto &vr = Global::vr();
@@ -287,21 +292,27 @@ int record(vector<string> args) {
 
     vr.render(scene);
     vr.wait_frame();
+
+    //cout << "elapsed: " << a_timer.elapsed() << endl;
+    //if (a_timer.elapsed() > 60.) {
+      // recording.save(filename, scene);
+    // a_timer.start();
+    // }
     //vr.request_poses();
     //a_timer.wait();
   }
 
   cout << "writing: " << endl;
-  recording.save("test.rec", scene);
+  recording.save(filename, scene);
   cout << "done: " << endl;
   recording.release();
   Global::shutdown();
 }
 
-int replay(vector<string> args) {
-  if (args.size() < 1 || !exists(args[0]))
-    throw StringException("save file doesn't exist!");
-
+int replay(string filename) {
+  if (!exists(filename))
+    throw StringException("file doesnt exist");
+      
   auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
@@ -329,7 +340,7 @@ int replay(vector<string> args) {
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
-  recording.load("test.rec", &scene);
+  recording.load(filename, &scene);
   cout << "recording size: " << recording.size() << endl;
   /*
   for (auto o : scene.objects)
@@ -347,10 +358,8 @@ int replay(vector<string> args) {
     //scene.snap(&recording);
 
     recording.load_scene(i, &scene);
-    for (auto o : scene.objects)
-      cout << o.first << endl;
     vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
-    cout << "scene " << i << " item: " << scene.objects.size() << endl;
+    cout << "scene " << i << " items: " << scene.objects.size() << endl;
     vr.render(scene);
     vr.wait_frame();
     ++i;
@@ -361,10 +370,66 @@ int replay(vector<string> args) {
   Global::shutdown();
 }
 
+int analyse(string filename) {
+  if (!exists(filename))
+    throw StringException("file doesnt exist");
+      
+  auto &scene = Global::scene();
+  FittsWorld world(scene);
+  
+  Timer a_timer(1./90);
+  uint i(0);
+  Recording recording;
+  recording.load(filename, &scene);
+  cout << "recording size: " << recording.size() << endl;
+  /*
+  for (auto o : scene.objects)
+    cout << o.first << " " << scene.names[o.second->nameid] << endl;
+
+  for (auto v : scene.variables)
+    cout << v.first << " " << v.second->val << " " << scene.names[v.second->nameid] << endl;
+  for (auto t : scene.triggers)
+    cout << scene.names[t->function_nameid] << endl;
+  */                                           
+  int clicked(0);
+  while (i < recording.size()) {
+    //cout << i << endl;
+    //vr.update_track_pose();
+    //scene.step();
+    //scene.snap(&recording);
+
+    
+    recording.load_scene(i, &scene);
+    try {
+      if (scene.variable<MarkVariable>("start").val > 0) {
+        cout << "short side: " << scene.variable<MarkVariable>("short_side").val << endl;
+        cout << "a start at " << i << endl;
+      }
+      if (scene.find<Controller>("controller").clicked)
+        clicked++;
+    } catch(...) {}
+    
+    //cout << "scene " << i << " items: " << scene.objects.size() << endl;
+    ++i;
+    //vr.request_poses();
+    //a_timer.wait();
+  }
+  cout << "n clicks: " << clicked << endl;
+
+  Global::shutdown();
+}
+
 int main(int argc, char **argv) {
-  vector<strings> args;
+  vector<string> args;
   for (int i(1); i < argc; ++i)
     args.push_back(argv[i]);
-  record(args);
-  //replay(args);
+
+  if (args.size() < 2)
+    throw StringException("not enough args, use: record|replay filename");
+  if (args[0] == "record")
+    record(args[1]);
+  if (args[0] == "replay")
+    replay(args[1]);
+  if (args[0] == "analyse")
+    analyse(args[1]);
 }

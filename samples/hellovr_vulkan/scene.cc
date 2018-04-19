@@ -62,6 +62,8 @@ void Scene::step() {
 }
 
 void Scene::snap(Recording *rec) {
+  if (!record)
+    return;
   Snap *snap_ptr = new Snap();
   Snap &snap(*snap_ptr);
   snap.time = time;
@@ -205,7 +207,7 @@ Trigger *read_trigger(cap::Trigger::Reader reader) {
   }
 }
 
-Pose(Scene &scene) {
+Pose::Pose(Scene &scene) {
   base = scene.find<HMD>("hmd").p;
   baseq = scene.find<HMD>("hmd").quat;
 

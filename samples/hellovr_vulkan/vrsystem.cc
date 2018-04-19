@@ -4,6 +4,7 @@
 
 #include "vrsystem.h"
 #include "util.h"
+#include "utilvr.h"
 #include "global.h"
 #include "vulkansystem.h"
 #include "shared/Matrices.h"
@@ -73,8 +74,7 @@ void VRSystem::setup() {
 }
 
 void VRSystem::setup_render_targets() {
-  cout << "ptr: " << ivrsystem << endl;
-  ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
+    ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
 
 
   
@@ -95,8 +95,6 @@ void VRSystem::copy_image_to_cpu() {
 
 void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
   auto &vk = Global::vk();
-
-  cout << "rendering: " << endl;
 
   if (!headless) {
     vk.swapchain.acquire_image(); //
@@ -182,7 +180,6 @@ void VRSystem::render_stereo_targets(Scene &scene) {
                                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    cout << "starting render pass" << endl;
     left_eye_fb->start_render_pass();
     
     auto proj_left = get_view_projection(vr::Eye_Left);
@@ -364,15 +361,15 @@ void VRSystem::update_track_pose() {
 //
   
   int controller_idx(0);
-  cout << "updating track pose " << endl;
+  //cout << "updating track pose " << endl;
 
   //vr::VRCompositor()->WaitGetPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
   vr::VRCompositor()->GetLastPoses(tracked_pose, vr::k_unMaxTrackedDeviceCount, NULL, 0 );
   
-  cout << "done" << endl;
+  //cout << "done" << endl;
 	for ( int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d) {
       if ( tracked_pose[d].bPoseIsValid ) {
-        cout << "updating: " << d << endl;
+        //cout << "updating: " << d << endl;
         tracked_pose_mat4[d] = vrmat_to_mat4( tracked_pose[d].mDeviceToAbsoluteTracking );
         device_class[d] = ivrsystem->GetTrackedDeviceClass(d);
         //todo
@@ -384,10 +381,10 @@ void VRSystem::update_track_pose() {
           if (!ivrsystem->GetControllerState((vr::TrackedDeviceIndex_t)d, &cstate, sizeof(cstate)))
             throw "no info";
           
-          cout << "controller buttons" << cstate.ulButtonPressed << endl;
+          //cout << "controller buttons" << cstate.ulButtonPressed << endl;
           if (controller_idx == 0) {
             right_controller.set_t(tracked_pose_mat4[d]);
-            cout << "AXIS: " << cstate.rAxis[1].x << endl;
+            //cout << "AXIS: " << cstate.rAxis[1].x << endl;
             right_controller.pressed = cstate.rAxis[1].x > .9;
           } else {
             left_controller.set_t(tracked_pose_mat4[d]);

@@ -21,7 +21,7 @@ typedef typename glm::fvec3 Pos;
 
 #include "bytes.h"
 #include "snap.capnp.h"
-
+#include "util.h"
 
 struct Variable;
 struct Trigger;
@@ -449,7 +449,7 @@ struct Variable {
   }
   
   virtual void deserialise(cap::Variable::Reader reader) {
-    std::cout << "DESIRIALISE" << std::endl;
+    //std::cout << "DESERIALISE" << std::endl;
     nameid = reader.getNameId();
   }
 };
@@ -536,17 +536,21 @@ struct Scene {
 
   template <typename T>
   T &find(std::string name) {
+    if (!objects.count(name))
+      throw StringException("no such object");
     return *reinterpret_cast<T*>(objects[name]);
   }
   
   Object &find(std::string name) {
     if (!objects.count(name))
-      throw "no such object";
+      throw StringException("no such object");
     return *objects[name];
   }
 
   template <typename T>
   T &variable(std::string name) {
+    if (!variables.count(name))
+      throw StringException("no such variable");
     return *reinterpret_cast<T*>(variables[name]);
   }
 
@@ -565,10 +569,13 @@ struct Scene {
   void set_tracked(bool tracked) {
    for (auto kv : objects) {
       //skip hmd and controller
-     try {dynamic_cast<HMD*>(kv.second)->tracked = tracked;} catch(...) {}
-      try {dynamic_cast<Controller*>(kv.second)->tracked = tracked;} catch(...) {}
-      
-    }}
+     if (dynamic_cast<HMD*>(kv.second) != NULL)
+       dynamic_cast<HMD*>(kv.second)->tracked = tracked;
+   
+     if (dynamic_cast<Controller*>(kv.second) != NULL)
+       dynamic_cast<Controller*>(kv.second)->tracked = tracked;
+   }
+  }
   
   void clear_objects(bool filter_hmd_controller = true) {
     std::vector<std::string> to_delete;

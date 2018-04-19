@@ -1,6 +1,7 @@
 #include "framerenderbuffer.h"
 #include "global.h"
 #include "util.h"
+#include "utilvr.h"
 
 using namespace std;
 

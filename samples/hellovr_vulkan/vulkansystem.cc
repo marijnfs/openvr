@@ -1,6 +1,7 @@
 #include "vulkansystem.h"
 #include "global.h"
 #include "util.h"
+#include "utilvr.h"
 #include "shared/lodepng.h"
 
 using namespace std;
