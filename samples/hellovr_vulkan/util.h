@@ -13,6 +13,7 @@
 #include <SDL.h>
 #include <chrono>
 #include <thread>
+#include <sys/stat.h>
 
 #include "shared/Matrices.h"
 
@@ -146,6 +147,16 @@ inline std::string read_all(std::string path) {
 	str.assign((std::istreambuf_iterator<char>(t)),
 	            std::istreambuf_iterator<char>());
 	return str;
+}
+
+bool exists(const std::string& filename)
+{
+  struct stat buf;
+  if (stat(filename.c_str(), &buf) != -1)
+    {
+      return true;
+    }
+  return false;
 }
 
 inline void gen_mipmap_rgba( const uint8_t *src, uint8_t *dst, int width, int height, int *width_out, int *height_out )
