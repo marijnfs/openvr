@@ -370,6 +370,68 @@ int replay(string filename) {
   Global::shutdown();
 }
 
+int learn(string filename) {
+  if (!exists(filename))
+    throw StringException("file doesnt exist");
+
+  
+  auto &ws = Global::ws();
+  auto &vr = Global::vr();
+  auto &vk = Global::vk();
+
+  
+  vr.setup();
+  ws.setup();
+  vk.setup();
+
+  //preloading images
+  ImageFlywheel::image("stub.png");
+  ImageFlywheel::image("gray.png");
+  ImageFlywheel::image("blue.png");
+  ImageFlywheel::image("red.png");
+  ImageFlywheel::image("white-checker.png");
+  ImageFlywheel::image("blue-checker.png");
+  ImageFlywheel::image("red-checker.png");
+
+  auto &scene = Global::scene();
+  FittsWorld world(scene);
+  vk.end_submit_cmd();
+  
+  Timer a_timer(1./90);
+  Recording recording;
+  recording.load(filename, &scene);
+  cout << "recording size: " << recording.size() << endl;
+
+  int n = 100;
+  int c = 3 * 2; //stereo rgb
+  int h = 32;
+  VolumeShape img_input{n, c, width, height};
+  VolumeShape network_output{n, h, 1, 1};
+
+  VolumeNetwork net(img_input);
+  net.add_pool(2, 2);
+  net.add_univlstm(7, 7, 16);
+  net.add_pool(2, 2);
+  net.add_univlstm(7, 7, 16);
+  //output should be {z, c, 1, 1}
+
+  while (true) {
+    int b = rand() % (recording.size() - n + 1);
+    int e = b + n;
+    for (int i(b); i < e; ++i) {
+      recording.load_scene(i, &scene);
+      vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
+      cout << "scene " << i << " items: " << scene.objects.size() << endl;
+      vr.render(scene);
+      vr.copy_image_to_cpu();
+      vr.wait_frame();
+    }
+  }
+  
+
+  Global::shutdown();
+}
+
 int analyse(string filename) {
   if (!exists(filename))
     throw StringException("file doesnt exist");
@@ -457,4 +519,6 @@ int main(int argc, char **argv) {
     replay(args[1]);
   if (args[0] == "analyse")
     analyse(args[1]);
+  if (args[0] == "learn")
+    learn(args[1]);
 }
