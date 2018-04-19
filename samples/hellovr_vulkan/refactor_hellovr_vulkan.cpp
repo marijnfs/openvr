@@ -250,7 +250,10 @@ void test() {
   Global::scene().clear();
 }
 
-int record() {
+int record(vector<string> args) {
+  if (args.size() < 1 || exists(args[0]))
+    throw StringException("save file exists!");
+
   auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
@@ -260,6 +263,8 @@ int record() {
   ws.setup();
   vk.setup();
 
+  
+  
   //preloading images
   ImageFlywheel::image("stub.png");
   ImageFlywheel::image("gray.png");
@@ -270,7 +275,6 @@ int record() {
   FittsWorld world(scene);
   vk.end_submit_cmd();
   
-
   
   Timer a_timer(1./90);
   uint i(0);
@@ -294,7 +298,10 @@ int record() {
   Global::shutdown();
 }
 
-int replay() {
+int replay(vector<string> args) {
+  if (args.size() < 1 || !exists(args[0]))
+    throw StringException("save file doesn't exist!");
+
   auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
@@ -354,7 +361,10 @@ int replay() {
   Global::shutdown();
 }
 
-int main() {
-  record();
-  //replay();
+int main(int argc, char **argv) {
+  vector<strings> args;
+  for (int i(1); i < argc; ++i)
+    args.push_back(argv[i]);
+  record(args);
+  //replay(args);
 }
