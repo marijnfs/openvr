@@ -385,10 +385,10 @@ void VRSystem::update_track_pose() {
           if (controller_idx == 0) {
             right_controller.set_t(tracked_pose_mat4[d]);
             //cout << "AXIS: " << cstate.rAxis[1].x << endl;
-            right_controller.pressed = cstate.rAxis[1].x > .9;
+            right_controller.pressed = cstate.rAxis[1].x > .4;
           } else {
             left_controller.set_t(tracked_pose_mat4[d]);
-            left_controller.pressed = cstate.rAxis[1].x > .9;
+            left_controller.pressed = cstate.rAxis[1].x > .4;
           }
           ++controller_idx;
         }

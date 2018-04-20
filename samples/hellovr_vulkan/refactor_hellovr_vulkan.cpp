@@ -22,6 +22,8 @@
 #include "flywheel.h"
 
 #include "learningsystem.h"
+#include "volumenetwork.h"
+#include "operations.h"
 
 using namespace std;
 
@@ -408,16 +410,27 @@ int learn(string filename) {
   int n = 100;
   int c = 3 * 2; //stereo rgb
   int h = 32;
+  int width = 1200;
+  int height = 1080;
   VolumeShape img_input{n, c, width, height};
   VolumeShape network_output{n, h, 1, 1};
 
+  
   VolumeNetwork net(img_input);
-  net.add_pool(2, 2);
+  auto pool1 = new PoolingOperation<F>(4, 4);
+  auto pool2 = new PoolingOperation<F>(4, 4);
+    
+  net.add_slicewise(pool1);
   net.add_univlstm(7, 7, 16);
-  net.add_pool(2, 2);
+  net.add_slicewise(pool2);
+  //net.add_pool(2, 2);
   net.add_univlstm(7, 7, 16);
-  //output should be {z, c, 1, 1}
 
+  
+  auto squash = new SquashOperation<F>(net.output_shape().tensor_shape(), 16);
+  net.add_slicewise(squash);
+  //output should be {z, c, 1, 1}
+  
   while (true) {
     int b = rand() % (recording.size() - n + 1);
     int e = b + n;

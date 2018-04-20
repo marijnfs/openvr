@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "buffer.h"
-
+#include "walk.h"
 
 struct ImageFlywheel {
   static std::map<std::string, Image*> wheel;
@@ -18,8 +18,9 @@ struct ImageFlywheel {
   static void preload() {
     std::cout << "Preloading images" << std::endl;
     for (auto f : walk("/home/marijnfs/img", ".png")) {
-      cout << f << endl;
+      std::cout << f << std::endl;
       int pos = f.rfind("/");
+      if (pos == std::string::npos) continue;
       auto name = f.substr(pos+1);
       ImageFlywheel::image(name);
     }
