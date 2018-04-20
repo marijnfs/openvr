@@ -837,9 +837,11 @@ struct Pose {
   
   fquat armq;
   float arm_length = 0;
-  
+  bool pressed = false;
   
   Pose(Scene &scene);
+
+  void apply(Action &action);
 };
 
 
@@ -849,10 +851,17 @@ struct State {
 };
 
 struct Action {
-  std::vector<float> a;
+  Pos dbase; //in baseq orientation
+  fquat dbaseq;
 
-  Action(Snap &cur, Snap &next);
-Action(std::vector<float> a_) : a(a_) {}
+  fquat armq; //is set directly
+  float arm_length; //is set directly
+  bool pressed; //is set directly
+  
+  std::vector<float> a;
+  
+  Action(Pose &last, Pose &now);
+  Action(std::vector<float> a_) : a(a_) {}
 };
 
 
