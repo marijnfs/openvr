@@ -179,7 +179,7 @@ Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspec
 }
 
 void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count, bool make_sampler) {
-  cout << "Image Init" << endl;
+  //cout << "Image Init" << endl;
 	width = width_;
 	height = height_;
     aspect = aspect_;
@@ -187,8 +187,8 @@ void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags us
     
 	auto &vk = Global::vk();
 	mip_levels = mip_levels_;
-    cout << "MIP LEVELS: " << mip_levels << endl;
-    cout << "samples: " << msaa_sample_count << endl;
+    //cout << "MIP LEVELS: " << mip_levels << endl;
+    //cout << "samples: " << msaa_sample_count << endl;
     
 	VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	imgci.imageType = VK_IMAGE_TYPE_2D;
@@ -216,7 +216,7 @@ void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags us
 	check( vkBindImageMemory( vk.dev, img, mem, 0 ), "vkBindImageMemory");
 
     //staging buffer not used, setup buffer for reading to cpu
-    cout << "image memory size: " << mem_req.size << " " << width << " " << height << " " << endl;
+    //cout << "image memory size: " << mem_req.size << " " << width << " " << height << " " << endl;
     staging_buffer.init(mem_req.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST);
     
 	//create view

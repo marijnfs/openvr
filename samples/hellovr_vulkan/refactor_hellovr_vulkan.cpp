@@ -378,6 +378,8 @@ int learn(string filename) {
   if (!exists(filename))
     throw StringException("file doesnt exist");
 
+  Handler::cudnn();
+  Handler::set_device(0);
   
   auto &ws = Global::ws();
   auto &vr = Global::vr();
@@ -415,17 +417,21 @@ int learn(string filename) {
   VolumeShape img_input{n, c, width, height};
   VolumeShape network_output{n, h, 1, 1};
 
-  
-  VolumeNetwork net(img_input);
+
+  bool first_grad = false;
+  VolumeNetwork net(img_input, first_grad);
   auto pool1 = new PoolingOperation<F>(4, 4);
-  auto pool2 = new PoolingOperation<F>(4, 4);
-    
+  
+  auto conv1 = new ConvolutionOperation<F>(net.output_shape().c, 4, 5, 5);
+  net.add_slicewise(conv1);
   net.add_slicewise(pool1);
-  net.add_univlstm(7, 7, 16);
+  
+  auto conv2 = new ConvolutionOperation<F>(net.output_shape().c, 64, 5, 5);
+  auto pool2 = new PoolingOperation<F>(4, 4);
+  net.add_slicewise(conv2);
   net.add_slicewise(pool2);
   //net.add_pool(2, 2);
-  net.add_univlstm(7, 7, 16);
-
+  //net.add_univlstm(7, 7, 16);
   
   auto squash = new SquashOperation<F>(net.output_shape().tensor_shape(), 16);
   net.add_slicewise(squash);
