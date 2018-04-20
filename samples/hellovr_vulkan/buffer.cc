@@ -409,26 +409,28 @@ vector<uint8_t> Image::copy_to_buffer() {
   dst_image.barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   barrier(VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-  VkImageCopy img_cpy_reg{};
-  img_cpy_reg.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  img_cpy_reg.srcSubresource.layerCount = 1;
-  img_cpy_reg.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  img_cpy_reg.dstSubresource.layerCount = 1;
-  img_cpy_reg.extent.width = width;
-  img_cpy_reg.extent.height = height;
-  img_cpy_reg.extent.depth = 1;
-
-
-  vkCmdCopyImage(vk.cmd_buffer(),
-                 img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                 dst_image.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                 1,
-                 &img_cpy_reg);
-
+  VkImageResolve img_res;
+  img_res.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_res.srcSubresource.layerCount = 1;
+  img_res.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_res.dstSubresource.layerCount = 1;
+  img_res.extent.width = width;
+  img_res.extent.height = height;
+  img_res.extent.depth = 1;
+  
+  vkCmdResolveImage(vk.cmd_buffer(),
+                    img,
+                    layout,
+                    dst_image.img,
+                    dst_image.layout,
+                    1,
+                    &img_res);
+  
   dst_image.barrier(VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_GENERAL);
   barrier(start_access, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, start_layout);
+  
   vk.flush_cmd();
-
+  
   auto sub_layout = dst_image.subresource_layout();
   uint8_t *data = 0;
   check(vkMapMemory(vk.dev, dst_image.mem, 0, VK_WHOLE_SIZE, 0, (void**)&data), "vkMapMemory");
@@ -447,7 +449,7 @@ vector<uint8_t> Image::copy_to_buffer() {
     }
     data += sub_layout.rowPitch;
   }
-
+  
   cout << "unmapping" << endl;
   vkUnmapMemory(vk.dev, dst_image.mem);
   return return_data;

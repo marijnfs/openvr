@@ -216,9 +216,13 @@ Pose::Pose(Scene &scene) {
   arm_length = l2Norm(v);
 
   v /= arm_length;
+  armq = quatLookAt(v, Pos{0, 1, 0});
+}
+
+void Pose::apply(Action &act) {
   
 }
 
-Action::Action(Snap &cur, Snap &next) {
+Action::Action(Pose &last, Pose &now) {
   
 }
