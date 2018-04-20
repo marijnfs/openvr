@@ -843,6 +843,9 @@ struct Pose {
   Pose(Scene &scene);
 
   void apply(Action &action);
+
+  std::vector<float> get_vec();
+  void from_vec(std::vector<float> v);
 };
 
 

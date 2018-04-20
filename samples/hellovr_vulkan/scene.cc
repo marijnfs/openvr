@@ -211,15 +211,74 @@ Pose::Pose(Scene &scene) {
   base = scene.find<HMD>("hmd").p;
   baseq = scene.find<HMD>("hmd").quat;
 
-  auto c_pos = scene.find<HMD>("controller").p;
+  auto c_pos = scene.find<Controller>("controller").p;
   auto v = c_pos - base;
   arm_length = l2Norm(v);
 
   v /= arm_length;
   armq = quatLookAt(v, Pos{0, 1, 0});
+
+  armq *= baseq.inverse();
+  pressed = scene.find<Controller>("controller").pressed;
+}
+
+vector<float> Pose::get_vec() {
+  vector<float> v(3 + 4 + 4 + 1 + 1);
+  v[0] = base[0];
+  v[1] = base[1];
+  v[2] = base[2];
+  
+  v[3] = baseq[0];
+  v[4] = baseq[1];
+  v[5] = baseq[2];
+  v[6] = baseq[3];
+
+  v[7] = armq[0];
+  v[8] = armq[1];
+  v[9] = armq[2];
+  v[10] = armq[3];
+
+  v[11] = arm_length;
+  v[12] = pressed;
+}
+
+void Pose::from_vec(std::vector<float> v) {
+  base[0] = v[0];
+  base[1] = v[1];
+  base[2] = v[2];
+  
+  baseq[0] = v[3];
+  baseq[1] = v[4];
+  baseq[2] = v[5];
+  baseq[3] = v[6];
+
+  armq[0] = v[7];
+  armq[1] = v[8];
+  armq[2] = v[9];
+  armq[3] = v[10];
+
+  baseq = glm::normalize(baseq);
+  armq = glm::normalize(armq);
+  
+  arm_length = v[11];
+  if (arm_length < 0)
+    arm_length = 0;
+  pressed = v[12] > .5;
+}
+
+void Pose::set_scene(Scene &scene) {
+  scene.find<HMD>("hmd").p = base;
+  scene.find<HMD>("hmd").quat = baseq;
+ 
+  scene.find<Controller>("controller").quat =  armq * baseq;
+  scene.find<Controller>("controller").p = base + glm::rotate(glm::vec3(0, 1, 0), scene.find<Controller>("controller").quat) * arm_length;
+  scene.find<Controller>("controller").pressed = pressed;
 }
 
 void Pose::apply(Action &act) {
+  base += glm::rotate(baseq, act.dbase);
+  qbase *= act.dbaseq;
+
   
 }
 
