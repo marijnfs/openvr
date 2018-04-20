@@ -445,8 +445,8 @@ int learn(string filename) {
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
       vr.render(scene);
-      vr.copy_image_to_cpu();
       vr.wait_frame();
+      vr.copy_image_to_cpu();
     }
   }
   

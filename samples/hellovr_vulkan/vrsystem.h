@@ -72,8 +72,9 @@ struct VRSystem {
   void render_companion_window();
 
   void copy_image_to_cpu();
-  void submit_to_hmd();
+  std::vector<float> get_image_data();
 
+  void submit_to_hmd();
   void to_present();
   
   void setup_render_models();

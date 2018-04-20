@@ -103,6 +103,7 @@ void Buffer::update(std::vector<T> &init_data) {
   vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
 }
 
+
 template <typename T>
 void Buffer::init(std::vector<T> &init_data, VkBufferUsageFlags usage, Location loc) {
   n = init_data.size() * sizeof(T);
@@ -143,12 +144,28 @@ void Buffer::init(T init_data[], int size, VkBufferUsageFlags usage, Location lo
   vkFlushMappedMemoryRanges( vk.dev, 1, &mem_range );
 }
 
+template <typename T>
+std::vector<T> Buffer::get_data() {
+  auto &vk = Global::vk();
+  void *data(0);
+  vector<T> vec(n / sizeof(T));
+  check( vkMapMemory( vk.dev, memory, 0, VK_WHOLE_SIZE, 0, &data ), "vkMapMemory");
+  
+  memcpy(&vec[0], data, n);
+  
+  vkUnmapMemory(vk.dev, memory);
+  return vec;
+}
+
 
 //nasty forward declarations
 template void Buffer::map<int>(int **ptr);
 template void Buffer::map<float>(float **ptr);
 template void Buffer::map<double>(double **ptr);
 template void Buffer::map<void>(void **ptr);
+
+template vector<float> Buffer::get_data<float>();
+template vector<uint8_t> Buffer::get_data<uint8_t>();
 
 
 Image::Image() {}
@@ -176,6 +193,37 @@ Image::Image(int width, int height, VkFormat format, VkImageUsageFlags usage, Vk
 
 Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
   init_from_img(path, format, usage, aspect);  
+}
+
+void Image::init_for_copy(int width, int height) {
+  auto &vk = Global::vk();
+  
+  VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+  imgci.imageType = VK_IMAGE_TYPE_2D;
+  // Note that vkCmdBlitImage (if supported) will also do format conversions if the swapchain color format would differ
+  imgci.format = VK_FORMAT_R8G8B8A8_UNORM;
+  imgci.extent.width = width;
+  imgci.extent.height = height;
+  imgci.extent.depth = 1;
+  imgci.arrayLayers = 1;
+  imgci.mipLevels = 1;
+  imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  //imgci.samples = VK_SAMPLE_COUNT_1_BIT;
+  imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
+  imgci.tiling = VK_IMAGE_TILING_LINEAR;
+  imgci.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  
+  check( vkCreateImage( vk.dev, &imgci, nullptr, &img ), "vkCreateImage");
+  
+  VkMemoryRequirements mem_req = {};
+  vkGetImageMemoryRequirements( vk.dev, img, &mem_req );
+  
+  VkMemoryAllocateInfo mem_alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+  mem_alloc_info.allocationSize = mem_req.size;
+  mem_alloc_info.memoryTypeIndex = get_mem_type( mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  
+  check( vkAllocateMemory( vk.dev, &mem_alloc_info, nullptr, &mem), "vkAllocateMemory");
+  check( vkBindImageMemory( vk.dev, img, mem, 0 ), "vkBindImageMemory");
 }
 
 void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count, bool make_sampler) {
@@ -217,7 +265,7 @@ void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags us
 
     //staging buffer not used, setup buffer for reading to cpu
     //cout << "image memory size: " << mem_req.size << " " << width << " " << height << " " << endl;
-    staging_buffer.init(mem_req.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST);
+    staging_buffer.init(width * height * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST);
     
 	//create view
 	VkImageViewCreateInfo img_view_ci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -226,7 +274,8 @@ void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags us
 	img_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	img_view_ci.format = format;
 	img_view_ci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-	img_view_ci.subresourceRange.aspectMask = aspect;
+
+    img_view_ci.subresourceRange.aspectMask = aspect;
 	img_view_ci.subresourceRange.baseMipLevel = 0;
 	img_view_ci.subresourceRange.levelCount = mip_levels;
 	img_view_ci.subresourceRange.baseArrayLayer = 0;
@@ -341,25 +390,67 @@ void Image::barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, Vk
 
 }
 
-void Image::copy_to_buffer() {
+VkSubresourceLayout Image::subresource_layout() {
   auto &vk = Global::vk();
-  barrier(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  VkBufferImageCopy cpy;
-  cpy.bufferOffset = 0;
+  VkImageSubresource subResource { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+  VkSubresourceLayout subResourceLayout;
+  vkGetImageSubresourceLayout(vk.dev, img, &subResource, &subResourceLayout);
+  return subResourceLayout;
+}
+
+vector<uint8_t> Image::copy_to_buffer() {
+  auto &vk = Global::vk();
   
-  cpy.bufferRowLength = 0;
-  cpy.bufferImageHeight = 0;
-  cpy.imageSubresource.aspectMask = aspect;
-  cpy.imageSubresource.mipLevel = 0;
-  cpy.imageSubresource.baseArrayLayer = 0;
-  cpy.imageSubresource.layerCount = mip_levels;
-  cpy.imageOffset.x = 0;
-  cpy.imageOffset.y = 0;
-  cpy.imageOffset.z = 0;
-  cpy.imageExtent.width = width;
-  cpy.imageExtent.height = height;
-  cpy.imageExtent.depth = 1;
-  vkCmdCopyImageToBuffer(vk.cmd_buffer(), img, layout, staging_buffer.buffer, 1, &cpy);
+  auto start_layout = layout;
+  auto start_access = access_flags;
+  
+  Image dst_image;
+  dst_image.init_for_copy(width, height);
+  dst_image.barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  barrier(VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+  VkImageCopy img_cpy_reg{};
+  img_cpy_reg.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_cpy_reg.srcSubresource.layerCount = 1;
+  img_cpy_reg.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_cpy_reg.dstSubresource.layerCount = 1;
+  img_cpy_reg.extent.width = width;
+  img_cpy_reg.extent.height = height;
+  img_cpy_reg.extent.depth = 1;
+
+
+  vkCmdCopyImage(vk.cmd_buffer(),
+                 img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                 dst_image.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                 1,
+                 &img_cpy_reg);
+
+  dst_image.barrier(VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_GENERAL);
+  barrier(start_access, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, start_layout);
+  vk.flush_cmd();
+
+  auto sub_layout = dst_image.subresource_layout();
+  uint8_t *data = 0;
+  check(vkMapMemory(vk.dev, dst_image.mem, 0, VK_WHOLE_SIZE, 0, (void**)&data), "vkMapMemory");
+  data += sub_layout.offset;
+  
+  vector<uint8_t> return_data(width * height * 3);
+
+  for (int y(0); y < height; ++y) {
+    uint8_t *row = data;
+    cout << y << endl;
+    for (int x(0); x < width; ++x) {
+      return_data[y * width + x] = row[0];
+      return_data[width * height + y * width + x] = row[1];
+      return_data[2 * width * height + y * width + x] = row[2];
+      row += 4;
+    }
+    data += sub_layout.rowPitch;
+  }
+
+  cout << "unmapping" << endl;
+  vkUnmapMemory(vk.dev, dst_image.mem);
+  return return_data;
 }
 
 

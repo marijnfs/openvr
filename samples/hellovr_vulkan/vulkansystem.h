@@ -126,7 +126,7 @@ struct VulkanSystem {
   VkDescriptorSetLayout desc_set_layout = 0;
   std::vector<VkDescriptorSet> desc_sets;
 
-  bool validation = false;
+  bool validation = true;
   VkDebugReportCallbackEXT callback = 0;
   
   //Buffer scene_constant_buffer[2]; //for both eyes
@@ -152,9 +152,7 @@ struct VulkanSystem {
   VkFence cur_fence = 0;
 
   VkSampler sampler = 0;
-
-
-
+  
   VulkanSystem();
   ~VulkanSystem();
   
@@ -175,7 +173,8 @@ struct VulkanSystem {
   void submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaphore = 0);
   void wait_queue();
   void wait_idle();
-
+  void flush_cmd();
+  
   void add_desc_set();
 
  //void init_vulkan();

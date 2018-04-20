@@ -550,6 +550,11 @@ void VulkanSystem::wait_idle() {
   vkDeviceWaitIdle(dev);
 }
 
+void VulkanSystem::flush_cmd() {
+  end_submit_cmd();
+  check(vkQueueWaitIdle(queue), "vkQueueWaitIdle");
+  cur_cmd_buffer = 0;
+}
 
 void VulkanSystem::init() {
   cout << "initialising Vulkan System" << endl;
@@ -1148,7 +1153,7 @@ void VulkanSystem::submit_swapchain_cmd() {
 
 void VulkanSystem::end_submit_swapchain_cmd() {
   end_cmd();
-  submit_swapchain_cmd();
+  submit_swapchain_cmd();  
 }
 
 void VulkanSystem::end_submit_cmd() {
