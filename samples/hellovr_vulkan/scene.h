@@ -831,6 +831,7 @@ struct ClickTrigger : public Trigger {
   Trigger *copy() { return new ClickTrigger(*this); }
 };
 
+struct Action;
 struct Pose {
   Pos base;
   fquat baseq;
