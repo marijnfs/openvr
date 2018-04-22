@@ -208,6 +208,10 @@ Trigger *read_trigger(cap::Trigger::Reader reader) {
 }
 
 Pose::Pose(Scene &scene) {
+  from_scene(scene);
+}
+
+void Pose::from_scene(Scene &scene) {
   base = scene.find<HMD>("hmd").p;
   baseq = scene.find<HMD>("hmd").quat;
 
@@ -264,6 +268,17 @@ void Pose::from_vec(std::vector<float> v) {
   if (arm_length < 0)
     arm_length = 0;
   pressed = v[12] > .5;
+}
+
+std::vector<float> Pose::to_obs_vector() {
+  vector<float> v(5);
+  v[0] = armq[0];
+  v[1] = armq[1];
+  v[2] = armq[2];
+  v[3] = armq[3];
+
+  v[4] = arm_length;
+  v[5] = pressed;
 }
 
 void Pose::apply_to_scene(Scene &scene) {
@@ -338,3 +353,4 @@ std::vector<float> Action::to_vector() {
   v[12] = pressed;
   
 }
+

@@ -840,20 +840,19 @@ struct Pose {
   float arm_length = 0;
   bool pressed = false;
   
+  Pose() {}
   Pose(Scene &scene);
 
-  void apply(Action &action);
+  void from_scene(Scene &scene);
 
+  void apply(Action &action);
+  void apply_to_scene(Scene &scene);
+  
   std::vector<float> get_vec();
   void from_vec(std::vector<float> v);
-  void apply_to_scene(Scene &scene);
+  std::vector<float> to_obs_vector();
 };
 
-
-struct State {
-  std::vector<float> s;
-
-};
 
 struct Action {
   Pos dbase; //in baseq orientation
@@ -872,7 +871,6 @@ struct Action {
 
   void from_vector(std::vector<float> &a);
   std::vector<float> to_vector();
-  
 };
 
 

@@ -29,7 +29,7 @@ VRSystem::~VRSystem() {
 
   delete left_eye_fb;
   delete right_eye_fb;
-}
+ }
 
 void VRSystem::init() {
 	cout << "initialising VRSystem" << endl;
@@ -74,9 +74,8 @@ void VRSystem::setup() {
 }
 
 void VRSystem::setup_render_targets() {
-    ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
-
-
+  ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
+  cout << "recommended target size: " << render_width << "x" << render_height << endl;
   
   left_eye_fb = new FrameRenderBuffer();
   right_eye_fb = new FrameRenderBuffer();
@@ -117,7 +116,7 @@ void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
   } else {
     // RENDERING
     render_stereo_targets(scene);
-    //copy_image_to_cpu();
+    copy_image_to_cpu();
     vk.end_submit_cmd();  //could try without swapchain if headless
 
   }
@@ -326,7 +325,7 @@ Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 
 void VRSystem::setup_render_models()
 {
-	for( uint32_t d = vr::k_unTrackedDeviceIndex_Hmd + 1; d < vr::k_unMaxTrackedDeviceCount; d++ )
+  for( uint32_t d = vr::k_unTrackedDeviceIndex_Hmd + 1; d < vr::k_unMaxTrackedDeviceCount; d++ )
 	{
 		if( !ivrsystem->IsTrackedDeviceConnected( d ) )
 			continue;

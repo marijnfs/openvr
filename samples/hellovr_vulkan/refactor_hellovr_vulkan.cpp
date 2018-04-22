@@ -23,7 +23,7 @@
 
 #include "learningsystem.h"
 #include "volumenetwork.h"
-#include "operations.h"
+#include "network.h"
 
 using namespace std;
 
@@ -381,24 +381,17 @@ int learn(string filename) {
   Handler::cudnn();
   Handler::set_device(0);
   
-  auto &ws = Global::ws();
+  //auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
 
   
   vr.setup();
-  ws.setup();
+  //ws.setup();
   vk.setup();
 
   //preloading images
   ImageFlywheel::preload();
-  //ImageFlywheel::image("stub.png");
-  //ImageFlywheel::image("gray.png");
-  //ImageFlywheel::image("blue.png");
-  //ImageFlywheel::image("red.png");
-  //ImageFlywheel::image("white-checker.png");
-  //ImageFlywheel::image("blue-checker.png");
-  //ImageFlywheel::image("red-checker.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -418,6 +411,7 @@ int learn(string filename) {
   VolumeShape network_output{n, h, 1, 1};
 
 
+  //Visual processing network, most cpu intensive
   bool first_grad = false;
   VolumeNetwork net(img_input, first_grad);
   auto pool1 = new PoolingOperation<F>(4, 4);
@@ -436,18 +430,66 @@ int learn(string filename) {
   auto squash = new SquashOperation<F>(net.output_shape().tensor_shape(), 16);
   net.add_slicewise(squash);
   //output should be {z, c, 1, 1}
+
+
+  //Aggregation Network combining output of visual processing network and state vector
+  VolumeShape aggr_input{n, 16 + 5, 1, 1};
+  VolumeNetwork aggregate_net(aggr_input);
+  aggregate_net.add_vlstm(1, 1, 32);
+  aggregate_net.add_vlstm(1, 1, 32);
+
+  TensorShape actor_in{n, 32, 1, 1};
+  Network<F> actor_net(actor_in);
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(12, 1, 1);
+
+  TensorShape value_in{n, 32, 1, 1};
+  Network<F> value_net(actor_in);
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(1, 1, 1);
+
+  VolumeShape q_in{n, 32 + 12}; //qnet, could be also advantage
+  VolumeNetwork q_net(q_in);
+  q_net.add_vlstm(1, 1, 32);
+  q_net.add_vlstm(1, 1, 32);
+  q_net.add_fc(1);
   
   while (true) {
     int b = rand() % (recording.size() - n + 1);
     int e = b + n;
+    Pose cur_pose, last_pose;
+
+    //First setup all inputs for an episode
     for (int i(b); i < e; ++i) {
       recording.load_scene(i, &scene);
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
-      vr.render(scene);
-      vr.wait_frame();
-      vr.copy_image_to_cpu();
+      bool headless(true);
+
+      std::vector<uint8_t> img(3 * 2 * 1000 * 1000);
+      //vr.render(scene, &img);
+      vr.render(scene, headless);
+      std::vector<float> nimg(img.begin(), img.end());
+      normalize(&nimg);
+      
+      copy_cpu_to_gpu<float>(&nimg[0], net.input().slice(i), nimg.size());
+      last_pose = cur_pose;
+      cur_pose.from_scene(scene);
+      Action action(last_pose, cur_pose);
+      
+      
     }
+
+    //run forward
+    //calculate q targets
+    //run backward q -> calculate action update
+    //run backward rest
   }
   
 

@@ -27,6 +27,7 @@ cuda_add_executable(${TARGET_NAME}
   learningsystem.cc
   recording.cc
   gzstream.cc
+  simplerender.cc
   )
 cuda_add_cublas_to_target(${TARGET_NAME})
 
