@@ -33,7 +33,4 @@ struct Script {
   std::vector<int> funcs;
 };
 
-int test(lua_State *L);
-
-
 #endif
