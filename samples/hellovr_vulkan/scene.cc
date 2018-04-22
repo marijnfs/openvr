@@ -271,7 +271,7 @@ void Pose::from_vec(std::vector<float> v) {
 }
 
 std::vector<float> Pose::to_obs_vector() {
-  vector<float> v(5);
+  vector<float> v(6);
   v[0] = armq[0];
   v[1] = armq[1];
   v[2] = armq[2];

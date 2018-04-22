@@ -405,6 +405,12 @@ int learn(string filename) {
   int n = 100;
   int c = 3 * 2; //stereo rgb
   int h = 32;
+
+  int act_dim = 13;
+  int obs_dim = 6;
+  int vis_dim = 64;
+  int aggr_dim = 32;
+  
   int width = 1200;
   int height = 1080;
   VolumeShape img_input{n, c, width, height};
@@ -413,40 +419,38 @@ int learn(string filename) {
 
   //Visual processing network, most cpu intensive
   bool first_grad = false;
-  VolumeNetwork net(img_input, first_grad);
+  VolumeNetwork vis_net(img_input, first_grad);
   auto pool1 = new PoolingOperation<F>(4, 4);
   
-  auto conv1 = new ConvolutionOperation<F>(net.output_shape().c, 4, 5, 5);
-  net.add_slicewise(conv1);
-  net.add_slicewise(pool1);
+  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
+  vis_net.add_slicewise(conv1);
+  vis_net.add_slicewise(pool1);
   
-  auto conv2 = new ConvolutionOperation<F>(net.output_shape().c, 64, 5, 5);
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 64, 5, 5);
   auto pool2 = new PoolingOperation<F>(4, 4);
-  net.add_slicewise(conv2);
-  net.add_slicewise(pool2);
-  //net.add_pool(2, 2);
-  //net.add_univlstm(7, 7, 16);
+  vis_net.add_slicewise(conv2);
+  vis_net.add_slicewise(pool2);
   
-  auto squash = new SquashOperation<F>(net.output_shape().tensor_shape(), 16);
-  net.add_slicewise(squash);
+  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+  vis_net.add_slicewise(squash);
   //output should be {z, c, 1, 1}
 
 
   //Aggregation Network combining output of visual processing network and state vector
-  VolumeShape aggr_input{n, 16 + 5, 1, 1};
-  VolumeNetwork aggregate_net(aggr_input);
-  aggregate_net.add_vlstm(1, 1, 32);
-  aggregate_net.add_vlstm(1, 1, 32);
+  VolumeShape aggr_input{n, vis_dim + obs_dim, 1, 1};
+  VolumeNetwork aggr_net(aggr_input);
+  aggr_net.add_vlstm(1, 1, 32);
+  aggr_net.add_vlstm(1, 1, aggr_dim);
 
-  TensorShape actor_in{n, 32, 1, 1};
+  TensorShape actor_in{n, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
   actor_net.add_conv(64, 1, 1);
   actor_net.add_relu();
   actor_net.add_conv(64, 1, 1);
   actor_net.add_relu();
-  actor_net.add_conv(12, 1, 1);
+  actor_net.add_conv(act_dim, 1, 1);
 
-  TensorShape value_in{n, 32, 1, 1};
+  TensorShape value_in{n, aggr_dim, 1, 1};
   Network<F> value_net(actor_in);
   value_net.add_conv(64, 1, 1);
   value_net.add_relu();
@@ -454,11 +458,13 @@ int learn(string filename) {
   value_net.add_relu();
   value_net.add_conv(1, 1, 1);
 
-  VolumeShape q_in{n, 32 + 12}; //qnet, could be also advantage
+  VolumeShape q_in{n, aggr_dim + act_dim}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
   q_net.add_vlstm(1, 1, 32);
   q_net.add_vlstm(1, 1, 32);
   q_net.add_fc(1);
+
+  Volume target_actions(VolumeShape{n, act_dim, 1, 1});
   
   while (true) {
     int b = rand() % (recording.size() - n + 1);
@@ -477,8 +483,8 @@ int learn(string filename) {
       vr.render(scene, headless);
       std::vector<float> nimg(img.begin(), img.end());
       normalize(&nimg);
-      
-      copy_cpu_to_gpu<float>(&nimg[0], net.input().slice(i), nimg.size());
+      copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(i), nimg.size());
+
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
       Action action(last_pose, cur_pose);
@@ -486,6 +492,21 @@ int learn(string filename) {
       
     }
 
+    vis_net.forward();
+    //copy to aggregator
+    aggr_net.forward();
+    //copy aggr to nets
+    actor_net.forward();
+    value_net.forward(); //not for imitation
+    //copy actions to q  //not for imitation
+    q_net.forward();     //not for imitation
+    
+    //====== Imitation backward:
+    //run forward
+    //set action targets
+    //run backward
+    
+    //====== Qlearning backward:
     //run forward
     //calculate q targets
     //run backward q -> calculate action update
