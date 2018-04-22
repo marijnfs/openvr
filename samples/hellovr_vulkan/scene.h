@@ -442,6 +442,7 @@ struct Variable {
   
   virtual void update(Scene &scene) { }
   virtual float value() {return val;}
+  virtual void set_value(float val_) {val = val_; changed = true;}
   virtual Variable *copy() {return new Variable(*this);}
 
   virtual void serialise(cap::Variable::Builder builder) {

@@ -402,7 +402,7 @@ int learn(string filename) {
   recording.load(filename, &scene);
   cout << "recording size: " << recording.size() << endl;
 
-  int n = 100;
+  int N = 100;
   int c = 3 * 2; //stereo rgb
   int h = 32;
 
@@ -413,8 +413,8 @@ int learn(string filename) {
   
   int width = 1200;
   int height = 1080;
-  VolumeShape img_input{n, c, width, height};
-  VolumeShape network_output{n, h, 1, 1};
+  VolumeShape img_input{N, c, width, height};
+  VolumeShape network_output{N, h, 1, 1};
 
 
   //Visual processing network, most cpu intensive
@@ -437,12 +437,12 @@ int learn(string filename) {
 
 
   //Aggregation Network combining output of visual processing network and state vector
-  VolumeShape aggr_input{n, vis_dim + obs_dim, 1, 1};
+  VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
   aggr_net.add_vlstm(1, 1, 32);
   aggr_net.add_vlstm(1, 1, aggr_dim);
 
-  TensorShape actor_in{n, aggr_dim, 1, 1};
+  TensorShape actor_in{N, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
   actor_net.add_conv(64, 1, 1);
   actor_net.add_relu();
@@ -450,7 +450,7 @@ int learn(string filename) {
   actor_net.add_relu();
   actor_net.add_conv(act_dim, 1, 1);
 
-  TensorShape value_in{n, aggr_dim, 1, 1};
+  TensorShape value_in{N, aggr_dim, 1, 1};
   Network<F> value_net(actor_in);
   value_net.add_conv(64, 1, 1);
   value_net.add_relu();
@@ -458,21 +458,22 @@ int learn(string filename) {
   value_net.add_relu();
   value_net.add_conv(1, 1, 1);
 
-  VolumeShape q_in{n, aggr_dim + act_dim}; //qnet, could be also advantage
+  VolumeShape q_in{N, aggr_dim + act_dim}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
   q_net.add_vlstm(1, 1, 32);
   q_net.add_vlstm(1, 1, 32);
   q_net.add_fc(1);
 
-  Volume target_actions(VolumeShape{n, act_dim, 1, 1});
+  Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   
   while (true) {
-    int b = rand() % (recording.size() - n + 1);
-    int e = b + n;
+    int b = rand() % (recording.size() - N + 1);
+    int e = b + N;
     Pose cur_pose, last_pose;
 
     //First setup all inputs for an episode
-    for (int i(b); i < e; ++i) {
+    int t(0);
+    for (int i(b); i < e; ++i, ++t) {
       recording.load_scene(i, &scene);
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
@@ -483,22 +484,39 @@ int learn(string filename) {
       vr.render(scene, headless);
       std::vector<float> nimg(img.begin(), img.end());
       normalize(&nimg);
-      copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(i), nimg.size());
+      copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
 
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
       Action action(last_pose, cur_pose);
-      
+
+      auto a_vec = action.to_vector();
+      auto o_vec = cur_pose.to_obs_vector();
+
+      copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
       
     }
 
     vis_net.forward();
-    //copy to aggregator
+    
+    //aggregator
+    for (int t(0); t < N; ++t)
+      //aggregator already has observation data, we add vis output after that
+      copy_gpu_to_gpu(vis_net.output().data(t, obs_dim), aggr_net.input().slice(t), vis_dim);
     aggr_net.forward();
+    
     //copy aggr to nets
+    copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
+    copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
+    
     actor_net.forward();
     value_net.forward(); //not for imitation
-    //copy actions to q  //not for imitation
+
+    //copy actions and aggr to q  //not for imitation
+    for (int t(0); t < N - 1; ++t) {
+      copy_gpu_to_gpu(actor_net.output().ptr(t), q_net.input().data(t + 1, 0), act_dim);
+      copy_gpu_to_gpu(aggr_net.output().data(t), q_net.input().data(t, act_dim), aggr_dim);
+    }
     q_net.forward();     //not for imitation
     
     //====== Imitation backward:
