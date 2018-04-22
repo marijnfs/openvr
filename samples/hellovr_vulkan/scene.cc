@@ -218,7 +218,7 @@ Pose::Pose(Scene &scene) {
   v /= arm_length;
   armq = quatLookAt(v, Pos{0, 1, 0});
 
-  armq *= baseq.inverse();
+  armq *= glm::inverse(baseq);
   pressed = scene.find<Controller>("controller").pressed;
 }
 
@@ -266,22 +266,75 @@ void Pose::from_vec(std::vector<float> v) {
   pressed = v[12] > .5;
 }
 
-void Pose::set_scene(Scene &scene) {
+void Pose::apply_to_scene(Scene &scene) {
   scene.find<HMD>("hmd").p = base;
   scene.find<HMD>("hmd").quat = baseq;
  
   scene.find<Controller>("controller").quat =  armq * baseq;
-  scene.find<Controller>("controller").p = base + glm::rotate(glm::vec3(0, 1, 0), scene.find<Controller>("controller").quat) * arm_length;
+  scene.find<Controller>("controller").p = base + glm::rotate(scene.find<Controller>("controller").quat, glm::vec3(0, 1, 0)) * arm_length;
   scene.find<Controller>("controller").pressed = pressed;
 }
 
 void Pose::apply(Action &act) {
   base += glm::rotate(baseq, act.dbase);
-  qbase *= act.dbaseq;
-
+  baseq *= act.dbaseq;
   
+  armq = act.armq;
+  arm_length = act.arm_length;
+  pressed = act.pressed;
 }
 
 Action::Action(Pose &last, Pose &now) {
+  dbase = glm::rotate(glm::inverse(last.baseq), now.base - last.base);
+  dbaseq = now.baseq * glm::inverse(last.baseq);
+
+  armq = now.armq;
+  arm_length = now.arm_length;
+  pressed = now.pressed;
+    
+}
+
+void Action::from_vector(std::vector<float> &v) {
+  dbase[0] = v[0];
+  dbase[1] = v[1];
+  dbase[2] = v[2];
+  
+  dbaseq[0] = v[3];
+  dbaseq[1] = v[4];
+  dbaseq[2] = v[5];
+  dbaseq[3] = v[6];
+
+  armq[0] = v[7];
+  armq[1] = v[8];
+  armq[2] = v[9];
+  armq[3] = v[10];
+
+  dbaseq = glm::normalize(dbaseq);
+  armq = glm::normalize(armq);
+  
+  arm_length = v[11];
+  if (arm_length < 0)
+    arm_length = 0;
+  pressed = v[12] > .5;
+}
+
+std::vector<float> Action::to_vector() {
+  std::vector<float> v(3 + 4 + 4 + 1 + 1);
+  v[0] = dbase[0];
+  v[1] = dbase[1];
+  v[2] = dbase[2];
+  
+  v[3] = dbaseq[0];
+  v[4] = dbaseq[1];
+  v[5] = dbaseq[2];
+  v[6] = dbaseq[3];
+
+  v[7] = armq[0];
+  v[8] = armq[1];
+  v[9] = armq[2];
+  v[10] = armq[3];
+
+  v[11] = arm_length;
+  v[12] = pressed;
   
 }

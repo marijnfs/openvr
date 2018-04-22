@@ -846,6 +846,7 @@ struct Pose {
 
   std::vector<float> get_vec();
   void from_vec(std::vector<float> v);
+  void apply_to_scene(Scene &scene);
 };
 
 
@@ -862,10 +863,16 @@ struct Action {
   float arm_length; //is set directly
   bool pressed; //is set directly
   
-  std::vector<float> a;
+  //std::vector<float> a;
   
   Action(Pose &last, Pose &now);
-  Action(std::vector<float> a_) : a(a_) {}
+  Action(std::vector<float> &a_) {
+    from_vector(a_);
+  }
+
+  void from_vector(std::vector<float> &a);
+  std::vector<float> to_vector();
+  
 };
 
 

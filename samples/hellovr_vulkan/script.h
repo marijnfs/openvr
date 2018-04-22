@@ -19,6 +19,7 @@ struct Script {
   ~Script();
 
   void run(std::string filename);
+  void run_buffer(std::vector<uint8_t> &data);
   void run_interactive();
   void init();
 
