@@ -66,7 +66,7 @@ int set_variable(lua_State *L) {
   if (nargs != 2) throw StringException("not enough arguments");
   string name = lua_tostring(L, 1);
   float val = lua_tonumber(L, 1);
-  Global::scene().variable(name).set_value(val);
+  Global::scene().variable<Variable>(name).set_value(val);
  
   return 0;
 }

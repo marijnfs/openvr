@@ -91,5 +91,7 @@ struct Global {
 };
 
 static int msaa = 4;
+static int VIVE_HEIGHT = 1512;
+static int VIVE_WIDTH = 1680;
 
 #endif

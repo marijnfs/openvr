@@ -415,8 +415,8 @@ int learn(string filename) {
   int vis_dim = 64;
   int aggr_dim = 32;
   
-  int width = 1200;
-  int height = 1080;
+  int width = VIVE_WIDTH;
+  int height = VIVE_HEIGHT;
   VolumeShape img_input{N, c, width, height};
   VolumeShape network_output{N, h, 1, 1};
 
@@ -424,13 +424,16 @@ int learn(string filename) {
   //Visual processing network, most cpu intensive
   bool first_grad = false;
   VolumeNetwork vis_net(img_input, first_grad);
-  auto pool1 = new PoolingOperation<F>(4, 4);
-  
+ 
+
+  auto base_pool = new PoolingOperation<F>(2, 2);
   auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
+  auto pool1 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(base_pool);
   vis_net.add_slicewise(conv1);
   vis_net.add_slicewise(pool1);
   
-  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 64, 5, 5);
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 32, 5, 5);
   auto pool2 = new PoolingOperation<F>(4, 4);
   vis_net.add_slicewise(conv2);
   vis_net.add_slicewise(pool2);
@@ -443,8 +446,8 @@ int learn(string filename) {
   //Aggregation Network combining output of visual processing network and state vector
   VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
-  aggr_net.add_vlstm(1, 1, 32);
-  aggr_net.add_vlstm(1, 1, aggr_dim);
+  aggr_net.add_univlstm(1, 1, 32);
+  aggr_net.add_univlstm(1, 1, aggr_dim);
 
   TensorShape actor_in{N, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
@@ -462,10 +465,10 @@ int learn(string filename) {
   value_net.add_relu();
   value_net.add_conv(1, 1, 1);
 
-  VolumeShape q_in{N, aggr_dim + act_dim}; //qnet, could be also advantage
+  VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
-  q_net.add_vlstm(1, 1, 32);
-  q_net.add_vlstm(1, 1, 32);
+  q_net.add_univlstm(1, 1, 32);
+  q_net.add_univlstm(1, 1, 32);
   q_net.add_fc(1);
 
   Volume target_actions(VolumeShape{N, act_dim, 1, 1});
@@ -483,8 +486,9 @@ int learn(string filename) {
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
       bool headless(true);
 
-      std::vector<uint8_t> img(3 * 2 * 1000 * 1000);
+      std::vector<uint8_t> img(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
       //vr.render(scene, &img);
+
       vr.render(scene, headless);
       std::vector<float> nimg(img.begin(), img.end());
       normalize(&nimg);
@@ -608,8 +612,9 @@ int analyse(string filename) {
     //vr.request_poses();
     //a_timer.wait();
   }
+  datafile.flush();
   cout << "n clicks: " << clicked << endl;
-
+  
   Global::shutdown();
 }
 

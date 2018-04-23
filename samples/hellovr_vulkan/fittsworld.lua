@@ -81,8 +81,8 @@ end
 
 function on_in_box()
    if is_clicked("controller") then
-      clear_scene();
-      set_reward(1);
+      clear_scene()
+      set_reward(1)
       set_variable("end", 1)
       add_next_trigger("on_start")
    end

@@ -208,8 +208,8 @@ void Image::init_for_copy(int width, int height) {
   imgci.arrayLayers = 1;
   imgci.mipLevels = 1;
   imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  //imgci.samples = VK_SAMPLE_COUNT_1_BIT;
-  imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
+  imgci.samples = VK_SAMPLE_COUNT_1_BIT;
+  //imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
   imgci.tiling = VK_IMAGE_TILING_LINEAR;
   imgci.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   
