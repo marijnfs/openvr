@@ -548,7 +548,7 @@ struct Scene {
     return *objects[name];
   }
 
-  template <typename T>
+  template <typename T = Variable>
   T &variable(std::string name) {
     if (!variables.count(name))
       throw StringException("no such variable");
@@ -816,7 +816,7 @@ struct ClickTrigger : public Trigger {
  ClickTrigger(uint oid_) : oid(oid_) {}
   
   bool check(Scene &scene) {
-    return scene.find<Controller>(oid).clicked;
+     return scene.find<Controller>(oid).clicked;
   }
 
   void serialise(cap::Trigger::Builder builder) {

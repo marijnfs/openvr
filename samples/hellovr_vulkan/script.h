@@ -24,14 +24,14 @@ struct Script {
   void init();
 
   void call_callback();
-  
-  void register_func(std::string name, LuaFunc f) {
-    lua_register(L, name.c_str(), f);
-  }
+
+  void register_c_func(std::string name, LuaFunc f);
   //regular commands
 
   lua_State *L;
   std::vector<int> funcs;
 };
+
+int add_hmd(lua_State *L);
 
 #endif

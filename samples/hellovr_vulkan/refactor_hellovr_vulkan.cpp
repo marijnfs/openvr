@@ -65,7 +65,8 @@ struct FittsWorld {
     init_experiments();
     init();
   }
-  
+
+ 
   void init_experiments() {
     //ExperimentStep(Orientation o, float xdir_, float ydir_, float zdir_, int n_clicks_, float long_side_, float short_side_) :
     vector<float> multipliers = {1.0, 2.0, 4.0};
@@ -280,7 +281,10 @@ int record(string filename) {
   //ImageFlywheel::image("red.png");
 
   auto &scene = Global::scene();
-  FittsWorld world(scene);
+
+  //FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
   

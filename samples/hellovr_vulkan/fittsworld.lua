@@ -4,15 +4,17 @@ laying = 2
 
 
 function on_start()
+   print("on start")
    click = click + 1
-   if click > n_clicks then
-      click = 0
+   if click >= n_clicks then
+      click = 1
       step = step + 1
    end
-   if step > #steps then
+   if step >= #steps then
       stop()
+      return
    end
-
+   print(#steps)
    local cur_step = steps[step]
    
    choice = choose(3, choice)
@@ -32,10 +34,25 @@ function on_start()
 
    local boxes = {"box1", "box2", "box3"}
    local l, s = cur_step.long_side, cur_step.short_side
+
+   local bw, bh, bd
+   if cur_step.orientation == horizontal then
+      bw = l
+   else
+      bw = s
+   end
    
-   local bw = (cur_step.orientation == horizontal) and l or s
-   local bh = (cur_step.orientation == vertical) and l or s
-   local bd = (cur_step.orientation == laying) and l or s
+   if cur_step.orientation == vertical then
+      bh = l
+   else
+      bh = s
+   end
+
+   if cur_step.orientation == laying then
+      bd = l
+   else
+      bd = s
+   end
 
    local x, y, z = 0, .9, -.05
    
@@ -54,6 +71,7 @@ function on_start()
    set_dim("box3", bw, bh, bd)
    set_texture("box3", "white-checker.png")
 
+   print("choice: ", choice)
    set_texture(boxes[choice], "blue-checker.png")
    add_inbox_trigger(boxes[choice], "controller", "on_in_box")
 
@@ -71,7 +89,7 @@ function on_in_box()
 end
 
 function add_step(orientation_, xdir_, ydir_, zdir_, n_clicks_, long_side_, short_side_)
-   table.insert(steps, {orientation = orientation,
+   table.insert(steps, {orientation = orientation_,
                         xdir = xdir_,
                         ydir = ydir_,
                         zdir = zdir_,
@@ -83,12 +101,12 @@ end
 function init()
    steps = {}
    choice = 0
-   step = 0
-   click = 0
+   step = 1
+   click = 1
    
    n_clicks = 10
-   long_size = .2
-   short_size = .01
+   long_side = .2
+   short_side = .01
    dist = .02
    
    add_hmd()
@@ -112,7 +130,45 @@ function init()
    add_box("startbox")
    set_pos("startbox", 0, .9, -.05)
    set_dim("startbox", .05, .05, .05)
-   set_texture("startbox", "white-checker")
+   set_texture("startbox", "white-checker.png")
+end
+
+function shuffle(tbl)
+   size = #tbl
+   for i = size, 1, -1 do
+      local rand = math.random(size)
+      tbl[i], tbl[rand] = tbl[rand], tbl[i]
+   end
+   return tbl
+end
+
+function init_steps()
+   multipliers = {1, 2, 4}
+   
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(vertical, dist * m + short_side * m2, 0, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(vertical, 0, 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(vertical, dist * m + short_side * m2, 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(vertical, dist * m + short_side * m2, 0, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
 end
 
 init()
+init_steps()

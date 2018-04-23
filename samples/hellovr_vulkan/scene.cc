@@ -56,6 +56,12 @@ void Scene::step() {
     if (t->check(*this)) {
       auto nameid = t->function_nameid;
       auto name = names[t->function_nameid];
+
+      if (!function_map.count(name)) {
+        cout << "trigger func " << name << " does not exist" << endl;
+        throw StringException("func callback does not exist");
+      }
+      cout << "trigger: " << name << endl;
       function_map[name]();
     }  
   }
