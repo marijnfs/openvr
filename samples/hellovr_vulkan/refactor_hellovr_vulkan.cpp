@@ -385,13 +385,13 @@ int learn(string filename) {
   Handler::cudnn();
   Handler::set_device(0);
   
-  //auto &ws = Global::ws();
+  auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
 
   
   vr.setup();
-  //ws.setup();
+  ws.setup();
   vk.setup();
 
   //preloading images
@@ -482,6 +482,8 @@ int learn(string filename) {
     int t(0);
     for (int i(b); i < e; ++i, ++t) {
       recording.load_scene(i, &scene);
+
+      
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
       bool headless(true);
@@ -489,9 +491,12 @@ int learn(string filename) {
       std::vector<uint8_t> img(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
       //vr.render(scene, &img);
 
-      vr.render(scene, headless);
+      //vr.render(scene, headless);
+      vr.render(scene);
+      vr.wait_frame();
       std::vector<float> nimg(img.begin(), img.end());
       normalize(&nimg);
+      cout << nimg.size() << endl;
       copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
 
       last_pose = cur_pose;
@@ -500,6 +505,9 @@ int learn(string filename) {
 
       auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
+
+
+      cout << t << " " << aggr_net.input().data(t, 0) << " " << o_vec.size() << " " << aggr_net.input().size() << endl;
 
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
       

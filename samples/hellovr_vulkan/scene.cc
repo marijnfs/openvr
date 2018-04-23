@@ -250,6 +250,7 @@ vector<float> Pose::get_vec() {
 
   v[11] = arm_length;
   v[12] = pressed;
+  return v;
 }
 
 void Pose::from_vec(std::vector<float> v) {
@@ -285,6 +286,7 @@ std::vector<float> Pose::to_obs_vector() {
 
   v[4] = arm_length;
   v[5] = pressed;
+  return v;
 }
 
 void Pose::apply_to_scene(Scene &scene) {
@@ -357,6 +359,6 @@ std::vector<float> Action::to_vector() {
 
   v[11] = arm_length;
   v[12] = pressed;
-  
+  return v;
 }
 
