@@ -473,9 +473,19 @@ int learn(string filename) {
   q_net.add_univlstm(1, 1, 32);
   q_net.add_fc(1);
   q_net.finish();
+
+  //initialisation
+  float std(.05);
+
+  vis_net.init_uniform(std);
+  aggr_net.init_uniform(std);
+  q_net.init_uniform(std);
+  actor_net.init_uniform(std);
+  value_net.init_uniform(std);
   
   Volume target_actions(VolumeShape{N, act_dim, 1, 1});
-  
+
+  int epoch(0);
   while (true) {
     int b = rand() % (recording.size() - N + 1);
     int e = b + N;
@@ -483,7 +493,7 @@ int learn(string filename) {
 
     //First setup all inputs for an episode
     int t(0);
-    std::vector<uint8_t> img(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
+
     std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
     
     for (int i(b); i < e; ++i, ++t) {
@@ -496,15 +506,14 @@ int learn(string filename) {
       //
       ////vr.render(scene, &img);
       ////vr.render(scene, headless);
-      vr.render(scene);
+      vr.render(scene, false, &nimg);
       vr.wait_frame();
       //std::vector<float> nimg(img.begin(), img.end());
       //normalize_mt(&img);
       //cout << nimg.size() << endl;
 
-      copy(img.begin(), img.end(), nimg.begin());
       copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
-      normalise_fast(vis_net.input().slice(t), img.size());
+      //normalise_fast(vis_net.input().slice(t), nimg.size());
 
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
@@ -523,6 +532,7 @@ int learn(string filename) {
       //aggregator already has observation data, we add vis output after that
       copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
     aggr_net.forward();
+    cout << "agg output: " << aggr_net.output().to_vector() << endl;
     
     //copy aggr to nets
     copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
@@ -548,6 +558,15 @@ int learn(string filename) {
     //calculate q targets
     //run backward q -> calculate action update
     //run backward rest
+    if (epoch % 10 == 0) {
+      vis_net.save("vis.net");
+      aggr_net.save("aggr.net");
+      q_net.save("q.net");
+      actor_net.save("actor.net");
+      value_net.save("value.net");
+    }
+      
+    ++epoch;
   }
   
   Global::shutdown();

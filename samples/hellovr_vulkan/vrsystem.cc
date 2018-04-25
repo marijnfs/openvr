@@ -84,14 +84,26 @@ void VRSystem::setup_render_targets() {
   right_eye_fb->init(render_width, render_height);
 }
 
-void VRSystem::copy_image_to_cpu() {
+void VRSystem::copy_image_to_cpu(std::vector<float> &img) {
   cout << "copy image to cpu" << endl;
   
   auto &data_left = left_eye_fb->copy_to_buffer();
   auto &data_right = right_eye_fb->copy_to_buffer();
   
   cout << "sizes: " << data_left.size() << " " << data_right.size() << endl;
-  //cout << "pixels:" << endl;
+  int height(left_eye_fb->height);
+  int width(left_eye_fb->width);
+  
+  for (int y(0); y < height; ++y)
+    for (int x(0); x < width; ++x)
+      for (int c(0); c < 3; ++c)
+        img[(c * height + y) * width + x] = data_left[(y * width + x) * 4 + c];
+
+    for (int y(0); y < height; ++y)
+    for (int x(0); x < width; ++x)
+      for (int c(0); c < 3; ++c)
+        img[((c+3) * height + y) * width + x] = data_right[(y * width + x) * 4 + c];
+//cout << "pixels:" << endl;
   //for (auto &v : *data_left)
   // if (v)
   //    cout << v;
@@ -106,7 +118,7 @@ vector<float> VRSystem::get_image_data() {
   
 }
 
-void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
+void VRSystem::render(Scene &scene, bool headless, std::vector<float> *img_ptr) { //needs a headless option
   auto &vk = Global::vk();
 
   if (!headless) {
@@ -117,12 +129,13 @@ void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
     render_companion_window();
     to_present();
     vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
-    copy_image_to_cpu(); //later remove?
+
+    copy_image_to_cpu(*img_ptr); //later remove?
     submit_to_hmd();
   } else {
     // RENDERING
     render_stereo_targets(scene);
-    copy_image_to_cpu();
+    //copy_image_to_cpu();
     vk.end_submit_cmd();  //could try without swapchain if headless
 
   }

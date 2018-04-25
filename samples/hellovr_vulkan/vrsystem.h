@@ -68,11 +68,11 @@ struct VRSystem {
   void update_track_pose();
   void wait_frame();
   
-  void render(Scene &scene, bool headless = false);
+  void render(Scene &scene, bool headless = false, std::vector<float> *img_ptr = 0);
   void render_stereo_targets(Scene &scene);
   void render_companion_window();
 
-  void copy_image_to_cpu();
+  void copy_image_to_cpu(std::vector<float> &img);
   std::vector<float> get_image_data();
 
   void submit_to_hmd();
