@@ -91,7 +91,11 @@ void VRSystem::copy_image_to_cpu() {
   auto data_right = right_eye_fb->copy_to_buffer();
   
   cout << "sizes: " << data_left->size() << " " << data_right->size() << endl;
-  cout << *data_left << endl;
+  cout << "pixels:" << endl;
+  for (auto &v : *data_left)
+    if (v)
+      cout << v;
+  cout << "===" << endl;
   delete data_left;
   delete data_right;
 }

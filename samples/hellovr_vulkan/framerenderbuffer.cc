@@ -50,7 +50,7 @@ void FrameRenderBuffer::init(int width_, int height_) {
 
     img_resolve.init_for_copy(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     img_blit.init_for_copy(width, height, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    img_data.init(width * height * sizeof(float) * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST);
+    img_data.init(width * height * sizeof(float) * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST_COHERENT);
     
     // Create a renderpass
 	uint32_t n_attach = 2;
@@ -126,6 +126,14 @@ std::vector<float> *FrameRenderBuffer::copy_to_buffer(std::vector<float> *buf) {
   img.resolve_to_image(img_resolve);
   img_resolve.blit_to_image(img_blit);
   img_blit.copy_to_buffer(img_data);
+  float *buf_ptr(0);
+  img_data.map(&buf_ptr);
+  if (!buf)
+    buf = new std::vector<float>(width * height * 4);
+  buf->resize(width * height * 4);
+  copy(buf_ptr, buf_ptr + buf->size(), &(*buf)[0]);
+  img_data.unmap();
   Global::vk().wait_queue();
+  
   return buf;
 }
