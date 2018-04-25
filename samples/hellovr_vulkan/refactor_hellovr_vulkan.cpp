@@ -487,9 +487,7 @@ int learn(string filename) {
     std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
     
     for (int i(b); i < e; ++i, ++t) {
-      if (t > 2) throw "";
       recording.load_scene(i, &scene);
-
       
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
@@ -550,12 +548,10 @@ int learn(string filename) {
     //calculate q targets
     //run backward q -> calculate action update
     //run backward rest
-      Global::shutdown();
-    return 1;
   }
   
-
   Global::shutdown();
+  return 0;
 }
 
 int analyse(string filename) {

@@ -15,9 +15,9 @@ struct FrameRenderBuffer {
     //int msaa = 4;
   Image img_resolve, img_blit;
   Buffer img_data;
-
-    void init(int width_, int height_);
-  std::vector<float> *copy_to_buffer(std::vector<float> *buf = 0);
+  std::vector<float> img_vec;
+  void init(int width_, int height_);
+  std::vector<float> &copy_to_buffer();
 
 	void start_render_pass();
 	void end_render_pass();

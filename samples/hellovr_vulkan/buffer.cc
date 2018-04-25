@@ -413,10 +413,11 @@ void Image::resolve_to_image(Image &dst_image) {
   dst_image.barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   barrier(VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-  VkImageResolve img_res;
+  VkImageResolve img_res{};
   img_res.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   img_res.srcSubresource.layerCount = 1;
   img_res.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_res.dstSubresource.layerCount = 1;
   
   img_res.extent.width = width;
   img_res.extent.height = height;

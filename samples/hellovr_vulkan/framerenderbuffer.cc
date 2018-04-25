@@ -122,18 +122,16 @@ void FrameRenderBuffer::init(int width_, int height_) {
     desc.register_texture(img.view);
 }
 
-std::vector<float> *FrameRenderBuffer::copy_to_buffer(std::vector<float> *buf) {
+std::vector<float> &FrameRenderBuffer::copy_to_buffer() {
   img.resolve_to_image(img_resolve);
   img_resolve.blit_to_image(img_blit);
   img_blit.copy_to_buffer(img_data);
   float *buf_ptr(0);
   img_data.map(&buf_ptr);
-  if (!buf)
-    buf = new std::vector<float>(width * height * 4);
-  buf->resize(width * height * 4);
-  copy(buf_ptr, buf_ptr + buf->size(), &(*buf)[0]);
+  img_vec.resize(width * height * 4);
+  copy(buf_ptr, buf_ptr + img_vec.size(), &img_vec[0]);
   img_data.unmap();
   Global::vk().wait_queue();
   
-  return buf;
+  return img_vec;
 }
