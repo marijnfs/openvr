@@ -48,7 +48,10 @@ void FrameRenderBuffer::init(int width_, int height_) {
 	img.init(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaa, false);
 	depth_stencil.init(width, height, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 1, msaa, false);
 
-
+    img_resolve.init_for_copy(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    img_blit.init_for_copy(width, height, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    img_data.init(width * height * sizeof(float) * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, HOST);
+    
     // Create a renderpass
 	uint32_t n_attach = 2;
 	VkAttachmentDescription att_desc[ 2 ];
@@ -119,3 +122,10 @@ void FrameRenderBuffer::init(int width_, int height_) {
     desc.register_texture(img.view);
 }
 
+std::vector<float> *FrameRenderBuffer::copy_to_buffer(std::vector<float> *buf) {
+  img.resolve_to_image(img_resolve);
+  img_resolve.blit_to_image(img_blit);
+  img_blit.copy_to_buffer(img_data);
+  Global::vk().wait_queue();
+  return buf;
+}

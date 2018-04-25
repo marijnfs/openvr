@@ -82,14 +82,18 @@ void VRSystem::setup_render_targets() {
   
   left_eye_fb->init(render_width, render_height);
   right_eye_fb->init(render_width, render_height);
-	
 }
 
 void VRSystem::copy_image_to_cpu() {
-    cout << "copy image to cpu" << endl;
-  auto data_left = left_eye_fb->img.copy_to_buffer();
-  auto data_right = right_eye_fb->img.copy_to_buffer();
-  cout << data_left.size() << " " << data_right.size() << endl;
+  cout << "copy image to cpu" << endl;
+  
+  auto data_left = left_eye_fb->copy_to_buffer();
+  auto data_right = right_eye_fb->copy_to_buffer();
+  
+  cout << "sizes: " << data_left->size() << " " << data_right->size() << endl;
+  cout << *data_left << endl;
+  delete data_left;
+  delete data_right;
 }
 
 vector<float> VRSystem::get_image_data() {
@@ -109,9 +113,9 @@ void VRSystem::render(Scene &scene, bool headless) { //needs a headless option
     // RENDERING
     render_stereo_targets(scene);
     render_companion_window();
-    //copy_image_to_cpu(); //later remove?
     to_present();
     vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
+    copy_image_to_cpu(); //later remove?
     submit_to_hmd();
   } else {
     // RENDERING

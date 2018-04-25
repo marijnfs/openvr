@@ -30,9 +30,10 @@ struct FencedCommandBuffer {
   VkCommandBuffer cmd_buffer;
   VkFence fence;
 
+  FencedCommandBuffer();
   void begin();
   void end();
-  bool finished();
+  bool ready();
   void reset();
   void init();
 
@@ -147,10 +148,9 @@ struct VulkanSystem {
   VkPipelineLayout pipeline_layout = 0;
   VkPipelineCache pipeline_cache = 0;
 
-  std::deque< FencedCommandBuffer > cmd_buffers;
-  VkCommandBuffer cur_cmd_buffer = 0;
-  VkFence cur_fence = 0;
-
+  std::deque< FencedCommandBuffer* > cmd_buffers;
+  FencedCommandBuffer *cur_cmd_buffer = 0;
+  
   VkSampler sampler = 0;
   
   VulkanSystem();
@@ -179,7 +179,6 @@ struct VulkanSystem {
 
  //void init_vulkan();
 
-  void start_cmd();
   void end_cmd();
   void submit_cmd();
   void end_submit_cmd();

@@ -6,6 +6,10 @@
 
 using namespace std;
 
+FencedCommandBuffer::FencedCommandBuffer() {
+  init();
+}
+
 //  ==== FENCED BUFFER ====
 void FencedCommandBuffer::begin() {
   VkCommandBufferBeginInfo cmbbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -17,7 +21,7 @@ void FencedCommandBuffer::end() {
   vkEndCommandBuffer( cmd_buffer );
 }
 
-bool FencedCommandBuffer::finished() {
+bool FencedCommandBuffer::ready() {
   return vkGetFenceStatus( Global::vk().dev, fence ) == VK_SUCCESS;	
 }
 
@@ -501,8 +505,8 @@ VulkanSystem::VulkanSystem() {
 
 VulkanSystem::~VulkanSystem() {
   for (auto &cmd_buf : cmd_buffers) {
-    vkFreeCommandBuffers(dev, cmd_pool, 1, &cmd_buf.cmd_buffer);
-    vkDestroyFence(dev, cmd_buf.fence, nullptr);
+    vkFreeCommandBuffers(dev, cmd_pool, 1, &cmd_buf->cmd_buffer);
+    vkDestroyFence(dev, cmd_buf->fence, nullptr);
   }
 
   vkDestroyCommandPool(dev, cmd_pool, nullptr);
@@ -533,7 +537,7 @@ void VulkanSystem::submit(VkCommandBuffer cmd, VkFence fence, VkSemaphore semaph
   submiti.pCommandBuffers = &cmd;
 
   VkPipelineStageFlags dst_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-if (semaphore) {
+  if (semaphore) {
     submiti.waitSemaphoreCount = 1;
     submiti.pWaitSemaphores = &semaphore;
     submiti.pWaitDstStageMask = &dst_mask;
@@ -552,8 +556,7 @@ void VulkanSystem::wait_idle() {
 
 void VulkanSystem::flush_cmd() {
   end_submit_cmd();
-  check(vkQueueWaitIdle(queue), "vkQueueWaitIdle");
-  cur_cmd_buffer = 0;
+  wait_queue();
 }
 
 void VulkanSystem::init() {
@@ -1092,23 +1095,19 @@ void VulkanSystem::destroy_debug_callback() {
 
 VkCommandBuffer VulkanSystem::cmd_buffer() {
   if (cur_cmd_buffer)
-    return cur_cmd_buffer;
+    return cur_cmd_buffer->cmd_buffer;
   for (auto &buf : cmd_buffers) {
-    if (buf.finished()) {
-      buf.reset();
-      cur_cmd_buffer = buf.cmd_buffer;
-      cur_fence = buf.fence;
-      start_cmd();
-      return cur_cmd_buffer;
+    if (buf->ready()) {
+      buf->reset();
+      cur_cmd_buffer = buf;
+      cur_cmd_buffer->begin();
+      return cur_cmd_buffer->cmd_buffer;
     }
   }
-  cmd_buffers.push_back(FencedCommandBuffer());
-  cmd_buffers.back().init();
-  cur_cmd_buffer = cmd_buffers.back().cmd_buffer;
-  cur_fence = cmd_buffers.back().fence;
-  
-  start_cmd();
-  return cur_cmd_buffer;
+  //else make a new one
+  cur_cmd_buffer = new FencedCommandBuffer();
+  cur_cmd_buffer->begin();
+  return cur_cmd_buffer->cmd_buffer;
 }
 
 int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
@@ -1126,26 +1125,20 @@ int get_mem_type( uint32_t mem_bits, VkMemoryPropertyFlags mem_prop )
     }
 
   // No memory types matched, return failure
-  throw "err";
+  throw StringException("No Supported Memory Type");
 }
 
-
-void VulkanSystem::start_cmd() {
-  // Start the command buffer
-  VkCommandBufferBeginInfo cmd_buf_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-  cmd_buf_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  vkBeginCommandBuffer( cur_cmd_buffer, &cmd_buf_bi );
-}
 
 void VulkanSystem::end_cmd() {
   if (cur_cmd_buffer == 0)
     throw StringException("cmd still 0 when endcommandbuffer called");
-  vkEndCommandBuffer( cur_cmd_buffer );
+  cur_cmd_buffer->end();
 }
 
 void VulkanSystem::submit_swapchain_cmd() {
   // Submit the command buffer
-  submit(cur_cmd_buffer, cur_fence, swapchain.semaphores[ swapchain.frame_idx ]);    
+  submit(cur_cmd_buffer->cmd_buffer, cur_cmd_buffer->fence, swapchain.semaphores[ swapchain.frame_idx ]);
+  cmd_buffers.push_back(cur_cmd_buffer);
   cur_cmd_buffer = 0;
   swapchain.inc_frame();
 }
@@ -1153,12 +1146,18 @@ void VulkanSystem::submit_swapchain_cmd() {
 
 void VulkanSystem::end_submit_swapchain_cmd() {
   end_cmd();
-  submit_swapchain_cmd();  
+  submit_swapchain_cmd();
+}
+
+void VulkanSystem::submit_cmd() {
+  submit(cur_cmd_buffer->cmd_buffer, cur_cmd_buffer->fence);
+  cmd_buffers.push_back(cur_cmd_buffer);
+  vkWaitForFences(dev, 1, &cur_cmd_buffer->fence, VK_TRUE, 100000000);
+  cur_cmd_buffer = 0;
 }
 
 void VulkanSystem::end_submit_cmd() {
   end_cmd();
-  submit(cur_cmd_buffer, cur_fence);
-  cur_cmd_buffer = 0;
+  submit_cmd();
 }
 

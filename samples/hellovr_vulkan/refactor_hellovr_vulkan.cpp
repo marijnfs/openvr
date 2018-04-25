@@ -425,7 +425,6 @@ int learn(string filename) {
   bool first_grad = false;
   VolumeNetwork vis_net(img_input, first_grad);
  
-
   auto base_pool = new PoolingOperation<F>(2, 2);
   auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
   auto pool1 = new PoolingOperation<F>(4, 4);
@@ -433,7 +432,7 @@ int learn(string filename) {
   vis_net.add_slicewise(conv1);
   vis_net.add_slicewise(pool1);
   
-  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 32, 5, 5);
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
   auto pool2 = new PoolingOperation<F>(4, 4);
   vis_net.add_slicewise(conv2);
   vis_net.add_slicewise(pool2);
@@ -441,14 +440,15 @@ int learn(string filename) {
   auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
   vis_net.add_slicewise(squash);
   //output should be {z, c, 1, 1}
-
+  vis_net.finish();
 
   //Aggregation Network combining output of visual processing network and state vector
   VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
   aggr_net.add_univlstm(1, 1, 32);
   aggr_net.add_univlstm(1, 1, aggr_dim);
-
+  aggr_net.finish();
+  
   TensorShape actor_in{N, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
   actor_net.add_conv(64, 1, 1);
@@ -456,7 +456,8 @@ int learn(string filename) {
   actor_net.add_conv(64, 1, 1);
   actor_net.add_relu();
   actor_net.add_conv(act_dim, 1, 1);
-
+  actor_net.finish();
+  
   TensorShape value_in{N, aggr_dim, 1, 1};
   Network<F> value_net(actor_in);
   value_net.add_conv(64, 1, 1);
@@ -464,13 +465,15 @@ int learn(string filename) {
   value_net.add_conv(64, 1, 1);
   value_net.add_relu();
   value_net.add_conv(1, 1, 1);
-
+  value_net.finish();
+  
   VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
   q_net.add_univlstm(1, 1, 32);
   q_net.add_univlstm(1, 1, 32);
   q_net.add_fc(1);
-
+  q_net.finish();
+  
   Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   
   while (true) {
@@ -480,7 +483,11 @@ int learn(string filename) {
 
     //First setup all inputs for an episode
     int t(0);
+    std::vector<uint8_t> img(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
+    std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
+    
     for (int i(b); i < e; ++i, ++t) {
+      if (t > 2) throw "";
       recording.load_scene(i, &scene);
 
       
@@ -488,16 +495,18 @@ int learn(string filename) {
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
       bool headless(true);
 
-      std::vector<uint8_t> img(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
-      //vr.render(scene, &img);
-
-      //vr.render(scene, headless);
+      //
+      ////vr.render(scene, &img);
+      ////vr.render(scene, headless);
       vr.render(scene);
       vr.wait_frame();
-      std::vector<float> nimg(img.begin(), img.end());
-      normalize(&nimg);
-      cout << nimg.size() << endl;
+      //std::vector<float> nimg(img.begin(), img.end());
+      //normalize_mt(&img);
+      //cout << nimg.size() << endl;
+
+      copy(img.begin(), img.end(), nimg.begin());
       copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
+      normalise_fast(vis_net.input().slice(t), img.size());
 
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
@@ -506,11 +515,7 @@ int learn(string filename) {
       auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
 
-
-      cout << t << " " << aggr_net.input().data(t, 0) << " " << o_vec.size() << " " << aggr_net.input().size() << endl;
-
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
-      
     }
 
     vis_net.forward();
@@ -518,7 +523,7 @@ int learn(string filename) {
     //aggregator
     for (int t(0); t < N; ++t)
       //aggregator already has observation data, we add vis output after that
-      copy_gpu_to_gpu(vis_net.output().data(t, obs_dim), aggr_net.input().slice(t), vis_dim);
+      copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
     aggr_net.forward();
     
     //copy aggr to nets
@@ -545,6 +550,8 @@ int learn(string filename) {
     //calculate q targets
     //run backward q -> calculate action update
     //run backward rest
+      Global::shutdown();
+    return 1;
   }
   
 

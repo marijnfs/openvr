@@ -52,7 +52,8 @@ struct VRSystem {
   float near_clip = 0, far_clip = 0;
 
   DrawVisitor draw_visitor; //visitor pattern to draw the scene
-
+  Image dst_image_left, dst_image_right;
+  
   VRSystem();
   ~VRSystem();
   

@@ -195,23 +195,28 @@ Image::Image(string path, VkFormat format, VkImageUsageFlags usage, VkImageAspec
   init_from_img(path, format, usage, aspect);  
 }
 
-void Image::init_for_copy(int width, int height) {
+void Image::init_for_copy(int width_, int height_, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags mem_flags) {
+  width = width_;
+  height = height_;
   auto &vk = Global::vk();
   
   VkImageCreateInfo imgci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
   imgci.imageType = VK_IMAGE_TYPE_2D;
   // Note that vkCmdBlitImage (if supported) will also do format conversions if the swapchain color format would differ
-  imgci.format = VK_FORMAT_R8G8B8A8_UNORM;
+  //imgci.format = VK_FORMAT_R8G8B8A8_UNORM;
+  imgci.format = format;
   imgci.extent.width = width;
   imgci.extent.height = height;
   imgci.extent.depth = 1;
   imgci.arrayLayers = 1;
   imgci.mipLevels = 1;
-  imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+  //imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  imgci.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
   imgci.samples = VK_SAMPLE_COUNT_1_BIT;
   //imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
-  imgci.tiling = VK_IMAGE_TILING_LINEAR;
-  imgci.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  imgci.tiling = tiling;
+  imgci.usage = usage;
   
   check( vkCreateImage( vk.dev, &imgci, nullptr, &img ), "vkCreateImage");
   
@@ -220,11 +225,12 @@ void Image::init_for_copy(int width, int height) {
   
   VkMemoryAllocateInfo mem_alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
   mem_alloc_info.allocationSize = mem_req.size;
-  mem_alloc_info.memoryTypeIndex = get_mem_type( mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  mem_alloc_info.memoryTypeIndex = get_mem_type( mem_req.memoryTypeBits, mem_flags);// | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   
   check( vkAllocateMemory( vk.dev, &mem_alloc_info, nullptr, &mem), "vkAllocateMemory");
   check( vkBindImageMemory( vk.dev, img, mem, 0 ), "vkBindImageMemory");
 }
+
 
 void Image::init(int width_, int height_, VkFormat format_, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count, bool make_sampler) {
   //cout << "Image Init" << endl;
@@ -398,14 +404,12 @@ VkSubresourceLayout Image::subresource_layout() {
   return subResourceLayout;
 }
 
-vector<uint8_t> Image::copy_to_buffer() {
+void Image::resolve_to_image(Image &dst_image) { 
   auto &vk = Global::vk();
   
   auto start_layout = layout;
   auto start_access = access_flags;
   
-  Image dst_image;
-  dst_image.init_for_copy(width, height);
   dst_image.barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   barrier(VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
@@ -413,7 +417,7 @@ vector<uint8_t> Image::copy_to_buffer() {
   img_res.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   img_res.srcSubresource.layerCount = 1;
   img_res.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  img_res.dstSubresource.layerCount = 1;
+  
   img_res.extent.width = width;
   img_res.extent.height = height;
   img_res.extent.depth = 1;
@@ -428,31 +432,54 @@ vector<uint8_t> Image::copy_to_buffer() {
   
   dst_image.barrier(VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_GENERAL);
   barrier(start_access, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, start_layout);
-  
-  vk.flush_cmd();
-  
-  auto sub_layout = dst_image.subresource_layout();
-  uint8_t *data = 0;
-  check(vkMapMemory(vk.dev, dst_image.mem, 0, VK_WHOLE_SIZE, 0, (void**)&data), "vkMapMemory");
-  data += sub_layout.offset;
-  
-  vector<uint8_t> return_data(width * height * 3);
+}
 
-  for (int y(0); y < height; ++y) {
-    uint8_t *row = data;
-    cout << y << endl;
-    for (int x(0); x < width; ++x) {
-      return_data[y * width + x] = row[0];
-      return_data[width * height + y * width + x] = row[1];
-      return_data[2 * width * height + y * width + x] = row[2];
-      row += 4;
-    }
-    data += sub_layout.rowPitch;
-  }
+void Image::blit_to_image(Image &dst_image) {
+  VkImageBlit blt{};
+
+  barrier(VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  dst_image.barrier(VK_ACCESS_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  // Source
+  blt.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  blt.srcSubresource.layerCount = 1;
+  blt.srcSubresource.mipLevel = 0;
+  blt.srcSubresource.baseArrayLayer = 0;
+
+  blt.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  blt.dstSubresource.layerCount = 1;
+  blt.dstSubresource.mipLevel = 0;
+  blt.dstSubresource.baseArrayLayer = 0;
+
+  cout << "blit: " << width << " " << height << endl;
+  blt.srcOffsets[0].x = 0;
+  blt.srcOffsets[0].y = 0;
+  blt.srcOffsets[0].z = 0;
+  blt.srcOffsets[1].x = width;
+  blt.srcOffsets[1].y = height;
+  blt.srcOffsets[1].z = 1;
+
+  blt.dstOffsets[0].x = 0;
+  blt.dstOffsets[0].y = 0;
+  blt.dstOffsets[0].z = 0;
+  blt.dstOffsets[1].x = width;
+  blt.dstOffsets[1].y = height;
+  blt.dstOffsets[1].z = 1;
   
-  cout << "unmapping" << endl;
-  vkUnmapMemory(vk.dev, dst_image.mem);
-  return return_data;
+  vkCmdBlitImage(Global::vk().cmd_buffer(), img, layout, dst_image.img, dst_image.layout, 1, &blt, VK_FILTER_NEAREST);
+}
+
+void Image::copy_to_buffer(Buffer &buf) {
+  auto &vk = Global::vk();
+  barrier(VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  VkBufferImageCopy img_cpy{};
+  img_cpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  img_cpy.imageSubresource.mipLevel = 0;
+  img_cpy.imageSubresource.baseArrayLayer = 0;
+  img_cpy.imageSubresource.layerCount = 1;
+  img_cpy.imageExtent.width = width;
+  img_cpy.imageExtent.height = height;
+  img_cpy.imageExtent.depth = 1;
+  vkCmdCopyImageToBuffer(vk.cmd_buffer(), img, layout, buf.buffer, 1, &img_cpy);
 }
 
 

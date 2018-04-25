@@ -76,13 +76,16 @@ struct Image {
   Image(std::string path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
   ~Image();
 
-  void init_for_copy(int width, int height);
   void init(int width_, int height_, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect_, int mip_levels_, int msaa_sample_count, bool make_sampler);
   void init_from_img(std::string img_path, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect);
+  void init_for_copy(int width, int height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags mem_flags);
 
   void barrier(VkAccessFlags dst_access, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageLayout new_layout);
-
-  std::vector<uint8_t> copy_to_buffer();
+  
+  void blit_to_image(Image &dst_image);
+  void resolve_to_image(Image &dst);
+  
+  void copy_to_buffer(Buffer &buf);
 
   template <typename T>
   std::vector<T> get_data() {
