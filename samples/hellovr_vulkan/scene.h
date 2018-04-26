@@ -548,11 +548,17 @@ struct Scene {
     return *objects[name];
   }
 
-  template <typename T = Variable>
+  template <typename T>
   T &variable(std::string name) {
     if (!variables.count(name))
       throw StringException("no such variable");
     return *reinterpret_cast<T*>(variables[name]);
+  }
+
+  Variable &variable(std::string name) {
+    if (!variables.count(name))
+      throw StringException("no such variable");
+    return *variables[name];
   }
 
   void clear_scene() {

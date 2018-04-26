@@ -13,6 +13,7 @@
 #include "shared/Matrices.h"
 #include "shared/pathtools.h"
 
+#include "img.h"
 #include "util.h"
 #include "utilvr.h"
 #include "global.h"
@@ -407,7 +408,8 @@ int learn(string filename) {
   recording.load(filename, &scene);
   cout << "recording size: " << recording.size() << endl;
 
-  int N = 100;
+  
+  int N = 16;
   int c = 3 * 2; //stereo rgb
   int h = 32;
 
@@ -439,7 +441,254 @@ int learn(string filename) {
   vis_net.add_slicewise(pool2);
   
   auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+ 
   vis_net.add_slicewise(squash);
+  vis_net.add_tanh();
+  //output should be {z, c, 1, 1}
+  vis_net.finish();
+
+  //Aggregation Network combining output of visual processing network and state vector
+  VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
+  VolumeNetwork aggr_net(aggr_input);
+  aggr_net.add_univlstm(1, 1, 32);
+  aggr_net.add_univlstm(1, 1, aggr_dim);
+  aggr_net.finish();
+  
+  TensorShape actor_in{N, aggr_dim, 1, 1};
+  Network<F> actor_net(actor_in);
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(act_dim, 1, 1);
+
+  actor_net.finish();
+  
+  TensorShape value_in{N, aggr_dim, 1, 1};
+  Network<F> value_net(actor_in);
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(1, 1, 1);
+  value_net.finish();
+  
+  VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
+  VolumeNetwork q_net(q_in);
+  q_net.add_univlstm(1, 1, 32);
+  q_net.add_univlstm(1, 1, 32);
+  q_net.add_fc(1);
+  q_net.finish();
+
+  //initialisation
+  float std(.03);
+
+  vis_net.init_uniform(std);
+  aggr_net.init_uniform(std);
+  q_net.init_uniform(std);
+  actor_net.init_uniform(std);
+  value_net.init_uniform(std);
+
+  Trainer vis_trainer(vis_net.param_vec.n, .005, .0000001, 400);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .002, .0000001, 400);
+  Trainer actor_trainer(actor_net.param_vec.n, .001, .0000001, 400);
+  
+  //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
+  Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
+  vector<float> action_targets(N * act_dim);
+
+  //load if applicable
+  if (exists("vis.net"))
+    vis_net.load("vis.net");
+  if (exists("aggr.net"))
+    aggr_net.load("aggr.net");
+  if (exists("q.net"))
+    q_net.load("q.net");
+  if (exists("actor.net"))
+    actor_net.load("actor.net");
+  if (exists("value.net"))
+    value_net.load("value.net");
+  
+  
+  int epoch(0);
+  while (true) {
+    int b = rand() % (recording.size() - N + 1);
+    int e = b + N;
+    Pose cur_pose, last_pose;
+
+    //First setup all inputs for an episode
+    int t(0);
+
+    std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
+    
+    for (int i(b); i < e; ++i, ++t) {
+      recording.load_scene(i, &scene);
+      
+      vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
+      cout << "scene " << i << " items: " << scene.objects.size() << endl;
+      bool headless(true);
+
+      //
+      ////vr.render(scene, &img);
+      ////vr.render(scene, headless);
+      vr.render(scene, false, &nimg);
+      vr.wait_frame();
+      //std::vector<float> nimg(img.begin(), img.end());
+      //normalize_mt(&img);
+      //cout << nimg.size() << endl;
+
+      //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
+      copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
+      
+      //vis_net.input().draw_slice("bla.png", t, 0);
+      //normalise_fast(vis_net.input().slice(t), nimg.size());
+
+      last_pose = cur_pose;
+      cur_pose.from_scene(scene);
+      if (t == 0) last_pose = cur_pose;
+      
+      Action action(last_pose, cur_pose);
+      
+      auto a_vec = action.to_vector();
+      auto o_vec = cur_pose.to_obs_vector();
+      
+      cout << "action: " << a_vec << " " << o_vec << endl;
+      //if (t) //ignore first acti3~on
+      copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
+      copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
+    }
+
+    action_targets_tensor.from_vector(action_targets);
+    //run visual network
+    vis_net.forward();
+
+    cout << "vis output: " << vis_net.output().to_vector() << endl;
+    //aggregator
+    for (int t(0); t < N; ++t)
+      //aggregator already has observation data, we add vis output after that
+      copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
+    aggr_net.forward();
+    cout << "agg output: " << aggr_net.output().to_vector() << endl;
+    
+    //copy aggr to nets
+    copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
+    copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
+    
+    actor_net.forward();
+    value_net.forward(); //not for imitation
+
+    
+    //copy actions and aggr to q  //not for imitation //HERE BE SEGFAULT?
+    /*for (int t(0); t < N - 1; ++t) {
+      copy_gpu_to_gpu(actor_net.output().ptr(t), q_net.input().data(t + 1, 0), act_dim);
+      copy_gpu_to_gpu(aggr_net.output().data(t), q_net.input().data(t, act_dim), aggr_dim);
+    }
+    q_net.forward();     //not for imitation
+    */
+
+    //====== Imitation backward:
+    
+    actor_net.calculate_loss(action_targets_tensor);
+    //cout << "actor action: " << actor_net.output().to_vector() << endl;
+    cout << "actor loss: " << actor_net.loss() << endl;
+    actor_net.backward();
+    
+    copy_gpu_to_gpu(actor_net.input_grad().data, aggr_net.output_grad().data(), actor_net.input_grad().size());
+    aggr_net.backward();
+    
+    for (int t(0); t < N; ++t)
+      copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+    vis_net.backward();
+
+    vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
+    aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
+    actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
+    //set action targets
+    //run backward
+    
+    //====== Qlearning backward:
+    //run forward
+    //calculate q targets
+    //run backward q -> calculate action update
+    //run backward rest
+    if (epoch % 10 == 0) {
+      vis_net.save("vis.net");
+      aggr_net.save("aggr.net");
+      q_net.save("q.net");
+      actor_net.save("actor.net");
+      value_net.save("value.net");
+    }
+      
+    ++epoch;
+  }
+  
+  Global::shutdown();
+  return 0;
+}
+
+int rollout(string filename) {
+  if (!exists(filename))
+    throw StringException("file doesnt exist");
+
+  Handler::cudnn();
+  Handler::set_device(0);
+  
+  auto &ws = Global::ws();
+  auto &vr = Global::vr();
+  auto &vk = Global::vk();
+
+  
+  vr.setup();
+  ws.setup();
+  vk.setup();
+
+  //preloading images
+  ImageFlywheel::preload();
+
+  auto &scene = Global::scene();
+  FittsWorld world(scene);
+  vk.end_submit_cmd();
+  
+  Timer a_timer(1./90);
+  Recording recording;
+  recording.load(filename, &scene);
+  cout << "recording size: " << recording.size() << endl;
+
+  int N = 15;
+  int c = 3 * 2; //stereo rgb
+  int h = 32;
+
+  int act_dim = 13;
+  int obs_dim = 6;
+  int vis_dim = 64;
+  int aggr_dim = 32;
+  
+  int width = VIVE_WIDTH;
+  int height = VIVE_HEIGHT;
+  VolumeShape img_input{N, c, width, height};
+  VolumeShape network_output{N, h, 1, 1};
+
+
+  //Visual processing network, most cpu intensive
+  bool first_grad = false;
+  VolumeNetwork vis_net(img_input, first_grad);
+ 
+  auto base_pool = new PoolingOperation<F>(2, 2);
+  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
+  auto pool1 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(base_pool);
+  vis_net.add_slicewise(conv1);
+  vis_net.add_slicewise(pool1);
+  
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
+  auto pool2 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(conv2);
+  vis_net.add_slicewise(pool2);
+  
+  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+ 
+  vis_net.add_slicewise(squash);
+  vis_net.add_tanh();
   //output should be {z, c, 1, 1}
   vis_net.finish();
 
@@ -485,13 +734,26 @@ int learn(string filename) {
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
 
-  Trainer vis_trainer(vis_net.param_vec.n, .01, .0000001, 400);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .005, .0000001, 400);
+  Trainer vis_trainer(vis_net.param_vec.n, .005, .0000001, 400);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .002, .0000001, 400);
   Trainer actor_trainer(actor_net.param_vec.n, .001, .0000001, 400);
   
   //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
   vector<float> action_targets(N * act_dim);
+
+  //load if applicable
+  if (exists("vis.net"))
+    vis_net.load("vis.net");
+  if (exists("aggr.net"))
+    aggr_net.load("aggr.net");
+  if (exists("q.net"))
+    q_net.load("q.net");
+  if (exists("actor.net"))
+    actor_net.load("actor.net");
+  if (exists("value.net"))
+    value_net.load("value.net");
+  
   
   int epoch(0);
   while (true) {
@@ -503,10 +765,8 @@ int learn(string filename) {
     int t(0);
 
     std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
-    
-    for (int i(b); i < e; ++i, ++t) {
-      recording.load_scene(i, &scene);
-      
+    recording.load_scene(b, &scene);
+    for (int i(b); i < e; ++i, ++t) {      
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
       bool headless(true);
@@ -520,78 +780,40 @@ int learn(string filename) {
       //normalize_mt(&img);
       //cout << nimg.size() << endl;
 
+      //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
       copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
+      
+      //vis_net.input().draw_slice("bla.png", t, 0);
       //normalise_fast(vis_net.input().slice(t), nimg.size());
 
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
-      Action action(last_pose, cur_pose);
+      //Action action(last_pose, cur_pose);
       
-      auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
       
-      cout << "action: " << a_vec << " " << o_vec << endl;
-      if (t) //ignore first action
-        copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
+      
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
-    }
-    action_targets_tensor.from_vector(action_targets);
 
-    //run visual network
-    vis_net.forward();
-    vis_net.volumes[0]->x.draw_slice("test.png", 10, 0);
-    return 1;
-    //aggregator
-    for (int t(0); t < N; ++t)
-      //aggregator already has observation data, we add vis output after that
+      action_targets_tensor.from_vector(action_targets);
+      
+      //run visual network
+      vis_net.forward();
       copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
-    aggr_net.forward();
-    cout << "agg output: " << aggr_net.output().to_vector() << endl;
-    
-    //copy aggr to nets
-    copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
-    copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
-    
-    actor_net.forward();
-    value_net.forward(); //not for imitation
-
-    //copy actions and aggr to q  //not for imitation
-    for (int t(0); t < N - 1; ++t) {
-      copy_gpu_to_gpu(actor_net.output().ptr(t), q_net.input().data(t + 1, 0), act_dim);
-      copy_gpu_to_gpu(aggr_net.output().data(t), q_net.input().data(t, act_dim), aggr_dim);
-    }
-    q_net.forward();     //not for imitation
-    
-    //====== Imitation backward:
-    actor_net.calculate_loss(action_targets_tensor);
-    cout << "actor action: " << actor_net.output().to_vector() << endl;
-    cout << "actor loss: " << actor_net.loss() << endl;
-    actor_net.backward();
-    
-    copy_gpu_to_gpu(actor_net.input_grad().data, aggr_net.output_grad().data(), actor_net.input_grad().size());
-    aggr_net.backward();
-    
-    for (int t(0); t < N; ++t)
-      copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
-    vis_net.backward();
-
-    vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
-    aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
-    actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
-    //set action targets
-    //run backward
-    
-    //====== Qlearning backward:
-    //run forward
-    //calculate q targets
-    //run backward q -> calculate action update
-    //run backward rest
-    if (epoch % 10 == 0) {
-      vis_net.save("vis.net");
-      aggr_net.save("aggr.net");
-      q_net.save("q.net");
-      actor_net.save("actor.net");
-      value_net.save("value.net");
+      aggr_net.forward();
+      //cout << "agg output: " << aggr_net.output().to_vector() << endl;
+      
+      //copy aggr to nets
+      copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
+      copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
+      
+      actor_net.forward();
+      value_net.forward(); //not for imitation
+      auto whole_action_vec = actor_net.output().to_vector();
+      auto action_vec = vector<float>(whole_action_vec.begin() + t * act_dim, whole_action_vec.begin() + (t+1) * act_dim);
+      Action act(action_vec);
+      cur_pose.apply(act);
+      cur_pose.apply_to_scene(scene);
     }
       
     ++epoch;
@@ -684,11 +906,14 @@ int main(int argc, char **argv) {
   if (args.size() < 2)
     throw StringException("not enough args, use: record|replay filename");
   if (args[0] == "record")
-    record(args[1]);
+    return record(args[1]);
   if (args[0] == "replay")
-    replay(args[1]);
+    return replay(args[1]);
   if (args[0] == "analyse")
-    analyse(args[1]);
+    return analyse(args[1]);
   if (args[0] == "learn")
-    learn(args[1]);
+    return learn(args[1]);
+  if (args[0] == "rollout")
+    return rollout(args[1]);
+  throw StringException("Call right arguments");
 }

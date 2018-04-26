@@ -88,7 +88,7 @@ void VRSystem::setup_render_targets() {
 }
 
 void VRSystem::copy_image_to_cpu(std::vector<float> &img) {
-  cout << "copy image to cpu" << endl;
+  //cout << "copy image to cpu" << endl;
   
   auto &data_left = left_eye_fb->copy_to_buffer();
   auto &data_right = right_eye_fb->copy_to_buffer();
@@ -96,25 +96,31 @@ void VRSystem::copy_image_to_cpu(std::vector<float> &img) {
   //cout << "sizes: " << data_left.size() << " " << data_right.size() << endl;
   int height(left_eye_fb->height);
   int width(left_eye_fb->width);
-  cout << height << " " << width << endl;
+  //cout << height << " " << width << endl;
 
-  write_img("test2.png", 3, width, height, &data_left[0]);
-  vector<float> img2(data_left.size());
-  for (int x = 0; x < width * height; ++x)
-    for (int c = 0; c < 4; ++c)
-      img2[c * width * height + x] = data_left[x * 4 + c];
-  write_img("test3.png", 3, width, height, &img2[0]);
+  //write_img("test2.png", 3, width, height, &data_left[0]);
+  //vector<float> img2(data_left.size());
+  //for (int x = 0; x < width * height; ++x)
+  //for (int c = 0; c < 3; ++c)
+  //  img2[c * width * height + x] = data_left[x * 4 + c];
+  //for (int x = 0; x < width * height; ++x)
+    //for (int c = 0; c < 3; ++c)
+      //  img2[x * 3 + c] = data_left[x * 4 + c];
+  // write_img("test3.png", 3, width, height, &img2[0]);
   //throw "";
   for (int y(0); y < height; ++y)
     for (int x(0); x < width; ++x)
       for (int c(0); c < 3; ++c)
-        //img[c * height * height + y * width + x] = data_left[(y * width + x) * 4 + c];
-        img[c * height * height + y * width + x] = data_left[(y * width + x) * 4 + c];
-
+        //img[c * weight * height + y * width + x] = data_left[(y * width + x) * 4 + c];
+        img[c * width * height + y * width + x] = data_left[(y * width + x) * 4 + c];
+  //write_img1c("test4.png", width, height, &img[0]);
     for (int y(0); y < height; ++y)
       for (int x(0); x < width; ++x)
         for (int c(0); c < 3; ++c)
           img[((c+3) * height + y) * width + x] = data_right[(y * width + x) * 4 + c];
+    //cout << "before; " <<  width << " " << height << endl;
+    //write_img1c("beforereturn.png", width, height, &img[0]);
+    //write_img1c("test4.png", width, height, &img[3 * height * width]);
 //cout << "pixels:" << endl;
   //for (auto &v : *data_left)
   // if (v)
