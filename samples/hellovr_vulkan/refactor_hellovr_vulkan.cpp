@@ -24,6 +24,7 @@
 #include "learningsystem.h"
 #include "volumenetwork.h"
 #include "network.h"
+#include "trainer.h"
 
 using namespace std;
 
@@ -456,6 +457,7 @@ int learn(string filename) {
   actor_net.add_conv(64, 1, 1);
   actor_net.add_relu();
   actor_net.add_conv(act_dim, 1, 1);
+
   actor_net.finish();
   
   TensorShape value_in{N, aggr_dim, 1, 1};
@@ -475,16 +477,22 @@ int learn(string filename) {
   q_net.finish();
 
   //initialisation
-  float std(.05);
+  float std(.1);
 
   vis_net.init_uniform(std);
   aggr_net.init_uniform(std);
   q_net.init_uniform(std);
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
-  
-  Volume target_actions(VolumeShape{N, act_dim, 1, 1});
 
+  Trainer vis_trainer(vis_net.param_vec.n, .01, .0000001, 400);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .005, .0000001, 400);
+  Trainer actor_trainer(actor_net.param_vec.n, .001, .0000001, 400);
+  
+  //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
+  Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
+  vector<float> action_targets(N * act_dim);
+  
   int epoch(0);
   while (true) {
     int b = rand() % (recording.size() - N + 1);
@@ -518,15 +526,21 @@ int learn(string filename) {
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
       Action action(last_pose, cur_pose);
-
+      
       auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
-
+      
+      cout << "action: " << a_vec << " " << o_vec << endl;
+      if (t) //ignore first action
+        copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
     }
+    action_targets_tensor.from_vector(action_targets);
 
+    //run visual network
     vis_net.forward();
-    
+    vis_net.volumes[0]->x.draw_slice("test.png", 10, 0);
+    return 1;
     //aggregator
     for (int t(0); t < N; ++t)
       //aggregator already has observation data, we add vis output after that
@@ -549,7 +563,21 @@ int learn(string filename) {
     q_net.forward();     //not for imitation
     
     //====== Imitation backward:
-    //run forward
+    actor_net.calculate_loss(action_targets_tensor);
+    cout << "actor action: " << actor_net.output().to_vector() << endl;
+    cout << "actor loss: " << actor_net.loss() << endl;
+    actor_net.backward();
+    
+    copy_gpu_to_gpu(actor_net.input_grad().data, aggr_net.output_grad().data(), actor_net.input_grad().size());
+    aggr_net.backward();
+    
+    for (int t(0); t < N; ++t)
+      copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+    vis_net.backward();
+
+    vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
+    aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
+    actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
     //set action targets
     //run backward
     

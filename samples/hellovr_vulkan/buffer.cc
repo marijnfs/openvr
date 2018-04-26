@@ -451,7 +451,7 @@ void Image::blit_to_image(Image &dst_image) {
   blt.dstSubresource.mipLevel = 0;
   blt.dstSubresource.baseArrayLayer = 0;
 
-  cout << "blit: " << width << " " << height << endl;
+  //cout << "blit: " << width << " " << height << endl;
   blt.srcOffsets[0].x = 0;
   blt.srcOffsets[0].y = 0;
   blt.srcOffsets[0].z = 0;
