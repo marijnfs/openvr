@@ -32,7 +32,7 @@ struct VRSystem {
   vr::TrackedDeviceClass device_class[ vr::k_unMaxTrackedDeviceCount ];
 
   //common matrices
-  Matrix4 hmd_pose;
+  Matrix4 hmd_pose, hmd_pose_inverse;
   Matrix4 eye_pos_left, eye_pos_right, eye_pose_center;
   Matrix4 projection_left, projection_right;
 

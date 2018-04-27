@@ -262,6 +262,8 @@ struct HMD : public Object {
     builder.setHmd();
   }
 
+  void deserialise(cap::Object::Reader reader);
+  
   Object *copy() {
     return new HMD(*this);
   }
@@ -861,6 +863,18 @@ struct Pose {
 };
 
 
+inline std::ostream &operator<<(std::ostream &out, Pos &p) {
+  return out << "[" << p[0] << " " << p[1] << " " << p[2] << "]"; 
+}  
+
+inline std::ostream &operator<<(std::ostream &out, fquat &q) {
+  return out << "[" << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << "]"; 
+}  
+
+inline std::ostream &operator<<(std::ostream &out, Pose &p) {
+  return out << p.base << " " << p.baseq << " " << p.armq << " " << p.arm_length << " " << p.pressed;
+}
+
 struct Action {
   Pos dbase; //in baseq orientation
   fquat dbaseq;
@@ -880,9 +894,5 @@ struct Action {
   std::vector<float> to_vector();
 };
 
-
-inline std::ostream &operator<<(std::ostream &out, Pos &pos) {
-  return out << pos[0] << " " << pos[1] << " " << pos[2] << std::endl;
-}
 
 #endif

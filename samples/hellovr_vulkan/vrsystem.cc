@@ -148,7 +148,8 @@ void VRSystem::render(Scene &scene, bool headless, std::vector<float> *img_ptr) 
     to_present();
     vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
 
-    copy_image_to_cpu(*img_ptr); //later remove?
+    if (img_ptr)
+      copy_image_to_cpu(*img_ptr); //later remove?
     submit_to_hmd();
   } else {
     // RENDERING
@@ -202,6 +203,8 @@ void VRSystem::submit_to_hmd() {
 void VRSystem::render_stereo_targets(Scene &scene) {
 	auto &vk = Global::vk();
 	//auto &scene = Global::scene();
+    hmd_pose_inverse = hmd_pose;
+    hmd_pose_inverse.invert();
 
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
 	vkCmdSetViewport( vk.cmd_buffer(), 0, 1, &viewport );
@@ -353,9 +356,9 @@ Matrix4 VRSystem::get_hmd_projection( vr::Hmd_Eye eye )
 
 Matrix4 VRSystem::get_view_projection( vr::Hmd_Eye eye ) {
 	if( eye == vr::Eye_Left )
-		return projection_left * eye_pos_left * hmd_pose;
+		return projection_left * eye_pos_left * hmd_pose_inverse;
 	else if( eye == vr::Eye_Right )
-		return projection_right * eye_pos_right * hmd_pose;
+		return projection_right * eye_pos_right * hmd_pose_inverse;
 	throw StringException("not valid eye");
 }
 
@@ -441,7 +444,6 @@ void VRSystem::update_track_pose() {
     
 	if ( tracked_pose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid ) {
       hmd_pose = tracked_pose_mat4[vr::k_unTrackedDeviceIndex_Hmd];
-      hmd_pose.invert();
     }
 }
 

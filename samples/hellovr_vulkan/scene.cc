@@ -23,6 +23,15 @@ void Controller::update() {
   }
 }
 
+void HMD::deserialise(cap::Object::Reader reader) {
+  Object::deserialise(reader);
+
+  //TODO remove the invert, not needed for new recordings
+  auto m = Matrix4(to_mat4());
+  m.invert();
+  from_mat4(m);
+}
+
 void HMD::update() {
   if (tracked) {
     auto &vr = Global::vr();
@@ -228,8 +237,17 @@ void Pose::from_scene(Scene &scene) {
   v /= arm_length;
   armq = quatLookAt(v, Pos{0, 1, 0});
 
-  armq *= glm::inverse(baseq);
+  armq = glm::inverse(baseq) * armq;
   pressed = scene.find<Controller>("controller").pressed;
+}
+
+void Pose::apply_to_scene(Scene &scene) {
+  scene.find<HMD>("hmd").p = base;
+  scene.find<HMD>("hmd").quat = baseq;
+ 
+  scene.find<Controller>("controller").quat = baseq * armq;
+  scene.find<Controller>("controller").p = base + glm::rotate(scene.find<Controller>("controller").quat, glm::vec3(0, 0, -1)) * arm_length;
+  scene.find<Controller>("controller").pressed = pressed;
 }
 
 vector<float> Pose::get_vec() {
@@ -289,18 +307,10 @@ std::vector<float> Pose::to_obs_vector() {
   return v;
 }
 
-void Pose::apply_to_scene(Scene &scene) {
-  scene.find<HMD>("hmd").p = base;
-  scene.find<HMD>("hmd").quat = baseq;
- 
-  scene.find<Controller>("controller").quat =  armq * baseq;
-  scene.find<Controller>("controller").p = base + glm::rotate(scene.find<Controller>("controller").quat, glm::vec3(0, 1, 0)) * arm_length;
-  scene.find<Controller>("controller").pressed = pressed;
-}
 
 void Pose::apply(Action &act) {
   base += glm::rotate(baseq, act.dbase);
-  baseq *= act.dbaseq;
+  baseq = act.dbaseq * baseq;
   
   armq = act.armq;
   arm_length = act.arm_length;

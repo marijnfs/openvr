@@ -277,10 +277,6 @@ int record(string filename) {
   
   //preloading images
   ImageFlywheel::preload();
-  //ImageFlywheel::image("stub.png");
-  //ImageFlywheel::image("gray.png");
-  //ImageFlywheel::image("blue.png");
-  //ImageFlywheel::image("red.png");
 
   auto &scene = Global::scene();
 
@@ -333,13 +329,6 @@ int replay(string filename) {
 
   //preloading images
   ImageFlywheel::preload();
-  //ImageFlywheel::image("stub.png");
-  //ImageFlywheel::image("gray.png");
-  //ImageFlywheel::image("blue.png");
-  //ImageFlywheel::image("red.png");
-  //ImageFlywheel::image("white-checker.png");
-  //ImageFlywheel::image("blue-checker.png");
-  //ImageFlywheel::image("red-checker.png");
 
   auto &scene = Global::scene();
   FittsWorld world(scene);
@@ -754,7 +743,6 @@ int rollout(string filename) {
   if (exists("value.net"))
     value_net.load("value.net");
   
-  
   int epoch(0);
   while (true) {
     int b = rand() % (recording.size() - N + 1);
@@ -766,6 +754,7 @@ int rollout(string filename) {
 
     std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
     recording.load_scene(b, &scene);
+
     for (int i(b); i < e; ++i, ++t) {      
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
@@ -792,11 +781,8 @@ int rollout(string filename) {
       
       auto o_vec = cur_pose.to_obs_vector();
       
-      
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
 
-      action_targets_tensor.from_vector(action_targets);
-      
       //run visual network
       vis_net.forward();
       copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
@@ -811,11 +797,18 @@ int rollout(string filename) {
       value_net.forward(); //not for imitation
       auto whole_action_vec = actor_net.output().to_vector();
       auto action_vec = vector<float>(whole_action_vec.begin() + t * act_dim, whole_action_vec.begin() + (t+1) * act_dim);
+      //cout << action_vec << endl;
       Action act(action_vec);
+      //cout << "act: " << act.armq[0] << " " << act.arm_length << endl;
+      //cout << cur_pose << endl;
+      
       cur_pose.apply(act);
+      //cout << cur_pose << endl;
       cur_pose.apply_to_scene(scene);
     }
-      
+    
+    if (epoch > 5)
+      return 1;
     ++epoch;
   }
   
