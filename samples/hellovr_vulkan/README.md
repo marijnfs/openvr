@@ -1,0 +1,6 @@
+The Virtual Reality Learning System (VRL)
+===================
+    
+Code in this directory developed by Marijn Stollenga
+Licensed under Mozilla Public License Version 2.0 (See LICENSE file)
+    
