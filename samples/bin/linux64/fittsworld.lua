@@ -144,12 +144,6 @@ end
 
 function init_steps()
    multipliers = {1, 2, 4}
-
-   for _, m in ipairs(multipliers) do
-      for _, m2 in ipairs(multipliers) do
-         add_step(vertical, dist * m + short_side * m2, 0, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2)
-      end
-   end
    
    for _, m in ipairs(multipliers) do
       for _, m2 in ipairs(multipliers) do
@@ -169,9 +163,12 @@ function init_steps()
       end
    end
 
-   
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(vertical, dist * m + short_side * m2, 0, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
 end
 
 init()
 init_steps()
-shuffle(steps)

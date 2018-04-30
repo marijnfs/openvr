@@ -280,9 +280,9 @@ int record(string filename) {
 
   auto &scene = Global::scene();
 
-  //FittsWorld world(scene);
-  Script world_script;
-  world_script.run("fittsworld.lua");
+  FittsWorld world(scene);
+  //Script world_script;
+  //world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
   
@@ -369,6 +369,54 @@ int replay(string filename) {
   Global::shutdown();
 }
 
+void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> &actor_net, Network<F> &value_net, VolumeNetwork &q_net, int act_dim, int obs_dim, int vis_dim, int aggr_dim) {
+  auto base_pool = new PoolingOperation<F>(2, 2);
+  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
+    auto pool1 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(base_pool);
+  vis_net.add_slicewise(conv1);
+  vis_net.add_tanh();
+  vis_net.add_slicewise(pool1);
+
+ 
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 16, 5, 5);
+  auto pool2 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(conv2);
+  vis_net.add_slicewise(pool2);
+
+  vis_net.add_univlstm(7, 7, 16);
+  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+ 
+  vis_net.add_slicewise(squash);
+  vis_net.add_tanh();
+  //output should be {z, c, 1, 1}
+  vis_net.finish();
+
+  aggr_net.add_univlstm(1, 1, 32);
+  aggr_net.add_univlstm(1, 1, aggr_dim);
+  aggr_net.finish();
+  
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(64, 1, 1);
+  actor_net.add_relu();
+  actor_net.add_conv(act_dim, 1, 1);
+  actor_net.finish();
+  
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(64, 1, 1);
+  value_net.add_relu();
+  value_net.add_conv(1, 1, 1);
+  value_net.finish();
+  
+  q_net.add_univlstm(1, 1, 32);
+  q_net.add_univlstm(1, 1, 32);
+  q_net.add_fc(1);
+  q_net.finish();
+
+}
+
 int learn(string filename) {
   if (!exists(filename))
     throw StringException("file doesnt exist");
@@ -417,60 +465,22 @@ int learn(string filename) {
   bool first_grad = false;
   VolumeNetwork vis_net(img_input, first_grad);
  
-  auto base_pool = new PoolingOperation<F>(2, 2);
-  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
-  auto pool1 = new PoolingOperation<F>(4, 4);
-  vis_net.add_slicewise(base_pool);
-  vis_net.add_slicewise(conv1);
-  vis_net.add_slicewise(pool1);
-  
-  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
-  auto pool2 = new PoolingOperation<F>(4, 4);
-  vis_net.add_slicewise(conv2);
-  vis_net.add_slicewise(pool2);
-  
-  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
- 
-  vis_net.add_slicewise(squash);
-  vis_net.add_tanh();
-  //output should be {z, c, 1, 1}
-  vis_net.finish();
-
   //Aggregation Network combining output of visual processing network and state vector
   VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
-  aggr_net.add_univlstm(1, 1, 32);
-  aggr_net.add_univlstm(1, 1, aggr_dim);
-  aggr_net.finish();
-  
+ 
   TensorShape actor_in{N, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
-  actor_net.add_conv(64, 1, 1);
-  actor_net.add_relu();
-  actor_net.add_conv(64, 1, 1);
-  actor_net.add_relu();
-  actor_net.add_conv(act_dim, 1, 1);
-
-  actor_net.finish();
   
   TensorShape value_in{N, aggr_dim, 1, 1};
   Network<F> value_net(actor_in);
-  value_net.add_conv(64, 1, 1);
-  value_net.add_relu();
-  value_net.add_conv(64, 1, 1);
-  value_net.add_relu();
-  value_net.add_conv(1, 1, 1);
-  value_net.finish();
   
   VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
-  q_net.add_univlstm(1, 1, 32);
-  q_net.add_univlstm(1, 1, 32);
-  q_net.add_fc(1);
-  q_net.finish();
-
+  setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
+  
   //initialisation
-  float std(.03);
+  float std(.1);
 
   vis_net.init_uniform(std);
   aggr_net.init_uniform(std);
@@ -478,9 +488,9 @@ int learn(string filename) {
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
 
-  Trainer vis_trainer(vis_net.param_vec.n, .005, .0000001, 400);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .002, .0000001, 400);
-  Trainer actor_trainer(actor_net.param_vec.n, .001, .0000001, 400);
+  Trainer vis_trainer(vis_net.param_vec.n, .003, .0000001, 200);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .003, .0000001, 200);
+  Trainer actor_trainer(actor_net.param_vec.n, .003, .0000001, 200);
   
   //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
@@ -542,7 +552,7 @@ int learn(string filename) {
       auto o_vec = cur_pose.to_obs_vector();
       
       cout << "action: " << a_vec << " " << o_vec << endl;
-      //if (t) //ignore first acti3~on
+      //if (t) //ignore first action
       copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
       copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
     }
@@ -565,7 +575,7 @@ int learn(string filename) {
     
     actor_net.forward();
     value_net.forward(); //not for imitation
-
+    cout << "actor: " << actor_net.output().to_vector() << endl;
     
     //copy actions and aggr to q  //not for imitation //HERE BE SEGFAULT?
     /*for (int t(0); t < N - 1; ++t) {
@@ -610,7 +620,8 @@ int learn(string filename) {
       
     ++epoch;
   }
-  
+
+  return 1;
   Global::shutdown();
   return 0;
 }
@@ -657,63 +668,24 @@ int rollout(string filename) {
   VolumeShape img_input{N, c, width, height};
   VolumeShape network_output{N, h, 1, 1};
 
-
-  //Visual processing network, most cpu intensive
+//Visual processing network, most cpu intensive
   bool first_grad = false;
   VolumeNetwork vis_net(img_input, first_grad);
  
-  auto base_pool = new PoolingOperation<F>(2, 2);
-  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 4, 5, 5);
-  auto pool1 = new PoolingOperation<F>(4, 4);
-  vis_net.add_slicewise(base_pool);
-  vis_net.add_slicewise(conv1);
-  vis_net.add_slicewise(pool1);
-  
-  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
-  auto pool2 = new PoolingOperation<F>(4, 4);
-  vis_net.add_slicewise(conv2);
-  vis_net.add_slicewise(pool2);
-  
-  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
- 
-  vis_net.add_slicewise(squash);
-  vis_net.add_tanh();
-  //output should be {z, c, 1, 1}
-  vis_net.finish();
-
   //Aggregation Network combining output of visual processing network and state vector
   VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
-  aggr_net.add_univlstm(1, 1, 32);
-  aggr_net.add_univlstm(1, 1, aggr_dim);
-  aggr_net.finish();
-  
+ 
   TensorShape actor_in{N, aggr_dim, 1, 1};
   Network<F> actor_net(actor_in);
-  actor_net.add_conv(64, 1, 1);
-  actor_net.add_relu();
-  actor_net.add_conv(64, 1, 1);
-  actor_net.add_relu();
-  actor_net.add_conv(act_dim, 1, 1);
-
-  actor_net.finish();
   
   TensorShape value_in{N, aggr_dim, 1, 1};
   Network<F> value_net(actor_in);
-  value_net.add_conv(64, 1, 1);
-  value_net.add_relu();
-  value_net.add_conv(64, 1, 1);
-  value_net.add_relu();
-  value_net.add_conv(1, 1, 1);
-  value_net.finish();
   
   VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
-  q_net.add_univlstm(1, 1, 32);
-  q_net.add_univlstm(1, 1, 32);
-  q_net.add_fc(1);
-  q_net.finish();
-
+  setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
+  
   //initialisation
   float std(.1);
 
@@ -723,10 +695,6 @@ int rollout(string filename) {
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
 
-  Trainer vis_trainer(vis_net.param_vec.n, .005, .0000001, 400);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .002, .0000001, 400);
-  Trainer actor_trainer(actor_net.param_vec.n, .001, .0000001, 400);
-  
   //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
   vector<float> action_targets(N * act_dim);
@@ -742,6 +710,20 @@ int rollout(string filename) {
     actor_net.load("actor.net");
   if (exists("value.net"))
     value_net.load("value.net");
+
+  /*
+  recording.load_scene(1000, &scene);
+  Pose p1(scene);
+  recording.load_scene(1100, &scene);
+  Pose p2(scene);
+  Action a1(p1, p2);
+  auto v = a1.to_vector();
+  Action a2(v);
+  p1.apply(a2);
+
+  cout << p1 << endl;
+  cout << p2 << endl;
+  return 1;*/
   
   int epoch(0);
   while (true) {
@@ -785,6 +767,9 @@ int rollout(string filename) {
 
       //run visual network
       vis_net.forward();
+      //ostringstream oss;
+      //oss << "test-" << t << ".png";
+      //vis_net.volumes[7]->x.draw_slice(oss.str(), t, 2);
       copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
       aggr_net.forward();
       //cout << "agg output: " << aggr_net.output().to_vector() << endl;
@@ -797,7 +782,7 @@ int rollout(string filename) {
       value_net.forward(); //not for imitation
       auto whole_action_vec = actor_net.output().to_vector();
       auto action_vec = vector<float>(whole_action_vec.begin() + t * act_dim, whole_action_vec.begin() + (t+1) * act_dim);
-      //cout << action_vec << endl;
+      cout << "act vec: " << action_vec << endl;
       Action act(action_vec);
       //cout << "act: " << act.armq[0] << " " << act.arm_length << endl;
       //cout << cur_pose << endl;

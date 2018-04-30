@@ -356,7 +356,7 @@ std::vector<float> Action::to_vector() {
   v[0] = dbase[0];
   v[1] = dbase[1];
   v[2] = dbase[2];
-  
+ 
   v[3] = dbaseq[0];
   v[4] = dbaseq[1];
   v[5] = dbaseq[2];
