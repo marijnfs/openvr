@@ -168,7 +168,59 @@ function init_steps()
          add_step(vertical, dist * m + short_side * m2, 0, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2)
       end
    end
+
+   --horizontal
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(horizontal, 0, dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(horizontal, 0, 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(horizontal, 0, dist * m + short_side * m2, dist * m + short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(horizontal, 0, dist * m + short_side * m2, -dist * m - short_side * m2, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   --laying
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(laying, dist * m + short_side * m2, 0, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(laying, 0, dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(laying, dist * m + short_side * m2, dist * m + short_side * m2, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
+   for _, m in ipairs(multipliers) do
+      for _, m2 in ipairs(multipliers) do
+         add_step(laying, dist * m + short_side * m2, -dist * m - short_side * m2, 0, n_clicks, long_side, short_side * m2)
+      end
+   end
+
 end
 
 init()
 init_steps()
+shuffle(steps)
