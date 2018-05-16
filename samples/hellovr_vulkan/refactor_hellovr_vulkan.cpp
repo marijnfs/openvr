@@ -280,15 +280,16 @@ int record(string filename) {
 
   auto &scene = Global::scene();
 
-  FittsWorld world(scene);
-  //Script world_script;
-  //world_script.run("fittsworld.lua");
+  //FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
   
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
+
   while (!scene.stop) {
     //cout << i << endl;
     vr.update_track_pose();
