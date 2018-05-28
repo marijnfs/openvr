@@ -332,7 +332,9 @@ int replay(string filename) {
   ImageFlywheel::preload();
 
   auto &scene = Global::scene();
-  FittsWorld world(scene);
+  //FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
 
@@ -438,7 +440,9 @@ int learn(string filename) {
   ImageFlywheel::preload();
 
   auto &scene = Global::scene();
-  FittsWorld world(scene);
+  //FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
   Timer a_timer(1./90);
@@ -647,7 +651,9 @@ int rollout(string filename) {
   ImageFlywheel::preload();
 
   auto &scene = Global::scene();
-  FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
+  //FittsWorld world(scene);
   vk.end_submit_cmd();
   
   Timer a_timer(1./90);
@@ -807,7 +813,9 @@ int analyse(string filename) {
     throw StringException("file doesnt exist");
       
   auto &scene = Global::scene();
-  FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
+  //FittsWorld world(scene);
   
   Timer a_timer(1./90);
   uint i(0);
