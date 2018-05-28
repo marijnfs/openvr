@@ -150,7 +150,7 @@ function init_steps()
          add_step(vertical, dist * m + short_side * m2, 0, 0, n_clicks, long_side, short_side * m2)
       end
    end
-
+      
    for _, m in ipairs(multipliers) do
       for _, m2 in ipairs(multipliers) do
          add_step(vertical, 0, 0, dist * m + short_side * m2, n_clicks, long_side, short_side * m2)
@@ -223,4 +223,5 @@ end
 
 init()
 init_steps()
-shuffle(steps)
+steps = shuffle(steps)
+start_recording()
