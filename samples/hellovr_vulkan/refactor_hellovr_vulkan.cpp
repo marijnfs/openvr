@@ -256,10 +256,6 @@ struct FittsWorld {
   }
 };
 
-void test() {
-  Global::scene().clear();
-}
-
 int record(string filename) {
   if (exists(filename))
     throw StringException("file already exists");
@@ -315,6 +311,104 @@ int record(string filename) {
   Global::shutdown();
 }
 
+int test() {
+  auto img_data_vec = read_vec<float>("/home/marijnfs/data/allimg.data");
+  auto act_data_vec = read_vec<float>("/home/marijnfs/data/allact.data");
+  auto obs_data_vec = read_vec<float>("/home/marijnfs/data/allobs.data");
+
+  /*
+  auto img_data_vec2 = img_data_vec;
+  for (int n(0); n < 50; ++n)
+    for (int c(0); c < 6; ++c)
+      for (int x = 0; x < 1680 * 1512; ++x)
+        img_data_vec[(n * 6 + c) * 1680 * 1512 + x] = img_data_vec2[n * 1680 * 1512 * 6 + x * 6 + c];
+  */
+        
+  int act_dim = 13;
+  int obs_dim = 6;
+  int aggr_dim = 32;
+  int vis_dim = 16;
+  
+  Volume img_data(VolumeShape{50, 6, VIVE_WIDTH, VIVE_HEIGHT});
+  Volume act_data(VolumeShape{50, act_dim, 1, 1});
+  Volume obs_data(VolumeShape{50, obs_dim, 1, 1});
+
+  cout << img_data_vec.size() << " " << img_data.size() << endl;
+  cout << img_data_vec[0 * 6 * 1680 * 1512 + 450] << " " <<
+    img_data_vec[10 * 6 * 1680 * 1512 + 450] << " " <<
+    img_data_vec[20 * 6 * 1680 * 1512 + 450] << " " << endl;
+
+  img_data.from_vector(img_data_vec);
+  act_data.from_vector(act_data_vec);
+  obs_data.from_vector(obs_data_vec);
+
+  VolumeNetwork vis_net(VolumeShape{50, 6, VIVE_WIDTH, VIVE_HEIGHT});
+  auto base_pool = new PoolingOperation<F>(4, 4);
+  cout << vis_net.output_shape().c << endl;
+  
+  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
+  cout << "bla" << endl;
+  auto pool1 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(base_pool);
+  vis_net.add_slicewise(conv1);
+  //vis_net.add_tanh();
+  cout << vis_net.output_shape() << endl;
+  vis_net.add_slicewise(pool1);
+  cout << vis_net.output_shape().tensor_shape() << endl;
+  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+
+  vis_net.add_slicewise(squash);
+  cout << "added slicewise" << endl;
+  //vis_net.add_tanh();
+  vis_net.finish();
+  vis_net.init_normal(.0, .1);
+
+  VolumeNetwork aggr_net(VolumeShape{50, 16, 1, 1});
+  aggr_net.add_univlstm(1, 1, act_dim);
+  aggr_net.finish();
+  aggr_net.init_normal(.0, .1);
+  
+  cout << vis_net.volumes.size() << endl;
+  
+  Trainer vis_trainer(vis_net.param_vec.n, .01, .00001, 200, .5);
+  
+  while (true) {
+    vis_net.input().from_volume(img_data);
+    vis_net.forward();
+    
+    //vis_net.volumes[2]->x.draw_slice("test1.png", 3, 2);
+    //vis_net.volumes[2]->x.draw_slice("test2.png", 40, 2);
+    copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
+    aggr_net.forward();
+    
+    float loss = aggr_net.calculate_loss(act_data);
+    aggr_net.backward();
+
+    copy_gpu_to_gpu(aggr_net.input_grad().data(), vis_net.output_grad().data(), aggr_net.input_grad().size());
+    vis_net.backward();
+    
+    /*
+    auto v1 = aggr_net.output().to_vector();
+    auto v2 = act_data.to_vector();
+    
+    for (int i(0); i < v1.size(); ++i) {
+      if ( i % act_dim == 0) cout << endl;
+      cout << v1[i] << ":" << v2[i] << " ";
+    }
+    */
+    //return -1;
+    cout << endl;
+    cout << "loss: " << loss << endl;
+
+    aggr_net.grad_vec *= 1.0 / 50000;
+    aggr_net.param_vec += aggr_net.grad_vec;
+
+    vis_net.grad_vec *= 1.0 / 100000;
+    vis_net.param_vec += vis_net.grad_vec;
+    //vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
+  }
+}
+
 int replay(string filename) {
   if (!exists(filename))
     throw StringException("file doesnt exist");
@@ -332,13 +426,14 @@ int replay(string filename) {
   ImageFlywheel::preload();
 
   auto &scene = Global::scene();
-  //FittsWorld world(scene);
-  Script world_script;
-  world_script.run("fittsworld.lua");
+  FittsWorld world(scene);
+  //Script world_script;
+  //world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
 
-  
+  Pose cur_pose, last_pose;
+
   Timer a_timer(1./90);
   uint i(0);
   Recording recording;
@@ -352,7 +447,64 @@ int replay(string filename) {
     cout << v.first << " " << v.second->val << " " << scene.names[v.second->nameid] << endl;
   for (auto t : scene.triggers)
     cout << scene.names[t->function_nameid] << endl;
-  */                                           
+  */
+
+  int T(50);
+  std::vector<float> nimg(3 * 2 * VIVE_WIDTH * VIVE_HEIGHT);
+  std::vector<float> all_img(nimg.size() * T);
+  std::vector<float> all_action((3 + 4 + 4 + 1 + 1) * T);
+  std::vector<float> all_obs(6 * T);
+  
+  int t(0);
+  for (int i(1000); i < 1000+T; ++i, ++t) {
+      recording.load_scene(i, &scene);
+      
+      vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
+      cout << "scene " << i << " items: " << scene.objects.size() << endl;
+      bool headless(true);
+
+      //
+      ////vr.render(scene, &img);
+      ////vr.render(scene, headless);
+      vr.render(scene, false, &nimg);
+      vr.wait_frame();
+      //std::vector<float> nimg(img.begin(), img.end());
+      //normalize_mt(&img);
+      //cout << nimg.size() << endl;
+
+      //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
+      copy(nimg.begin(), nimg.end(), all_img.begin() + nimg.size() * t);
+      last_pose = cur_pose;
+      cur_pose.from_scene(scene);
+      if (t == 0) last_pose = cur_pose;
+      
+      Action action(last_pose, cur_pose);
+      
+      auto a_vec = action.to_vector();
+      auto o_vec = cur_pose.to_obs_vector();
+      
+      copy(a_vec.begin(), a_vec.end(), all_action.begin() + 13*t);
+      copy(o_vec.begin(), o_vec.end(), all_obs.begin() + 6*t);
+      cout << a_vec << endl << o_vec << endl;
+  }
+
+  ofstream img_out("allimg.data", ios::binary);
+  size_t s = all_img.size();
+  img_out.write((char*)&s, sizeof(s));
+  img_out.write((char*)&all_img[0], sizeof(float) * all_img.size());
+
+  ofstream act_out("allact.data", ios::binary);
+  s = all_action.size();
+  act_out.write((char*)&s, sizeof(s));
+  act_out.write((char*)&all_action[0], sizeof(float) * all_action.size());
+
+
+  ofstream obs_out("allobs.data", ios::binary);
+  s = all_obs.size();
+  obs_out.write((char*)&s, sizeof(s));
+  obs_out.write((char*)&all_obs[0], sizeof(float) * all_obs.size());
+  
+  /*
   while (i < recording.size()) {
     //cout << i << endl;
     //vr.update_track_pose();
@@ -367,7 +519,7 @@ int replay(string filename) {
     ++i;
     //vr.request_poses();
     //a_timer.wait();
-  }
+    }*/
 
   Global::shutdown();
 }
@@ -380,14 +532,14 @@ void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> 
   vis_net.add_slicewise(conv1);
   vis_net.add_tanh();
   vis_net.add_slicewise(pool1);
-
  
   auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 16, 5, 5);
   auto pool2 = new PoolingOperation<F>(4, 4);
   vis_net.add_slicewise(conv2);
   vis_net.add_slicewise(pool2);
 
-  vis_net.add_univlstm(7, 7, 16);
+  //vis_net.add_univlstm(7, 7, 16);
+  //auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
   auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
  
   vis_net.add_slicewise(squash);
@@ -493,9 +645,9 @@ int learn(string filename) {
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
 
-  Trainer vis_trainer(vis_net.param_vec.n, .003, .0000001, 200);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .003, .0000001, 200);
-  Trainer actor_trainer(actor_net.param_vec.n, .003, .0000001, 200);
+  Trainer vis_trainer(vis_net.param_vec.n, .0005, .0000001, 200);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .0005, .0000001, 200);
+  Trainer actor_trainer(actor_net.param_vec.n, .0005, .0000001, 200);
   
   //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
@@ -799,8 +951,6 @@ int rollout(string filename) {
       cur_pose.apply_to_scene(scene);
     }
     
-    if (epoch > 5)
-      return 1;
     ++epoch;
   }
   
@@ -890,6 +1040,9 @@ int main(int argc, char **argv) {
   for (int i(1); i < argc; ++i)
     args.push_back(argv[i]);
 
+  test();
+  return 0;
+  
   if (args.size() < 2)
     throw StringException("not enough args, use: record|replay filename");
   if (args[0] == "record")

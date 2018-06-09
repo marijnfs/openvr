@@ -28,7 +28,7 @@ void HMD::deserialise(cap::Object::Reader reader) {
 
   //TODO remove the invert, not needed for new recordings
   auto m = Matrix4(to_mat4());
-  //m.invert();
+  m.invert();
   from_mat4(m);
 }
 

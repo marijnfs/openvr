@@ -1,6 +1,10 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+#include <iostream>
+#include <fstream>
+#include <vector>
+
 #include "vulkansystem.h"
 #include "vrsystem.h"
 #include "windowsystem.h"
@@ -89,6 +93,25 @@ struct Global {
   Scene *scene_ptr = 0;
   Script *script_ptr = 0;
 };
+
+template <typename T>
+void write_vec(std::vector<T> &in, std::string filename) {
+  std::ofstream outfile(filename.c_str(), std::ios::binary);
+  uint64_t s = in.size();
+  outfile.write((char*)&s, sizeof(s));
+  outfile.write((char*)&in[0], sizeof(T) * in.size());
+}
+                                 
+template <typename T>
+std::vector<T> read_vec(std::string filename) {
+  std::ifstream infile(filename.c_str(), std::ios::binary);
+  uint64_t s(0);
+  infile.read((char*)&s, sizeof(s));
+  std::vector<T> v(s);
+  
+  infile.read((char*)&v[0], sizeof(T) * v.size());
+  return v;
+}
 
 static int msaa = 4;
 static int VIVE_HEIGHT = 1680;
