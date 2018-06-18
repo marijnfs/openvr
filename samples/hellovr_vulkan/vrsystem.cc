@@ -32,9 +32,32 @@ VRSystem::~VRSystem() {
 
   delete left_eye_fb;
   delete right_eye_fb;
- }
+}
 
 void VRSystem::init() {
+  if (!Global::inst().HEADLESS)
+    init_full();
+  else
+    init_headless();
+}
+
+void VRSystem::init_headless() {
+  render_width = load_val<uint32_t>("/home/marijnfs/data/vrparams/renderwidth");
+  render_height = load_val<uint32_t>("/home/marijnfs/data/vrparams/renderheight");
+
+  auto epl_vec = load_vec<float>("/home/marijnfs/data/vrparams/eyeposleft");
+  auto epr_vec = load_vec<float>("/home/marijnfs/data/vrparams/eyeposright");
+  
+  auto pl_vec = load_vec<float>("/home/marijnfs/data/vrparams/projectionleft");
+  auto pr_vec = load_vec<float>("/home/marijnfs/data/vrparams/projectionright");
+
+  eye_pos_left.set(&epl_vec[0]);
+  eye_pos_right.set(&epr_vec[0]);
+  projection_left.set(&pl_vec[0]);
+  projection_right.set(&pr_vec[0]);
+}
+
+void VRSystem::init_full() {
 	cout << "initialising VRSystem" << endl;
 
 	render_width = 0;
@@ -46,6 +69,8 @@ void VRSystem::init() {
 	vr::EVRInitError err = vr::VRInitError_None;
 	ivrsystem = vr::VR_Init( &err, vr::VRApplication_Scene );
 	check(err);
+
+    ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
 
 	render_models = (vr::IVRRenderModels *)vr::VR_GetGenericInterface( vr::IVRRenderModels_Version, &err );
     check(err);
@@ -65,19 +90,32 @@ void VRSystem::init() {
 
 	projection_left = get_hmd_projection(vr::Eye_Left);
 	projection_right = get_hmd_projection(vr::Eye_Right);
-	
+
+    save_val(render_width, "/home/marijnfs/data/vrparams/renderwidth");
+    save_val(render_height, "/home/marijnfs/data/vrparams/renderheight");
+
+    vector<float> epl_vec(eye_pos_left.get(), eye_pos_left.get() + 16);
+    vector<float> epr_vec(eye_pos_right.get(), eye_pos_right.get() + 16);
+    vector<float> pl_vec(projection_left.get(), projection_left.get() + 16);
+    vector<float> pr_vec(projection_right.get(), projection_right.get() + 16);
+    
+    save_vec(epl_vec, "/home/marijnfs/data/vrparams/eyeposleft");
+    save_vec(epr_vec, "/home/marijnfs/data/vrparams/eyeposright");
+
+    save_vec(pl_vec, "/home/marijnfs/data/vrparams/projectionleft");
+    save_vec(pr_vec, "/home/marijnfs/data/vrparams/projectionright");
+        
 	cout << "done initialising VRSystem" << endl;
 }
 
 void VRSystem::setup() {
   setup_render_targets();
-  setup_render_models();
+  //setup_render_models();
 
   //Global::vk().end_submit_cmd();
 }
 
 void VRSystem::setup_render_targets() {
-  ivrsystem->GetRecommendedRenderTargetSize( &render_width, &render_height );
   cout << "recommended target size: " << render_width << "x" << render_height << endl;
   
   left_eye_fb = new FrameRenderBuffer();
@@ -151,12 +189,18 @@ void VRSystem::render(Scene &scene, bool headless, std::vector<float> *img_ptr) 
     if (img_ptr)
       copy_image_to_cpu(*img_ptr); //later remove?
     submit_to_hmd();
+    presentKHR();
   } else {
     // RENDERING
+    //vk.swapchain.acquire_image(); //
     render_stereo_targets(scene);
-    //copy_image_to_cpu();
-    vk.end_submit_cmd();  //could try without swapchain if headless
-
+    //render_companion_window();
+    to_present();
+    vk.end_submit_cmd();
+    //vk.end_submit_swapchain_cmd();  //could try without swapchain if headless
+    
+    if (img_ptr)
+      copy_image_to_cpu(*img_ptr); //later remove?
   }
 }
 
@@ -189,8 +233,12 @@ void VRSystem::submit_to_hmd() {
 
 	vulkanData.m_nImage = ( uint64_t ) right_eye_fb->img.img;
 	vr::VRCompositor()->Submit( vr::Eye_Right, &texture, &bounds );
+}
 
-	//present (for companion window)
+void VRSystem::presentKHR() {
+  auto &vk = Global::vk();
+
+  //present (for companion window)
 	VkPresentInfoKHR pi = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	pi.pNext = NULL;
@@ -317,7 +365,8 @@ void VRSystem::render_companion_window() {
 }
 
 void VRSystem::to_present() {
-  Global::vk().swapchain.to_present();
+  if (!Global::inst().HEADLESS)
+    Global::vk().swapchain.to_present();
   left_eye_fb->img.barrier(VK_ACCESS_TRANSFER_READ_BIT,
                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                            VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -459,35 +508,41 @@ string VRSystem::query_str(vr::TrackedDeviceIndex_t devidx, vr::TrackedDevicePro
 }
 
 vector<string> VRSystem::get_inst_ext_required() {
-	uint32_t buf_size = vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( nullptr, 0 );
-	if (!buf_size)
-		throw StringException("no such GetVulkanInstanceExtensionsRequired");
-
-	string buf(buf_size, ' ');
-	vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( &buf[0], buf_size );
-    cout << "ext required: " << buf << endl;
-    // Break up the space separated list into entries on the CUtlStringList
-	vector<string> ext_list;
-	string cur_ext;
-	uint32_t idx = 0;
-	while ( idx < buf_size ) {
-		if ( buf[ idx ] == ' ' ) {
-			ext_list.push_back( cur_ext );
-			cur_ext.clear();
-		} else {
-			cur_ext += buf[ idx ];
-		}
-		++idx;
-	}
-	if ( cur_ext.size() > 0 ) {
-		ext_list.push_back( cur_ext );
-	}
-
-	return ext_list;
+  if (Global::inst().HEADLESS)
+    return load_vec<string>("/home/marijnfs/data/vrparams/get_inst_ext_required");
+  uint32_t buf_size = vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( nullptr, 0 );
+  if (!buf_size)
+    throw StringException("no such GetVulkanInstanceExtensionsRequired");
+  
+  string buf(buf_size, ' ');
+  vr::VRCompositor()->GetVulkanInstanceExtensionsRequired( &buf[0], buf_size );
+  cout << "ext required: " << buf << endl;
+  // Break up the space separated list into entries on the CUtlStringList
+  vector<string> ext_list;
+  string cur_ext;
+  uint32_t idx = 0;
+  while ( idx < buf_size ) {
+    if ( buf[ idx ] == ' ' ) {
+      ext_list.push_back( cur_ext );
+      cur_ext.clear();
+    } else {
+      cur_ext += buf[ idx ];
+    }
+    ++idx;
+  }
+  if ( cur_ext.size() > 0 ) {
+    ext_list.push_back( cur_ext );
+  }
+  
+  save_vec(ext_list, "/home/marijnfs/data/vrparams/get_inst_ext_required");
+  return ext_list;
 }
 
 vector<string> VRSystem::get_dev_ext_required() {
-	auto &vk = Global::vk();
+  if (Global::inst().HEADLESS)
+    return load_vec<string>("/home/marijnfs/data/vrparams/get_dev_ext_required");
+
+  auto &vk = Global::vk();
     cout << "phys dev ptr:" << vk.phys_dev << endl;
 	uint32_t buf_size = vr::VRCompositor()->GetVulkanDeviceExtensionsRequired( vk.phys_dev, nullptr, 0 );
 	if (!buf_size)
@@ -515,8 +570,8 @@ vector<string> VRSystem::get_dev_ext_required() {
 	if ( cur_ext.size() > 0 ) {
       ext_list.push_back( cur_ext );
 	}
-
-	return ext_list;
+  save_vec(ext_list, "/home/marijnfs/data/vrparams/get_dev_ext_required");
+  return ext_list;
 }
 
 vector<string> VRSystem::get_inst_ext_required_verified() {

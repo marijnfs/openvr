@@ -4,4 +4,6 @@
 
 using namespace std;
 
-Global::Global() {}
+Global::Global() {
+}
+

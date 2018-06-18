@@ -56,8 +56,10 @@ struct VRSystem {
   
   VRSystem();
   ~VRSystem();
-  
+
   void init();
+  void init_headless();
+  void init_full();
   void setup();
   
   Matrix4 get_eye_transform( vr::Hmd_Eye eye );
@@ -76,6 +78,7 @@ struct VRSystem {
   std::vector<float> get_image_data();
 
   void submit_to_hmd();
+  void presentKHR();
   void to_present();
   
   void setup_render_models();

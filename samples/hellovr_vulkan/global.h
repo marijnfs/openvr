@@ -92,19 +92,38 @@ struct Global {
   WindowSystem *ws_ptr = 0;
   Scene *scene_ptr = 0;
   Script *script_ptr = 0;
+  bool HEADLESS = false;
 };
 
 template <typename T>
-void write_vec(std::vector<T> &in, std::string filename) {
+void save_vec(std::vector<T> &in, std::string filename) {
   std::ofstream outfile(filename.c_str(), std::ios::binary);
+  if (!outfile)
+    throw StringException("Couldn't save vector");
   uint64_t s = in.size();
   outfile.write((char*)&s, sizeof(s));
   outfile.write((char*)&in[0], sizeof(T) * in.size());
 }
-                                 
+
+template <>
+inline void save_vec<std::string>(std::vector<std::string> &in, std::string filename) {
+  std::ofstream outfile(filename.c_str(), std::ios::binary);
+  if (!outfile)
+    throw StringException("Couldn't save vector");
+  uint64_t s = in.size();
+  outfile.write((char*)&s, sizeof(s));
+  for (int n(0); n < s; ++n) {
+    uint64_t len = in[n].size();
+    outfile.write((char*)&len, sizeof(len));
+    outfile.write((char*)&in[n][0], len);
+  }
+}
+
 template <typename T>
-std::vector<T> read_vec(std::string filename) {
+std::vector<T> load_vec(std::string filename) {
   std::ifstream infile(filename.c_str(), std::ios::binary);
+  if (!infile)
+    throw StringException("Couldn't load vector");
   uint64_t s(0);
   infile.read((char*)&s, sizeof(s));
   std::vector<T> v(s);
@@ -112,6 +131,49 @@ std::vector<T> read_vec(std::string filename) {
   infile.read((char*)&v[0], sizeof(T) * v.size());
   return v;
 }
+
+template <>
+inline std::vector<std::string> load_vec(std::string filename) {
+  std::ifstream infile(filename.c_str(), std::ios::binary);
+  if (!infile)
+    throw StringException("Couldn't load vector");
+  uint64_t s(0);
+  infile.read((char*)&s, sizeof(s));
+  std::vector<std::string> v(s);
+
+  for (int n(0); n < s; ++n) {
+    uint64_t len(0);
+    infile.read((char*)&len, sizeof(len));
+    std::string bla;
+    bla.resize(len);
+    
+    std::cout << len << std::endl;
+    infile.read(&bla[0], len);
+    std::cout << bla << std::endl;
+    v[n] = bla;
+  }
+  return v;
+}
+
+template <typename T>
+void save_val(T &in, std::string filename) {
+  std::ofstream outfile(filename.c_str(), std::ios::binary);
+  if (!outfile)
+    throw StringException("Couldn't save value");
+  outfile.write((char*)&in, sizeof(T));
+}
+                                 
+template <typename T>
+T load_val(std::string filename) {
+  std::ifstream infile(filename.c_str(), std::ios::binary);
+  if (!infile)
+    throw StringException("Couldn't load value");
+  T v(0);
+  infile.read((char*)&v, sizeof(T));
+  return v;
+}
+
+
 
 static int msaa = 4;
 static int VIVE_HEIGHT = 1680;

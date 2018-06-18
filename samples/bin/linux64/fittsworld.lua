@@ -225,5 +225,5 @@ end
 init()
 init_steps()
 --add_step(horizontal, 0, 0.1, 0, 0, 5,1,0.5)
-add_step()
-shuffle(steps)
+--add_step()
+steps = shuffle(steps)

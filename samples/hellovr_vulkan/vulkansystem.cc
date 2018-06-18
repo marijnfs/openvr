@@ -567,8 +567,8 @@ void VulkanSystem::init() {
   cout << "============" << endl;
   init_device();
   init_cmd_pool();
-  swapchain.init();
-
+  if (!Global::inst().HEADLESS)
+    swapchain.init();
   
   init_descriptor_sets();
 }
@@ -645,8 +645,11 @@ void VulkanSystem::init_device() {
   check( vkEnumeratePhysicalDevices( inst, &n_dev, NULL ), "vkEnumeratePhysicalDevices");
   vector<VkPhysicalDevice> devices(n_dev);
   check( vkEnumeratePhysicalDevices( inst, &n_dev, &devices[0] ), "vkEnumeratePhysicalDevices");
-  phys_dev = (VkPhysicalDevice) vr.get_output_device(inst);
-  //VkPhysicalDevice phys_dev = devices[0]; //select first, could be altered
+
+  if (!Global::inst().HEADLESS)
+    phys_dev = (VkPhysicalDevice) vr.get_output_device(inst);
+  else
+    phys_dev = devices[0]; //select first, could be altered
 
   vkGetPhysicalDeviceProperties( phys_dev, &prop);
   vkGetPhysicalDeviceMemoryProperties( phys_dev, &mem_prop );
@@ -758,9 +761,11 @@ void VulkanSystem::init_shaders() {
   vector<string> shader_names = {
     "scene",
     "axes",
-    "rendermodel",
-    "companion"
+    "rendermodel"
   };
+  if (!Global::inst().HEADLESS)
+    shader_names.push_back("companion");
+  
   vector<string> stages = {
     "vs",
     "ps"
@@ -834,7 +839,7 @@ void VulkanSystem::init_shaders() {
   };
 
   // Create the PSOs
-  for ( uint32_t pso = 0; pso < PSO_COUNT; pso++ )
+  for ( uint32_t pso = 0; pso < shader_names.size(); pso++ )
 	{
       VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 		

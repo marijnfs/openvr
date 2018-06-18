@@ -268,8 +268,6 @@ int record(string filename) {
   vr.setup();
   ws.setup();
   vk.setup();
-
-  
   
   //preloading images
   ImageFlywheel::preload();
@@ -312,9 +310,9 @@ int record(string filename) {
 }
 
 int test() {
-  auto img_data_vec = read_vec<float>("/home/marijnfs/data/allimg.data");
-  auto act_data_vec = read_vec<float>("/home/marijnfs/data/allact.data");
-  auto obs_data_vec = read_vec<float>("/home/marijnfs/data/allobs.data");
+  auto img_data_vec = load_vec<float>("/home/marijnfs/data/allimg.data");
+  auto act_data_vec = load_vec<float>("/home/marijnfs/data/allact.data");
+  auto obs_data_vec = load_vec<float>("/home/marijnfs/data/allobs.data");
 
   /*
   auto img_data_vec2 = img_data_vec;
@@ -573,19 +571,20 @@ void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> 
 }
 
 int learn(string filename) {
+  Global::inst().HEADLESS = true;
   if (!exists(filename))
     throw StringException("file doesnt exist");
 
   Handler::cudnn();
   Handler::set_device(0);
   
-  auto &ws = Global::ws();
+  //auto &ws = Global::ws();
   auto &vr = Global::vr();
   auto &vk = Global::vk();
 
   
   vr.setup();
-  ws.setup();
+  //ws.setup();
   vk.setup();
 
   //preloading images
@@ -637,7 +636,7 @@ int learn(string filename) {
   setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
   
   //initialisation
-  float std(.1);
+  float std(.05);
 
   vis_net.init_uniform(std);
   aggr_net.init_uniform(std);
@@ -645,14 +644,17 @@ int learn(string filename) {
   actor_net.init_uniform(std);
   value_net.init_uniform(std);
 
-  Trainer vis_trainer(vis_net.param_vec.n, .0005, .0000001, 200);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .0005, .0000001, 200);
-  Trainer actor_trainer(actor_net.param_vec.n, .0005, .0000001, 200);
+  Trainer vis_trainer(vis_net.param_vec.n, .001, .00001, 200);
+  Trainer aggr_trainer(aggr_net.param_vec.n, .001, .00001, 200);
+  Trainer actor_trainer(actor_net.param_vec.n, .001, .00001, 200);
   
   //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
   Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
   vector<float> action_targets(N * act_dim);
+  
 
+  
+  
   //load if applicable
   if (exists("vis.net"))
     vis_net.load("vis.net");
@@ -687,18 +689,21 @@ int learn(string filename) {
       //
       ////vr.render(scene, &img);
       ////vr.render(scene, headless);
-      vr.render(scene, false, &nimg);
-      vr.wait_frame();
+      vr.render(scene, true, &nimg);
+      //vr.wait_frame();
       //std::vector<float> nimg(img.begin(), img.end());
       //normalize_mt(&img);
       //cout << nimg.size() << endl;
 
       //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
       copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
+
+      //cout << nimg << endl;
       
       //vis_net.input().draw_slice("bla.png", t, 0);
       //normalise_fast(vis_net.input().slice(t), nimg.size());
 
+     
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
       if (t == 0) last_pose = cur_pose;
@@ -756,6 +761,18 @@ int learn(string filename) {
       copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
     vis_net.backward();
 
+
+
+    
+    //aggr_net.grad_vec *= 1.0 / 50000;
+    //aggr_net.param_vec += aggr_net.grad_vec;
+
+    //vis_net.grad_vec *= 1.0 / 50000;
+    //vis_net.param_vec += vis_net.grad_vec;
+
+    //actor_net.grad_vec *= 1.0 / 50000;
+    //actor_net.param_vec += actor_net.grad_vec;
+      
     vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
     aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
     actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
@@ -1040,9 +1057,6 @@ int main(int argc, char **argv) {
   for (int i(1); i < argc; ++i)
     args.push_back(argv[i]);
 
-  test();
-  return 0;
-  
   if (args.size() < 2)
     throw StringException("not enough args, use: record|replay filename");
   if (args[0] == "record")

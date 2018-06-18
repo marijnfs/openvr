@@ -211,8 +211,8 @@ void Image::init_for_copy(int width_, int height_, VkFormat format, VkImageTilin
   imgci.arrayLayers = 1;
   imgci.mipLevels = 1;
 
-  //imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imgci.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+  imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  //imgci.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
   imgci.samples = VK_SAMPLE_COUNT_1_BIT;
   //imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
   imgci.tiling = tiling;
@@ -409,6 +409,7 @@ void Image::resolve_to_image(Image &dst_image) {
   
   auto start_layout = layout;
   auto start_access = access_flags;
+
   
   dst_image.barrier(VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   barrier(VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
