@@ -253,7 +253,7 @@ void VRSystem::render_stereo_targets(Scene &scene) {
 	//auto &scene = Global::scene();
     hmd_pose_inverse = hmd_pose;
     hmd_pose_inverse.invert();
-
+    
 	VkViewport viewport = { 0.0f, 0.0f, (float ) render_width, ( float ) render_height, 0.0f, 1.0f };
 	vkCmdSetViewport( vk.cmd_buffer(), 0, 1, &viewport );
 	VkRect2D scissor = { 0, 0, render_width, render_height};

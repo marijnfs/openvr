@@ -424,9 +424,9 @@ int replay(string filename) {
   ImageFlywheel::preload();
 
   auto &scene = Global::scene();
-  FittsWorld world(scene);
-  //Script world_script;
-  //world_script.run("fittsworld.lua");
+  //FittsWorld world(scene);
+  Script world_script;
+  world_script.run("fittsworld.lua");
   vk.end_submit_cmd();
   
 
@@ -454,7 +454,8 @@ int replay(string filename) {
   std::vector<float> all_obs(6 * T);
   
   int t(0);
-  for (int i(1000); i < 1000+T; ++i, ++t) {
+  //for (int i(1000); i < 1000+T; ++i, ++t) {
+  for (int i(0); i < recording.size(); ++i, ++t) {
       recording.load_scene(i, &scene);
       
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
@@ -471,7 +472,7 @@ int replay(string filename) {
       //cout << nimg.size() << endl;
 
       //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
-      copy(nimg.begin(), nimg.end(), all_img.begin() + nimg.size() * t);
+      //copy(nimg.begin(), nimg.end(), all_img.begin() + nimg.size() * t);
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
       if (t == 0) last_pose = cur_pose;
@@ -481,8 +482,8 @@ int replay(string filename) {
       auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
       
-      copy(a_vec.begin(), a_vec.end(), all_action.begin() + 13*t);
-      copy(o_vec.begin(), o_vec.end(), all_obs.begin() + 6*t);
+      //copy(a_vec.begin(), a_vec.end(), all_action.begin() + 13*t);
+      //copy(o_vec.begin(), o_vec.end(), all_obs.begin() + 6*t);
       cout << a_vec << endl << o_vec << endl;
   }
 
