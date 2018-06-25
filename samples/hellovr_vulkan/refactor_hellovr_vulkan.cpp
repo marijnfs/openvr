@@ -367,8 +367,13 @@ int test() {
   aggr_net.init_normal(.0, .1);
   
   cout << vis_net.volumes.size() << endl;
-  
-  Trainer vis_trainer(vis_net.param_vec.n, .01, .00001, 200, .5);
+
+  float start_lr = .01;
+  float end_lr = .00001;
+  float half_time = 200;
+  float clip_val = .1;
+  float avg_set_time = 50;
+  Trainer vis_trainer(vis_net.param_vec.n, start_lr, end_lr, half_time, clip_val, avg_set_time);
   
   while (true) {
     vis_net.input().from_volume(img_data);
@@ -455,7 +460,7 @@ int replay(string filename) {
   
   int t(0);
   //for (int i(1000); i < 1000+T; ++i, ++t) {
-  for (int i(0); i < recording.size(); ++i, ++t) {
+  for (int i(3000); i < recording.size(); ++i, ++t) {
       recording.load_scene(i, &scene);
       
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
@@ -465,7 +470,7 @@ int replay(string filename) {
       //
       ////vr.render(scene, &img);
       ////vr.render(scene, headless);
-      vr.render(scene, false, &nimg);
+      vr.render(scene, false);
       vr.wait_frame();
       //std::vector<float> nimg(img.begin(), img.end());
       //normalize_mt(&img);
@@ -523,15 +528,56 @@ int replay(string filename) {
   Global::shutdown();
 }
 
-void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> &actor_net, Network<F> &value_net, VolumeNetwork &q_net, int act_dim, int obs_dim, int vis_dim, int aggr_dim) {
-  auto base_pool = new PoolingOperation<F>(2, 2);
+void test_setup_networks(VolumeNetwork &vis_net, VolumeNetwork &act_net, int vis_dim, int act_dim) {
+  auto base_pool = new PoolingOperation<F>(2, 2, CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
   auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
-    auto pool1 = new PoolingOperation<F>(4, 4);
+  auto pool1 = new PoolingOperation<F>(4, 4, CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
   vis_net.add_slicewise(base_pool);
   vis_net.add_slicewise(conv1);
   vis_net.add_tanh();
   vis_net.add_slicewise(pool1);
+  vis_net.add_tanh();
+  
+  auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 16, 5, 5);
+  auto pool2 = new PoolingOperation<F>(4, 4);
+  vis_net.add_slicewise(conv2);
+  vis_net.add_slicewise(pool2);
+  vis_net.add_tanh();
+
+  auto conv3 = new ConvolutionOperation<F>(vis_net.output_shape().c, 16, 5, 5);
+  vis_net.add_slicewise(conv3);
+  vis_net.add_tanh();
+
+  vis_net.add_univlstm(7, 7, 16);
+  
+  //auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
+  auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
  
+  vis_net.add_slicewise(squash);
+  vis_net.add_tanh();
+  vis_net.add_fc(vis_dim);
+  
+  //output should be {z, c, 1, 1}
+  vis_net.finish();
+
+  act_net.add_fc(16);
+  act_net.add_tanh();
+  act_net.add_univlstm(1, 1, act_dim);
+  act_net.add_fc(act_dim);
+  
+  act_net.finish();
+}
+
+void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> &actor_net, Network<F> &value_net, VolumeNetwork &q_net, int act_dim, int obs_dim, int vis_dim, int aggr_dim) {
+  auto base_pool = new PoolingOperation<F>(2, 2, CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
+  auto conv1 = new ConvolutionOperation<F>(vis_net.output_shape().c, 8, 5, 5);
+  auto pool1 = new PoolingOperation<F>(4, 4, CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
+  vis_net.add_slicewise(base_pool);
+  vis_net.add_slicewise(conv1);
+  vis_net.add_tanh();
+  vis_net.add_slicewise(pool1);
+  vis_net.add_tanh();
+  
   auto conv2 = new ConvolutionOperation<F>(vis_net.output_shape().c, 16, 5, 5);
   auto pool2 = new PoolingOperation<F>(4, 4);
   vis_net.add_slicewise(conv2);
@@ -571,8 +617,23 @@ void setup_networks(VolumeNetwork &vis_net, VolumeNetwork &aggr_net, Network<F> 
 
 }
 
+void print_split(vector<float> &v, int dim) {
+  int d(0);
+  for (int i(0); i < v.size(); ++i, ++d) {
+    if (d == dim) {
+      cout << endl;
+      d = 0;
+    }
+    cout << v[i] << " " ;
+  }
+}
+
 int learn(string filename) {
   Global::inst().HEADLESS = true;
+  
+  Global::inst().INVERT_CORRECTION = true;
+  cerr << "Warning, INvert correction on!" << endl;
+    
   if (!exists(filename))
     throw StringException("file doesnt exist");
 
@@ -603,13 +664,13 @@ int learn(string filename) {
   cout << "recording size: " << recording.size() << endl;
 
   
-  int N = 16;
+  int N = 64;
   int c = 3 * 2; //stereo rgb
   int h = 32;
 
   int act_dim = 13;
   int obs_dim = 6;
-  int vis_dim = 64;
+  int vis_dim = 8;
   int aggr_dim = 32;
   
   int width = VIVE_WIDTH;
@@ -623,10 +684,12 @@ int learn(string filename) {
   VolumeNetwork vis_net(img_input, first_grad);
  
   //Aggregation Network combining output of visual processing network and state vector
-  VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
+  //VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
+  VolumeShape aggr_input{N, vis_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
  
-  TensorShape actor_in{N, aggr_dim, 1, 1};
+  //TensorShape actor_in{N, aggr_dim, 1, 1};
+  TensorShape actor_in{N, vis_dim, 1, 1};
   Network<F> actor_net(actor_in);
   
   TensorShape value_in{N, aggr_dim, 1, 1};
@@ -634,26 +697,36 @@ int learn(string filename) {
   
   VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
-  setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
+
+  test_setup_networks(vis_net, aggr_net, vis_dim, act_dim);
+  //setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
   
   //initialisation
-  float std(.05);
+  float stddev(.1);
 
-  vis_net.init_uniform(std);
-  aggr_net.init_uniform(std);
-  q_net.init_uniform(std);
-  actor_net.init_uniform(std);
-  value_net.init_uniform(std);
-
-  Trainer vis_trainer(vis_net.param_vec.n, .001, .00001, 200);
-  Trainer aggr_trainer(aggr_net.param_vec.n, .001, .00001, 200);
-  Trainer actor_trainer(actor_net.param_vec.n, .001, .00001, 200);
   
-  //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
-  Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
+  vis_net.init_uniform(stddev);
+  aggr_net.init_uniform(stddev);
+  
+  ///q_net.init_uniform(std);
+  // actor_net.init_uniform(std);
+  //value_net.init_uniform(std);
+
+  float vis_start_lr = .001;
+  float aggr_start_lr = .001;
+  float end_lr = .00001;
+  float half_time = 200;
+  float clip_val = .1;
+  float avg_set_time = 50;
+  Trainer vis_trainer(vis_net.param_vec.n, vis_start_lr, end_lr, half_time, clip_val, avg_set_time);
+  Trainer aggr_trainer(aggr_net.param_vec.n, aggr_start_lr, end_lr, half_time, clip_val, avg_set_time);
+  
+  //Trainer actor_trainer(actor_net.param_vec.n, .001, .00001, 200);
+  
+  Volume action_targets_tensor(VolumeShape{N, act_dim, 1, 1});
+  //Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
   vector<float> action_targets(N * act_dim);
   
-
   
   
   //load if applicable
@@ -668,6 +741,7 @@ int learn(string filename) {
   if (exists("value.net"))
     value_net.load("value.net");
   
+
   
   int epoch(0);
   while (true) {
@@ -675,6 +749,12 @@ int learn(string filename) {
     int e = b + N;
     Pose cur_pose, last_pose;
 
+    //l2 adjustment
+    float l2 = .001;
+    vis_net.param_vec *= 1.0 - l2;
+    aggr_net.param_vec *= 1.0 - l2;
+    
+    
     //First setup all inputs for an episode
     int t(0);
 
@@ -714,31 +794,42 @@ int learn(string filename) {
       auto a_vec = action.to_vector();
       auto o_vec = cur_pose.to_obs_vector();
       
-      cout << "action: " << a_vec << " " << o_vec << endl;
+      //cout << "action: " << a_vec << " " << o_vec << endl;
       //if (t) //ignore first action
       copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
-      copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
+      //** copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
     }
 
     action_targets_tensor.from_vector(action_targets);
     //run visual network
     vis_net.forward();
 
-    cout << "vis output: " << vis_net.output().to_vector() << endl;
+    //debug
+
+    
+    //cout << "vis output: " << vis_net.output().to_vector() << endl;
     //aggregator
-    for (int t(0); t < N; ++t)
+    //* for (int t(0); t < N; ++t)
       //aggregator already has observation data, we add vis output after that
-      copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
+    //* copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
+    copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
     aggr_net.forward();
-    cout << "agg output: " << aggr_net.output().to_vector() << endl;
+    cout << "aggr output: " << aggr_net.output().to_vector() << endl;
     
     //copy aggr to nets
-    copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
-    copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
+    //*copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
+    //*copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
     
-    actor_net.forward();
-    value_net.forward(); //not for imitation
-    cout << "actor: " << actor_net.output().to_vector() << endl;
+    //*actor_net.forward();
+    //*value_net.forward(); //not for imitation
+
+    auto pred_actions = aggr_net.output().to_vector();
+    auto p1 = pred_actions.begin(), p2 = action_targets.begin();
+    for (int i(0); i < N; ++i) {
+      cout << "actor: ";
+      for (int n(0); n < act_dim; ++n, ++p1, ++p2)
+        cout << *p1 << " " << *p2 << endl;
+    }
     
     //copy actions and aggr to q  //not for imitation //HERE BE SEGFAULT?
     /*for (int t(0); t < N - 1; ++t) {
@@ -750,21 +841,38 @@ int learn(string filename) {
 
     //====== Imitation backward:
     
-    actor_net.calculate_loss(action_targets_tensor);
+    //* actor_net.calculate_loss(action_targets_tensor);
     //cout << "actor action: " << actor_net.output().to_vector() << endl;
-    cout << "actor loss: " << actor_net.loss() << endl;
-    actor_net.backward();
-    
-    copy_gpu_to_gpu(actor_net.input_grad().data, aggr_net.output_grad().data(), actor_net.input_grad().size());
+    auto loss = aggr_net.calculate_loss(action_targets_tensor);
+        
+    cout << "actor loss: " << loss << endl;
+    //cout << "actor loss: " << actor_net.loss() << endl;
+    //* actor_net.backward();
     aggr_net.backward();
     
-    for (int t(0); t < N; ++t)
-      copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+    cout << aggr_net.param_vec.to_vector() << endl;
+    cout << aggr_net.grad_vec.to_vector() << endl;
+    //return 1;
+    //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
+    //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
+    //aggr_net.backward();
+    
+    //for (int t(0); t < N; ++t)
+    //copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+    copy_gpu_to_gpu(aggr_net.input_grad().data(), vis_net.output_grad().data(), aggr_net.input_grad().size());
     vis_net.backward();
 
+    auto &v = dynamic_cast<ConvolutionOperation<F>*>(dynamic_cast<SlicewiseOperation*>(vis_net.operations[3])->op)->filter_bank_grad;
+    auto &v2 = vis_net.volumes[3]->diff;
 
 
-    
+    //auto lstmv = vis_net.volumes[11]->x.to_vector();
+    //print_split(lstmv, vis_net.shapes[11].w * vis_net.shapes[11].h);
+    cout << "vis:" << endl;
+    auto av = vis_net.output().to_vector();
+    print_split(av, vis_dim);
+    //cout << "vis net:" << v.to_vector() << endl;//to_vector() << endl;
+
     //aggr_net.grad_vec *= 1.0 / 50000;
     //aggr_net.param_vec += aggr_net.grad_vec;
 
@@ -773,26 +881,27 @@ int learn(string filename) {
 
     //actor_net.grad_vec *= 1.0 / 50000;
     //actor_net.param_vec += actor_net.grad_vec;
-      
+
+   
     vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
     aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
-    actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
-    //set action targets
-    //run backward
     
+    //actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
+    //set action targets
+    //run backward    
     //====== Qlearning backward:
     //run forward
     //calculate q targets
     //run backward q -> calculate action update
     //run backward rest
-    if (epoch % 10 == 0) {
+    if (epoch % 100 == 0 && epoch > 0) {
       vis_net.save("vis.net");
       aggr_net.save("aggr.net");
-      q_net.save("q.net");
-      actor_net.save("actor.net");
-      value_net.save("value.net");
+      //q_net.save("q.net");
+      //actor_net.save("actor.net");
+      //value_net.save("value.net");
     }
-      
+
     ++epoch;
   }
 
@@ -864,16 +973,9 @@ int rollout(string filename) {
   setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
   
   //initialisation
-  float std(.1);
 
-  vis_net.init_uniform(std);
-  aggr_net.init_uniform(std);
-  q_net.init_uniform(std);
-  actor_net.init_uniform(std);
-  value_net.init_uniform(std);
-
-  //Volume target_actions(VolumeShape{N, act_dim, 1, 1});
-  Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
+  Volume action_targets_tensor(VolumeShape{N, act_dim, 1, 1});
+  //Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
   vector<float> action_targets(N * act_dim);
 
   //load if applicable

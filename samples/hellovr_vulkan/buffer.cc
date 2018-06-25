@@ -211,8 +211,8 @@ void Image::init_for_copy(int width_, int height_, VkFormat format, VkImageTilin
   imgci.arrayLayers = 1;
   imgci.mipLevels = 1;
 
-  //imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imgci.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+  imgci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  //imgci.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
   imgci.samples = VK_SAMPLE_COUNT_1_BIT;
   //imgci.samples = VK_SAMPLE_COUNT_2_BIT; //HACKING
   imgci.tiling = tiling;

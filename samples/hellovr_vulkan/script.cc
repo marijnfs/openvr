@@ -218,7 +218,7 @@ int register_function(lua_State *L) {
   string name = lua_tostring(L, 1);
   int f = luaL_ref(L, LUA_REGISTRYINDEX);
   Global::scene().register_function(name, [L,f]()->void{
-      cout << "calling anonymous callback " << f << endl;
+      //cout << "calling anonymous callback " << f << endl;
       lua_rawgeti(L, LUA_REGISTRYINDEX, f);
       if (lua_pcall(L, 0, LUA_MULTRET, 0))
         throw StringException(lua_tostring(L, -1));

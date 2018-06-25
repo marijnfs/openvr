@@ -572,6 +572,7 @@ struct Scene {
     clear_objects(false);
     clear_triggers();
     clear_variables();
+    
   }
 
   
@@ -616,6 +617,8 @@ struct Scene {
     //delete kv.second;
     variables.clear();
   }
+
+ 
   
   void step();
   void snap(Recording *rec);

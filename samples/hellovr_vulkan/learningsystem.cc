@@ -112,9 +112,9 @@ void test(int argc, char **argv) {
 
 	Volume input(train_shape), target(target_shape);
 
-	Trainer trainer(net.param_vec.n, .01, .0000001, 400);
+	Trainer trainer(net.param_vec.n, .01, .0000001, 400, .1, 50);
 	// Trainer fast_trainer(fastweight_net.n_params, .00001, .0000001, 100);
-	Trainer fast_trainer(fastweight_net.n_params, .01, .00001, 400);
+	Trainer fast_trainer(fastweight_net.n_params, .01, .00001, 400, .1, 50);
 
 
 	while (true) {

@@ -93,6 +93,7 @@ struct Global {
   Scene *scene_ptr = 0;
   Script *script_ptr = 0;
   bool HEADLESS = false;
+  bool INVERT_CORRECTION = false; //only needed for oldest recordings
 };
 
 template <typename T>

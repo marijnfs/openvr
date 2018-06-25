@@ -28,7 +28,8 @@ void HMD::deserialise(cap::Object::Reader reader) {
 
   //TODO remove the invert, not needed for new recordings
   auto m = Matrix4(to_mat4());
-  //m.invert();
+  if (Global::inst().INVERT_CORRECTION)
+    m.invert();
   from_mat4(m);
 }
 
@@ -70,7 +71,7 @@ void Scene::step() {
         cout << "trigger func " << name << " does not exist" << endl;
         throw StringException("func callback does not exist");
       }
-      cout << "trigger: " << name << endl;
+      //cout << "trigger: " << name << endl;
       function_map[name]();
     }  
   }
