@@ -702,7 +702,7 @@ int learn(string filename) {
   //setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
   
   //initialisation
-  float stddev(.1);
+  float stddev(.3);
 
   
   vis_net.init_uniform(stddev);
@@ -712,8 +712,8 @@ int learn(string filename) {
   // actor_net.init_uniform(std);
   //value_net.init_uniform(std);
 
-  float vis_start_lr = .001;
-  float aggr_start_lr = .001;
+  float vis_start_lr = .01;
+  float aggr_start_lr = .01;
   float end_lr = .00001;
   float half_time = 200;
   float clip_val = .1;
@@ -750,7 +750,7 @@ int learn(string filename) {
     Pose cur_pose, last_pose;
 
     //l2 adjustment
-    float l2 = .001;
+    float l2 = .0005;
     vis_net.param_vec *= 1.0 - l2;
     aggr_net.param_vec *= 1.0 - l2;
     
@@ -802,66 +802,87 @@ int learn(string filename) {
 
     action_targets_tensor.from_vector(action_targets);
     //run visual network
-    vis_net.forward();
 
-    //debug
-
-    
-    //cout << "vis output: " << vis_net.output().to_vector() << endl;
-    //aggregator
-    //* for (int t(0); t < N; ++t)
+    auto eval_func = [&]()->float {
+      vis_net.forward();
+      
+      //debug
+      
+      
+      //cout << "vis output: " << vis_net.output().to_vector() << endl;
+      //aggregator
+      //* for (int t(0); t < N; ++t)
       //aggregator already has observation data, we add vis output after that
-    //* copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
-    copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
-    aggr_net.forward();
-    cout << "aggr output: " << aggr_net.output().to_vector() << endl;
+      //* copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
+      copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
+      aggr_net.forward();
+      cout << "aggr output: " << aggr_net.output().to_vector() << endl;
+      
+      //copy aggr to nets
+      //*copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
+      //*copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
+      
+      //*actor_net.forward();
+      //*value_net.forward(); //not for imitation
+      
+      auto pred_actions = aggr_net.output().to_vector();
+      auto p1 = pred_actions.begin(), p2 = action_targets.begin();
+      for (int i(0); i < N; ++i) {
+        cout << "actor: ";
+        for (int n(0); n < act_dim; ++n, ++p1, ++p2)
+          cout << *p1 << " " << *p2 << endl;
+      }
+      
+      //copy actions and aggr to q  //not for imitation //HERE BE SEGFAULT?
+      /*for (int t(0); t < N - 1; ++t) {
+        copy_gpu_to_gpu(actor_net.output().ptr(t), q_net.input().data(t + 1, 0), act_dim);
+        copy_gpu_to_gpu(aggr_net.output().data(t), q_net.input().data(t, act_dim), aggr_dim);
+        }
+        q_net.forward();     //not for imitation
+      */
+      
+      //====== Imitation backward:
+      
+      //* actor_net.calculate_loss(action_targets_tensor);
+      //cout << "actor action: " << actor_net.output().to_vector() << endl;
+      auto loss = aggr_net.calculate_loss(action_targets_tensor);
+      
+      cout << "actor loss: " << loss << endl;
+      //cout << "actor loss: " << actor_net.loss() << endl;
+      //* actor_net.backward();
+      aggr_net.backward();
     
-    //copy aggr to nets
-    //*copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
-    //*copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
-    
-    //*actor_net.forward();
-    //*value_net.forward(); //not for imitation
+      //cout << aggr_net.param_vec.to_vector() << endl;
+      //cout << aggr_net.grad_vec.to_vector() << endl;
+      //return 1;
+      //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
+      //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
+      //aggr_net.backward();
+      
+      //for (int t(0); t < N; ++t)
+      //copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+      copy_gpu_to_gpu(aggr_net.input_grad().data(), vis_net.output_grad().data(), aggr_net.input_grad().size());
+      vis_net.backward();
+      return loss;
+    };
 
-    auto pred_actions = aggr_net.output().to_vector();
-    auto p1 = pred_actions.begin(), p2 = action_targets.begin();
-    for (int i(0); i < N; ++i) {
-      cout << "actor: ";
-      for (int n(0); n < act_dim; ++n, ++p1, ++p2)
-        cout << *p1 << " " << *p2 << endl;
+    //vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
+    //aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
+    CudaVec vis_param_back(vis_net.param_vec);
+    CudaVec aggr_param_back(aggr_net.param_vec);
+
+
+    for (int n(0); n < 4; ++n) {
+      eval_func();
+      if (n != 0) {
+        vis_net.param_vec = vis_param_back;
+        aggr_net.param_vec = aggr_param_back;
+      }
+      vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
+      aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
     }
+    //eval_func();
     
-    //copy actions and aggr to q  //not for imitation //HERE BE SEGFAULT?
-    /*for (int t(0); t < N - 1; ++t) {
-      copy_gpu_to_gpu(actor_net.output().ptr(t), q_net.input().data(t + 1, 0), act_dim);
-      copy_gpu_to_gpu(aggr_net.output().data(t), q_net.input().data(t, act_dim), aggr_dim);
-    }
-    q_net.forward();     //not for imitation
-    */
-
-    //====== Imitation backward:
-    
-    //* actor_net.calculate_loss(action_targets_tensor);
-    //cout << "actor action: " << actor_net.output().to_vector() << endl;
-    auto loss = aggr_net.calculate_loss(action_targets_tensor);
-        
-    cout << "actor loss: " << loss << endl;
-    //cout << "actor loss: " << actor_net.loss() << endl;
-    //* actor_net.backward();
-    aggr_net.backward();
-    
-    cout << aggr_net.param_vec.to_vector() << endl;
-    cout << aggr_net.grad_vec.to_vector() << endl;
-    //return 1;
-    //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
-    //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
-    //aggr_net.backward();
-    
-    //for (int t(0); t < N; ++t)
-    //copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
-    copy_gpu_to_gpu(aggr_net.input_grad().data(), vis_net.output_grad().data(), aggr_net.input_grad().size());
-    vis_net.backward();
-
     auto &v = dynamic_cast<ConvolutionOperation<F>*>(dynamic_cast<SlicewiseOperation*>(vis_net.operations[3])->op)->filter_bank_grad;
     auto &v2 = vis_net.volumes[3]->diff;
 
@@ -883,8 +904,6 @@ int learn(string filename) {
     //actor_net.param_vec += actor_net.grad_vec;
 
    
-    vis_trainer.update(&vis_net.param_vec, vis_net.grad_vec);
-    aggr_trainer.update(&aggr_net.param_vec, aggr_net.grad_vec);
     
     //actor_trainer.update(&actor_net.param_vec, actor_net.grad_vec);
     //set action targets
