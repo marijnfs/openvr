@@ -548,7 +548,7 @@ void test_setup_networks(VolumeNetwork &vis_net, VolumeNetwork &act_net, int vis
   vis_net.add_slicewise(conv3);
   vis_net.add_tanh();
 
-  vis_net.add_univlstm(7, 7, 16);
+  vis_net.add_univlstm(5, 5, 16);
   
   //auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
   auto squash = new SquashOperation<F>(vis_net.output_shape().tensor_shape(), vis_dim);
@@ -562,7 +562,7 @@ void test_setup_networks(VolumeNetwork &vis_net, VolumeNetwork &act_net, int vis
 
   act_net.add_fc(16);
   act_net.add_tanh();
-  act_net.add_univlstm(1, 1, act_dim);
+  act_net.add_univlstm(1, 1, 32);
   act_net.add_fc(act_dim);
   
   act_net.finish();
@@ -628,12 +628,10 @@ void print_split(vector<float> &v, int dim) {
   }
 }
 
+
 int learn(string filename) {
   Global::inst().HEADLESS = true;
-  
-  Global::inst().INVERT_CORRECTION = true;
-  cerr << "Warning, INvert correction on!" << endl;
-    
+      
   if (!exists(filename))
     throw StringException("file doesnt exist");
 
@@ -676,7 +674,7 @@ int learn(string filename) {
   int width = VIVE_WIDTH;
   int height = VIVE_HEIGHT;
   VolumeShape img_input{N, c, width, height};
-  VolumeShape network_output{N, h, 1, 1};
+  //VolumeShape network_output{N, h, 1, 1};
 
 
   //Visual processing network, most cpu intensive
@@ -684,8 +682,8 @@ int learn(string filename) {
   VolumeNetwork vis_net(img_input, first_grad);
  
   //Aggregation Network combining output of visual processing network and state vector
-  //VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
-  VolumeShape aggr_input{N, vis_dim, 1, 1};
+  VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
+  //VolumeShape aggr_input{N, vis_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
  
   //TensorShape actor_in{N, aggr_dim, 1, 1};
@@ -712,8 +710,8 @@ int learn(string filename) {
   // actor_net.init_uniform(std);
   //value_net.init_uniform(std);
 
-  float vis_start_lr = .01;
-  float aggr_start_lr = .01;
+  float vis_start_lr = .03;
+  float aggr_start_lr = .03;
   float end_lr = .00001;
   float half_time = 200;
   float clip_val = .1;
@@ -777,7 +775,8 @@ int learn(string filename) {
       //cout << nimg.size() << endl;
 
       //write_img1c("bla2.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[0]);
-      copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
+      //write_img1c("bla3.png", VIVE_WIDTH, VIVE_HEIGHT, &nimg[VIVE_WIDTH * VIVE_HEIGHT * 3]);
+      //copy_cpu_to_gpu<float>(&nimg[0], vis_net.input().slice(t), nimg.size());
 
       //cout << nimg << endl;
       
@@ -797,7 +796,7 @@ int learn(string filename) {
       //cout << "action: " << a_vec << " " << o_vec << endl;
       //if (t) //ignore first action
       copy(a_vec.begin(), a_vec.end(), action_targets.begin() + act_dim * t);
-      //** copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
+      copy_cpu_to_gpu(&o_vec[0], aggr_net.input().data(t, 0), o_vec.size());
     }
 
     action_targets_tensor.from_vector(action_targets);
@@ -811,10 +810,10 @@ int learn(string filename) {
       
       //cout << "vis output: " << vis_net.output().to_vector() << endl;
       //aggregator
-      //* for (int t(0); t < N; ++t)
-      //aggregator already has observation data, we add vis output after that
-      //* copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
-      copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
+      for (int t(0); t < N; ++t)
+        //aggregator already has observation data, we add vis output after that
+        copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
+      //copy_gpu_to_gpu(vis_net.output().data(), aggr_net.input().data(), vis_net.output().size());
       aggr_net.forward();
       cout << "aggr output: " << aggr_net.output().to_vector() << endl;
       
@@ -859,9 +858,9 @@ int learn(string filename) {
       //copy_gpu_to_gpu(actor_net.input_grad().data(), aggr_net.output_grad().data(), actor_net.input_grad().size());
       //aggr_net.backward();
       
-      //for (int t(0); t < N; ++t)
-      //copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
-      copy_gpu_to_gpu(aggr_net.input_grad().data(), vis_net.output_grad().data(), aggr_net.input_grad().size());
+      for (int t(0); t < N; ++t)
+        copy_gpu_to_gpu(aggr_net.input_grad().data(t, obs_dim), vis_net.output_grad().data(t), vis_dim);
+
       vis_net.backward();
       return loss;
     };
@@ -883,8 +882,8 @@ int learn(string filename) {
     }
     //eval_func();
     
-    auto &v = dynamic_cast<ConvolutionOperation<F>*>(dynamic_cast<SlicewiseOperation*>(vis_net.operations[3])->op)->filter_bank_grad;
-    auto &v2 = vis_net.volumes[3]->diff;
+    //auto &v = dynamic_cast<ConvolutionOperation<F>*>(dynamic_cast<SlicewiseOperation*>(vis_net.operations[3])->op)->filter_bank_grad;
+    //auto &v2 = vis_net.volumes[3]->diff;
 
 
     //auto lstmv = vis_net.volumes[11]->x.to_vector();
@@ -929,7 +928,15 @@ int learn(string filename) {
   return 0;
 }
 
+int learn_old(string filename) {
+  Global::inst().INVERT_CORRECTION = true;
+  cerr << "Warning, Invert correction on!" << endl;
+  learn(filename);
+}  
+
 int rollout(string filename) {
+  //Global::inst().HEADLESS = true;
+  
   if (!exists(filename))
     throw StringException("file doesnt exist");
 
@@ -940,7 +947,6 @@ int rollout(string filename) {
   auto &vr = Global::vr();
   auto &vk = Global::vk();
 
-  
   vr.setup();
   ws.setup();
   vk.setup();
@@ -959,29 +965,33 @@ int rollout(string filename) {
   recording.load(filename, &scene);
   cout << "recording size: " << recording.size() << endl;
 
-  int N = 15;
+  int N = 64;
   int c = 3 * 2; //stereo rgb
   int h = 32;
 
   int act_dim = 13;
   int obs_dim = 6;
-  int vis_dim = 64;
+  int vis_dim = 8;
   int aggr_dim = 32;
-  
+
+ 
   int width = VIVE_WIDTH;
   int height = VIVE_HEIGHT;
   VolumeShape img_input{N, c, width, height};
-  VolumeShape network_output{N, h, 1, 1};
+  //VolumeShape network_output{N, h, 1, 1};
 
-//Visual processing network, most cpu intensive
+
+  //Visual processing network, most cpu intensive
   bool first_grad = false;
   VolumeNetwork vis_net(img_input, first_grad);
  
   //Aggregation Network combining output of visual processing network and state vector
   VolumeShape aggr_input{N, vis_dim + obs_dim, 1, 1};
+  //VolumeShape aggr_input{N, vis_dim, 1, 1};
   VolumeNetwork aggr_net(aggr_input);
  
-  TensorShape actor_in{N, aggr_dim, 1, 1};
+  //TensorShape actor_in{N, aggr_dim, 1, 1};
+  TensorShape actor_in{N, vis_dim, 1, 1};
   Network<F> actor_net(actor_in);
   
   TensorShape value_in{N, aggr_dim, 1, 1};
@@ -989,13 +999,14 @@ int rollout(string filename) {
   
   VolumeShape q_in{N, aggr_dim + act_dim, 1, 1}; //qnet, could be also advantage
   VolumeNetwork q_net(q_in);
-  setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
+
+  test_setup_networks(vis_net, aggr_net, vis_dim, act_dim);
+  //setup_networks(vis_net, aggr_net, actor_net, value_net, q_net, act_dim, obs_dim, vis_dim, aggr_dim);
   
   //initialisation
-
-  Volume action_targets_tensor(VolumeShape{N, act_dim, 1, 1});
-  //Tensor<F> action_targets_tensor(N, act_dim, 1, 1);
-  vector<float> action_targets(N * act_dim);
+  float stddev(.3);
+  
+  //initialisation
 
   //load if applicable
   if (exists("vis.net"))
@@ -1038,13 +1049,15 @@ int rollout(string filename) {
     for (int i(b); i < e; ++i, ++t) {      
       vr.hmd_pose = Matrix4(scene.find<HMD>("hmd").to_mat4());
       cout << "scene " << i << " items: " << scene.objects.size() << endl;
-      bool headless(true);
 
-      //
+      //bool headless(true);
+      bool headless(false);
+
       ////vr.render(scene, &img);
       ////vr.render(scene, headless);
-      vr.render(scene, false, &nimg);
-      vr.wait_frame();
+      
+      vr.render(scene, headless, &nimg);
+
       //std::vector<float> nimg(img.begin(), img.end());
       //normalize_mt(&img);
       //cout << nimg.size() << endl;
@@ -1057,6 +1070,7 @@ int rollout(string filename) {
 
       last_pose = cur_pose;
       cur_pose.from_scene(scene);
+      if (t == 0) last_pose = cur_pose;
       //Action action(last_pose, cur_pose);
       
       auto o_vec = cur_pose.to_obs_vector();
@@ -1071,17 +1085,23 @@ int rollout(string filename) {
       copy_gpu_to_gpu(vis_net.output().data(t), aggr_net.input().data(t, obs_dim), vis_dim);
       aggr_net.forward();
       //cout << "agg output: " << aggr_net.output().to_vector() << endl;
-      
-      //copy aggr to nets
+
+      /*
+      //copy aggr to value and actor nets
       copy_gpu_to_gpu(aggr_net.output().data(), actor_net.input().data, aggr_net.output().size());
       copy_gpu_to_gpu(aggr_net.output().data(), value_net.input().data, aggr_net.output().size());
       
       actor_net.forward();
-      value_net.forward(); //not for imitation
+      //value_net.forward(); //not for imitation
       auto whole_action_vec = actor_net.output().to_vector();
       auto action_vec = vector<float>(whole_action_vec.begin() + t * act_dim, whole_action_vec.begin() + (t+1) * act_dim);
       cout << "act vec: " << action_vec << endl;
+      */
+      
+      auto whole_action_vec = aggr_net.output().to_vector();
+      auto action_vec = vector<float>(whole_action_vec.begin() + t * act_dim, whole_action_vec.begin() + (t+1) * act_dim);
       Action act(action_vec);
+      cout << action_vec << endl;
       //cout << "act: " << act.armq[0] << " " << act.arm_length << endl;
       //cout << cur_pose << endl;
       
@@ -1096,6 +1116,13 @@ int rollout(string filename) {
   Global::shutdown();
   return 0;
 }
+
+int rollout_old(string filename) {
+  Global::inst().INVERT_CORRECTION = true;
+  cerr << "Warning, INvert correction on!" << endl;
+  rollout(filename);
+}
+
 
 int analyse(string filename) {
   if (!exists(filename))
@@ -1189,7 +1216,11 @@ int main(int argc, char **argv) {
     return analyse(args[1]);
   if (args[0] == "learn")
     return learn(args[1]);
+  if (args[0] == "learnold") //with invert correction
+    return learn_old(args[1]);
   if (args[0] == "rollout")
     return rollout(args[1]);
+  if (args[0] == "rolloutold") //with invert correction
+    return rollout_old(args[1]);
   throw StringException("Call right arguments");
 }

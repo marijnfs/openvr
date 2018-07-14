@@ -304,7 +304,7 @@ std::vector<float> Pose::to_obs_vector() {
   v[3] = armq[3];
 
   v[4] = arm_length;
-  v[5] = pressed;
+  v[5] = 0;//pressed; //for learning no cheating or it will copy it
   return v;
 }
 

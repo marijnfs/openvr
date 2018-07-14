@@ -363,7 +363,7 @@ static VkBool32 VKAPI_PTR debug_callback(
 
   std::cout << "In Debug Callback: " << std::endl;
   std::cerr << "validation layer: " << msg << std::endl;
-  // hrow StringException(msg);
+  // throw StringException(msg);
   return VK_FALSE;
 }
 
